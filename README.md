@@ -1,4 +1,4 @@
 ![Image](images/trading.jpg "")
 
 # CryptoMaker
-Cryptocurrency Trading Bot. Specialized in trading future perpetuals.
+Cryptocurrency trading bot, specialized in trading futures (perpetuals and inverse perpetuals).

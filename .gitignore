@@ -1,3 +1,6 @@
+# Contain keys not to be published online
+api_keys.py
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
