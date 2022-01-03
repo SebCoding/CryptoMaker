@@ -3,7 +3,7 @@ import sys
 
 import rapidjson
 from jsonschema import validate
-from jsonschema.exceptions import SchemaError
+from jsonschema.exceptions import SchemaError, ValidationError
 
 import constants
 
@@ -30,7 +30,11 @@ class Configuration:
             # what is described in schema.
 
             validate(instance=data, schema=schema)
-        except (SchemaError, rapidjson.JSONDecodeError) as e:
+        except (
+            SchemaError,
+            rapidjson.JSONDecodeError,
+            ValidationError
+        ) as e:
             logging.exception(f"Invalid config file [{constants.CONFIG_FILE}] content.")
             sys.exit(0)
 

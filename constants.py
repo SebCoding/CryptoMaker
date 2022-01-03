@@ -5,6 +5,9 @@ SUPPORTED_EXCHANGES = ['Bybit']
 MARKET_TYPES = ['perpetual futures']
 LOGGING_LEVELS = ['debug', 'info', 'warning', 'error', 'critical']
 
+# Valid Intervals. Some intervals are not supported by some exchanges
+VALID_INTERVALS = ['1m', '3m', '5m', '15m', '30m', '1h', '2h', '4h', '6h', '12h', '1d', '1w', '1M']
+
 # Location of the config file
 CONFIG_FILE = 'config.json'
 
@@ -21,14 +24,17 @@ CONFIG_SCHEMA = {
                 'name': {'type': 'string', 'enum': SUPPORTED_EXCHANGES},
                 'testnet': {'type': 'boolean', 'default': True},
                 'market_type': {'type': 'string', 'enum': MARKET_TYPES},
-                'http': {
+                'pair': {'type': 'string'},
+                'rest': {
                     'type': 'object',
                     'properties': {
                         'linear_testnet': {'type': 'string', 'format': 'uri'},
                         'linear_mainnet': {'type': 'string', 'format': 'uri'},
-                        'linear_mainnet2': {'type': 'string', 'format': 'uri'}
-                    }
-                },
+                        'linear_mainnet2': {'type': 'string', 'format': 'uri'},
+                        'timeout': {'type': 'integer', 'minimum': 0}
+                    },
+                    'required': ['timeout']
+              },
                 'websockets': {
                     'type': 'object',
                     'properties': {
@@ -41,7 +47,7 @@ CONFIG_SCHEMA = {
                     }
                 }
             },
-            'required': ['name', 'testnet', 'market_type', 'http', 'websockets']
+            'required': ['name', 'testnet', 'market_type', 'rest', 'websockets']
         },
         'logging': {
             'type': 'object',

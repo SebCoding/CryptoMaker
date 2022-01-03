@@ -58,9 +58,7 @@ import pandas as pd
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(message)s')
 
-import os
-clear = lambda: os.system('cls')
-# clear() # to clear screen
+
 
 # USDT Perpetual
 endpoint_public = 'wss://stream.bybit.com/realtime_public'
