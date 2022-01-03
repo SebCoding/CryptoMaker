@@ -1,5 +1,6 @@
 # Contain keys not to be published online
 api_keys.py
+log.txt
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
