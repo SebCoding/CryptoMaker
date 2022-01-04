@@ -6,7 +6,10 @@ MARKET_TYPES = ['perpetual futures']
 LOGGING_LEVELS = ['debug', 'info', 'warning', 'error', 'critical']
 
 # Valid Intervals. Some intervals are not supported by some exchanges
-VALID_INTERVALS = ['1m', '3m', '5m', '15m', '30m', '1h', '2h', '4h', '6h', '12h', '1d', '1w', '1M']
+REST_VALID_INTERVALS = ['1m', '3m', '5m', '15m', '30m', '1h', '2h', '4h', '6h', '12h', '1d', '1w', '1M']
+
+# Valid intervals for websocket kline topic
+WS_VALID_CANDLE_INTERVALS = ['1', '3', '5', '15', '30', '60', '120', '240', '360', 'D', 'W']
 
 # Location of the config file
 CONFIG_FILE = 'config.json'

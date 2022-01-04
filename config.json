@@ -19,7 +19,6 @@
             "ws_linear_private_mainnet2": "wss://stream.bytick.com/realtime_private"
         }
     },
-
     "logging": {
         "global_level": "debug",
         "log_file_path": "log.txt",

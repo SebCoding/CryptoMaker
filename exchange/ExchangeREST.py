@@ -143,7 +143,7 @@ class ExchangeREST:
     # Adjust from_time to include prior X entries for that interval for ema200
     @staticmethod
     def adjust_from_time(from_time, interval, include_prior):
-        if interval not in constants.VALID_INTERVALS:
+        if interval not in constants.REST_VALID_INTERVALS:
             msg = f'Invalid interval value: {interval}'
             logger.error(msg)
             raise Exception(msg)

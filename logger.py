@@ -9,10 +9,25 @@ def init_root_logger(level):
     #     format='%(asctime)s %(filename)s - %(module)s - %(funcName)s() - line:%(lineno)d - %(name)s - %(levelname)s - %(message)s',
     #     datefmt='%Y-%m-%d %H:%M:%S'
     # )
+    config = Configuration.get_config()
+    config_level = logging_level_str_to_int(config['logging']['global_level'])
+
+    # Console Handler
+    c_handler = logging.StreamHandler()
+    c_format = logging.Formatter('[%(name)s] %(levelname)s:  %(message)s')
+    c_handler.setFormatter(c_format)
+    c_handler.setLevel(config_level)
+
+    # File Handler
+    f_handler = logging.FileHandler('log.txt', mode='w')
+    f_format = logging.Formatter(fmt='[%(name)s] - %(levelname)s - %(message)s')  # datefmt='%Y-%m-%d %H:%M:%S'
+    f_handler.setFormatter(f_format)
+    f_handler.setLevel(config_level)
     logging.basicConfig(
         level=level,
         format='%(levelname)s: %(module)s.%(funcName)s, %(message)s',
-        datefmt='%Y-%m-%d %H:%M:%S'
+        datefmt='%Y-%m-%d %H:%M:%S',
+        handlers=[f_handler, c_handler]
     )
 
 
@@ -33,7 +48,7 @@ def init_custom_logger(module_name):
 
     # File Handler
     f_handler = logging.FileHandler('log.txt', mode='w')
-    f_format = logging.Formatter('%(asctime)s %(levelname)s: %(message)s', datefmt='[%Y-%m-%d.%H:%M:%S]')
+    f_format = logging.Formatter(fmt='[%(name)s] - %(levelname)s - %(message)s')  # datefmt='%Y-%m-%d %H:%M:%S'
     f_handler.setFormatter(f_format)
     f_handler.setLevel(config_level)
 
