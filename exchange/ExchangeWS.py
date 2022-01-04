@@ -2,9 +2,6 @@
     Exchange class that implements operations done through the WebSocket API
     This class is hardcoded for the Bybit exchange
 """
-import api_keys
-import constants
-
 """
 To see which endpoints and topics are available, check the Bybit API
 documentation:
@@ -58,6 +55,9 @@ executionReport
 ticketInfo
 
 """
+
+import api_keys
+import constants
 from pybit import WebSocket
 import logger
 from configuration import Configuration
@@ -161,7 +161,7 @@ class ExchangeWS:
     @staticmethod
     def get_candle_topic(pair, interval):
         interval = str(interval)
-        assert(interval in constants.WS_VALID_CANDLE_INTERVALS)
+        assert (interval in constants.WS_VALID_CANDLE_INTERVALS)
         sub = 'candle.<interval>.<pair>'
         return sub.replace('<interval>', interval).replace('<pair>', pair)
 
@@ -169,4 +169,3 @@ class ExchangeWS:
     def get_liquidation_topic(pair):
         sub = "liquidation.<pair>"
         return sub.replace('<pair>', pair)
-
