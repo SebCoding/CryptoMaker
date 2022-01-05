@@ -5,8 +5,10 @@ SUPPORTED_EXCHANGES = ['Bybit']
 MARKET_TYPES = ['perpetual futures']
 LOGGING_LEVELS = ['debug', 'info', 'warning', 'error', 'critical']
 
-# Valid Intervals. Some intervals are not supported by some exchanges
-REST_VALID_INTERVALS = ['1m', '3m', '5m', '15m', '30m', '1h', '2h', '4h', '6h', '12h', '1d', '1w', '1M']
+IMPLEMENTED_STRATEGIES = ['ScalpEmaRsiAdx']
+
+# Valid Intervals. Some intervals are not supported by Bybit Websockets
+VALID_INTERVALS = ['1m', '3m', '5m', '15m', '30m', '1h', '2h', '4h', '1d', '1w']
 
 # Valid intervals for websocket kline topic
 WS_VALID_CANDLE_INTERVALS = ['1', '3', '5', '15', '30', '60', '120', '240', '360', 'D', 'W']
@@ -52,6 +54,24 @@ CONFIG_SCHEMA = {
             },
             'required': ['name', 'testnet', 'market_type', 'rest', 'websockets']
         },
+        'strategy': {
+            'type': 'object',
+            'properties': {
+                'name': {'type': 'string', 'enum': IMPLEMENTED_STRATEGIES},
+                'interval': {'type': 'string', 'enum': VALID_INTERVALS},
+                'takeprofit': {'type': 'number'},
+                'stoploss': {'type': 'number'},
+                'minimum_candles_to_start': {'type': 'integer', 'minimum': 0}
+            },
+            'required': ['name', 'interval', 'takeprofit', 'stoploss', 'minimum_candles_to_start', ]
+        },
+        'trade_entries': {
+            'type': 'object',
+            'properties': {
+                'trade_on_closed_candles_only': {'type': 'boolean', 'default': False}
+            },
+            'required': ['trade_on_closed_candles_only']
+        },
         'logging': {
             'type': 'object',
             'properties': {
@@ -61,5 +81,5 @@ CONFIG_SCHEMA = {
             'required': ['global_level', 'log_file_path']
         }
     },
-    'required': ['exchange', 'logging']
+    'required': ['exchange', 'strategy', 'logging']
 }

@@ -76,8 +76,15 @@ class ExchangeWS:
     endpoint_public = None
     endpoint_private = None
 
+    # Bybit WS only support: ['1', '3', '5', '15', '30', '60', '120', '240', '360', 'D', 'W', 'M']
+    interval_map = {
+        '1m': '1', '3m': '3', '5m': '5', '15m': '15', '30m': '30',
+        '1h': '60', '2h': '120', '4h': '240', '6h': '360',
+        '1d': 'D', '1w': 'W', '1M': 'M'
+    }
+
     def __init__(self, interval):
-        self.interval = interval
+        self.interval = self.interval_map[interval]
         self.config = Configuration.get_config()
         self.name = str(self.config['exchange']['name']).capitalize()
         self.pair = self.config['exchange']['pair']
@@ -158,9 +165,9 @@ class ExchangeWS:
         sub = "instrument_info.100ms.<pair>"
         return sub.replace('<pair>', pair)
 
-    @staticmethod
-    def get_candle_topic(pair, interval):
-        interval = str(interval)
+    # Expecting the interval in this list constants.WS_VALID_CANDLE_INTERVALS
+    @classmethod
+    def get_candle_topic(cls, pair, interval):
         assert (interval in constants.WS_VALID_CANDLE_INTERVALS)
         sub = 'candle.<interval>.<pair>'
         return sub.replace('<interval>', interval).replace('<pair>', pair)

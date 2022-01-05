@@ -19,6 +19,16 @@
             "ws_linear_private_mainnet2": "wss://stream.bytick.com/realtime_private"
         }
     },
+     "strategy": {
+         "name": "ScalpEmaRsiAdx",
+         "interval": "1m",
+         "takeprofit": 0.01,
+         "stoploss": -0.01,
+         "minimum_candles_to_start": 200
+     },
+     "trade_entries": {
+         "trade_on_closed_candles_only": false
+     },
     "logging": {
         "global_level": "debug",
         "log_file_path": "log.txt",

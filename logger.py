@@ -55,6 +55,7 @@ def init_custom_logger(module_name):
     # Add handlers to the logger
     logger.addHandler(c_handler)
     logger.addHandler(f_handler)
+    logger.propagate = False
     return logger
 
 
