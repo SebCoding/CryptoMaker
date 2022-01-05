@@ -126,7 +126,6 @@ class Bot:
                 self.confirmed_candles = self.get_historic_candles(int(data['start']))
                 self.confirmed_candles = self.confirmed_candles.append(to_append, ignore_index=True)
 
-
             self.last_candle_timestamp = data['timestamp']
             # print('\n\n')
             # if self.confirmed_candles is not None:
@@ -192,12 +191,12 @@ class Bot:
                 data_changed = self.refresh_candles()
                 if data_changed:
                     df = self.strategy.add_indicators_and_signals(self.confirmed_candles)
+                    f.write('')
+                    print()
+                    f.write('\n' + df.tail(10).to_string())
+                    print('\n' + df.tail(10).to_string())
                     res = self.strategy.find_entry()
                     if res['TradeStatus'] in [TradeStatus.EnterLong, TradeStatus.EnterShort]:
-                        f.write('')
-                        print()
-                        f.write('\n' + df.tail(20).to_string())
-                        print('\n' + df.tail(20).to_string())
                         f.write(f"\nlast_signal_index: {res['signal_index']}")
                         print(f"last_signal_index: {res['signal_index']}")
                         f.write(f"{res['TradeStatus']}: {rapidjson.dumps(res, indent=2)}")

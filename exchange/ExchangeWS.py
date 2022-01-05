@@ -124,14 +124,21 @@ class ExchangeWS:
 
     def subscribe_to_topics(self):
         # public subscriptions
-        self.public_ws = WebSocket(self.endpoint_public, subscriptions=self.public_topics)
+        self.public_ws = WebSocket(
+            self.endpoint_public,
+            subscriptions=self.public_topics,
+            ping_interval=20,
+            ping_timeout=15
+        )
 
         # private subscriptions, connect with authentication
         self.private_ws = WebSocket(
             self.endpoint_private,
             subscriptions=self.private_topics,
             api_key=self.api_key,
-            api_secret=self.api_secret
+            api_secret=self.api_secret,
+            ping_interval=20,
+            ping_timeout=15
         )
 
     def build_public_topics_list(self):
