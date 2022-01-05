@@ -13,7 +13,7 @@ from exchange.ExchangeREST import ExchangeREST
 from exchange.ExchangeWS import ExchangeWS
 from strategies.ScalpEmaRsiAdx import ScalpEmaRsiAdx
 
-logger = logger.init_custom_logger(__name__)
+logger = logger.init_custom_logger(__name__, 'dataframes.txt')
 
 
 class Bot:
@@ -187,10 +187,10 @@ class Bot:
             data_changed = self.refresh_candles()
             if data_changed:
                 df = self.strategy.add_indicators_and_signals(self.confirmed_candles)
-                print()
-                print(df.tail(10).to_string())
-                print()
-                entry, row = self.strategy.find_entry()
+                logger.info('')
+                logger.info('\n' + df.tail(10).to_string())
+                entry, row, signal_index = self.strategy.find_entry()
+                logger.info(f'last_signal_index: {signal_index}')
                 if entry in [TradeStatus.EnterLong, TradeStatus.EnterShort]:
-                    print(f'{entry}: {row}')
+                    logger.info(f'{entry}: {row}')
             time.sleep(1)

@@ -88,11 +88,11 @@ class ScalpEmaRsiAdx(BaseStrategy):
         # logger.info('Looking trading trade entry.')
         signal_list = self.data.query('signal in [-1, 1]').index
         signal_index = max(signal_list)
-        print(f'last signal index: {signal_index}')
+        # print(f'last signal index: {signal_index}')
 
         # We ignore all signals for candles prior to when the application was started
         if signal_index < self.minimum_candles_to_start:
-            return TradeStatus.NoTrade, None
+            return TradeStatus.NoTrade, None, signal_index
 
         long_signal = True if self.data['signal'].iloc[signal_index] == 1 else False
         short_signal = True if self.data['signal'].iloc[signal_index] == -1 else False
@@ -102,17 +102,17 @@ class ScalpEmaRsiAdx(BaseStrategy):
             # If after receiving a long signal the EMA or ADX are no longer satisfied, cancel signal
             if long_signal and (row.close < row.EMA or row.ADX < self.ADX_THRESHOLD):
                 long_signal = False
-                return TradeStatus.NoTrade, None
+                return TradeStatus.NoTrade, None, signal_index
 
             # If after receiving a short signal the EMA or ADX are no longer satisfied, cancel signal
             if short_signal and (row.close > row.EMA or row.ADX < self.ADX_THRESHOLD):
                 short_signal = False
-                return TradeStatus.NoTrade, None
+                return TradeStatus.NoTrade, None, signal_index
 
             # RSI exiting oversold area. Long Entry
             if long_signal and row.RSI > self.RSI_MIN_ENTRY_THRESHOLD:
-                return TradeStatus.EnterLong, row
+                return TradeStatus.EnterLong, row, signal_index
 
             # RSI exiting overbought area. Short Entry
             elif short_signal and row.RSI < self.RSI_MAX_ENTRY_THRESHOLD:
-                return TradeStatus.EnterShort, row
+                return TradeStatus.EnterShort, row, signal_index

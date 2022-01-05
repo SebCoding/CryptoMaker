@@ -33,7 +33,7 @@ def init_root_logger(level):
 
 # Default level is the one specified in the config.json file.
 # Level passed as parameter will override config file
-def init_custom_logger(module_name):
+def init_custom_logger(module_name, filename=Configuration.get_config()['logging']['log_file_path']):
     config = Configuration.get_config()
     config_level = logging_level_str_to_int(config['logging']['global_level'])
 
@@ -47,7 +47,7 @@ def init_custom_logger(module_name):
     c_handler.setLevel(config_level)
 
     # File Handler
-    f_handler = logging.FileHandler('log.txt', mode='w')
+    f_handler = logging.FileHandler(filename, mode='w')
     f_format = logging.Formatter(fmt='[%(name)s] - %(levelname)s - %(message)s')  # datefmt='%Y-%m-%d %H:%M:%S'
     f_handler.setFormatter(f_format)
     f_handler.setLevel(config_level)
