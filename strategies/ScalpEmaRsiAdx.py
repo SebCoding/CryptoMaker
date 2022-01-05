@@ -133,7 +133,6 @@ class ScalpEmaRsiAdx(BaseStrategy):
                         'EMA': row.EMA,
                         'RSI': row.RSI,
                         'ADX': row.ADX,
-                        'signal': row.signal
                     }
 
             # RSI exiting overbought area. Short Entry
@@ -148,7 +147,6 @@ class ScalpEmaRsiAdx(BaseStrategy):
                         'EMA': row.EMA,
                         'RSI': row.RSI,
                         'ADX': row.ADX,
-                        'signal': row.signal
                     }
 
         return \

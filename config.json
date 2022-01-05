@@ -30,7 +30,7 @@
          "trade_on_closed_candles_only": false
      },
     "logging": {
-        "global_level": "debug",
+        "global_level": "info",
         "log_file_path": "log.txt",
         "order_submission": true,
         "order_cancellation": true,
