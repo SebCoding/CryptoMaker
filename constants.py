@@ -4,6 +4,8 @@ APPLICATION_NAME = 'CryptoMaker'
 SUPPORTED_EXCHANGES = ['Bybit']
 MARKET_TYPES = ['perpetual futures']
 LOGGING_LEVELS = ['debug', 'info', 'warning', 'error', 'critical']
+DATE_FORMAT = '%Y-%m-%d'
+DATETIME_FORMAT = '%Y-%m-%d %H:%M:%S'
 
 IMPLEMENTED_STRATEGIES = ['ScalpEmaRsiAdx']
 

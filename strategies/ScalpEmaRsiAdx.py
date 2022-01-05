@@ -1,5 +1,6 @@
 import talib
 
+import constants
 import logger
 from enums import TradeStatus
 from enums.TradeStatus import TradeStatus
@@ -15,30 +16,30 @@ class ScalpEmaRsiAdx(BaseStrategy):
     TRADABLE_BALANCE_RATIO = 1.0
 
     # Trend indicator: EMA - Exponential Moving Average
-    EMA_PERIODS = 50
+    EMA_PERIODS = 40
 
     # Momentum indicator: RSI - Relative Strength Index
-    RSI_PERIODS = 3
-    RSI_MIN_SIGNAL_THRESHOLD = 20
-    RSI_MAX_SIGNAL_THRESHOLD = 80
+    RSI_PERIODS = 2
+    RSI_MIN_SIGNAL_THRESHOLD = 19
+    RSI_MAX_SIGNAL_THRESHOLD = 81
 
     # Trade entry RSI thresholds (by default equal to RSI min/max thresholds)
-    RSI_MIN_ENTRY_THRESHOLD = 20
-    RSI_MAX_ENTRY_THRESHOLD = 80
+    RSI_MIN_ENTRY_THRESHOLD = 30
+    RSI_MAX_ENTRY_THRESHOLD = 70
 
     # Volatility indicator: ADX - Average Directional Index
-    ADX_PERIODS = 5
+    ADX_PERIODS = 3
     ADX_THRESHOLD = 30
 
     def __init__(self):
         super().__init__()
-        logger.info(f'Initializing strategy [{self.name}]\n' + self.get_strategy_text_details())
+        logger.info(f'Initializing strategy [{self.name}] ' + self.get_strategy_text_details())
+        self.last_trade_index = self.minimum_candles_to_start
 
     def get_strategy_text_details(self):
-        details = f'EMA({self.EMA_PERIODS}), RSI({self.RSI_PERIODS}), ' \
+        details = f'EMA({self.EMA_PERIODS}), RSI({self.RSI_PERIODS}), ADX({self.ADX_PERIODS}) ' \
                   f'RSI_SIGNAL({self.RSI_MIN_SIGNAL_THRESHOLD}, {self.RSI_MAX_SIGNAL_THRESHOLD}), ' \
-                  f'RSI_ENTRY({self.RSI_MIN_ENTRY_THRESHOLD}, {self.RSI_MAX_ENTRY_THRESHOLD}), ' \
-                  f'ADX({self.ADX_PERIODS})'
+                  f'RSI_ENTRY({self.RSI_MIN_ENTRY_THRESHOLD}, {self.RSI_MAX_ENTRY_THRESHOLD}), '
         return details
 
     # Step 1: Calculate indicator values required to determine long/short signals
@@ -90,9 +91,14 @@ class ScalpEmaRsiAdx(BaseStrategy):
         signal_index = max(signal_list)
         # print(f'last signal index: {signal_index}')
 
-        # We ignore all signals for candles prior to when the application was started
-        if signal_index < self.minimum_candles_to_start:
-            return TradeStatus.NoTrade, None, signal_index
+        # We ignore all signals for candles prior to when the application
+        # was started or when the last trade entry that we signaled
+        if signal_index <= self.last_trade_index:
+            return \
+                {
+                    'TradeStatus': TradeStatus.NoTrade,
+                    'signal_index': signal_index
+                }
 
         long_signal = True if self.data['signal'].iloc[signal_index] == 1 else False
         short_signal = True if self.data['signal'].iloc[signal_index] == -1 else False
@@ -101,18 +107,52 @@ class ScalpEmaRsiAdx(BaseStrategy):
         for i, row in self.data.iloc[start_scan:].iterrows():
             # If after receiving a long signal the EMA or ADX are no longer satisfied, cancel signal
             if long_signal and (row.close < row.EMA or row.ADX < self.ADX_THRESHOLD):
-                long_signal = False
-                return TradeStatus.NoTrade, None, signal_index
+                return \
+                    {
+                        'TradeStatus': TradeStatus.NoTrade,
+                        'signal_index': signal_index
+                    }
 
             # If after receiving a short signal the EMA or ADX are no longer satisfied, cancel signal
             if short_signal and (row.close > row.EMA or row.ADX < self.ADX_THRESHOLD):
-                short_signal = False
-                return TradeStatus.NoTrade, None, signal_index
+                return \
+                    {
+                        'TradeStatus': TradeStatus.NoTrade,
+                        'signal_index': signal_index
+                    }
 
             # RSI exiting oversold area. Long Entry
             if long_signal and row.RSI > self.RSI_MIN_ENTRY_THRESHOLD:
-                return TradeStatus.EnterLong, row, signal_index
+                self.last_trade_index = i
+                return \
+                    {
+                        'TradeStatus': TradeStatus.EnterLong,
+                        'signal_index': signal_index,
+                        'datetime': row.datetime.strftime(constants.DATETIME_FORMAT),
+                        'close': row.close,
+                        'EMA': row.EMA,
+                        'RSI': row.RSI,
+                        'ADX': row.ADX,
+                        'signal': row.signal
+                    }
 
             # RSI exiting overbought area. Short Entry
             elif short_signal and row.RSI < self.RSI_MAX_ENTRY_THRESHOLD:
-                return TradeStatus.EnterShort, row, signal_index
+                self.last_trade_index = i
+                return \
+                    {
+                        'TradeStatus': TradeStatus.EnterShort,
+                        'signal_index': signal_index,
+                        'datetime': row.datetime.strftime(constants.DATETIME_FORMAT),
+                        'close': row.close,
+                        'EMA': row.EMA,
+                        'RSI': row.RSI,
+                        'ADX': row.ADX,
+                        'signal': row.signal
+                    }
+
+        return \
+            {
+                'TradeStatus': TradeStatus.NoTrade,
+                'signal_index': signal_index
+            }

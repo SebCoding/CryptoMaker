@@ -24,7 +24,7 @@
          "interval": "1m",
          "takeprofit": 0.01,
          "stoploss": -0.01,
-         "minimum_candles_to_start": 200
+         "minimum_candles_to_start": 2000
      },
      "trade_entries": {
          "trade_on_closed_candles_only": false

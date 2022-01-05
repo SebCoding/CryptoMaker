@@ -13,7 +13,7 @@ from exchange.ExchangeREST import ExchangeREST
 from exchange.ExchangeWS import ExchangeWS
 from strategies.ScalpEmaRsiAdx import ScalpEmaRsiAdx
 
-logger = logger.init_custom_logger(__name__, 'dataframes.txt')
+logger = logger.init_custom_logger(__name__)
 
 
 class Bot:
@@ -118,10 +118,14 @@ class Bot:
                 assert (len(self.confirmed_candles) < 2 or
                         (self.confirmed_candles["start"].iloc[-1] == self.confirmed_candles["end"].iloc[-2]))
             except AssertionError as e:
-                msg = f'start[{self.confirmed_candles["start"].iloc[-1]} != prev_end[{self.confirmed_candles["end"].iloc[-2]}]\n'
+                msg = f'*******  start[{self.confirmed_candles["start"].iloc[-1]}] != prev_end[{self.confirmed_candles["end"].iloc[-2]}]  *******\n'
                 msg += self.confirmed_candles.tail(1).to_string() + '\n'
                 logger.error(msg)
-                sys.exit(1)
+                # We are missing data, the dataframe is corrupted. Rebuild the dataframe from scratch
+                logger.info('Recovering from missing candle data. rebuilding the dataframe from scratch.')
+                self.confirmed_candles = self.get_historic_candles(int(data['start']))
+                self.confirmed_candles = self.confirmed_candles.append(to_append, ignore_index=True)
+
 
             self.last_candle_timestamp = data['timestamp']
             # print('\n\n')
@@ -183,14 +187,19 @@ class Bot:
     def run_forever(self):
         # self.print_orderbook(5, 0.5)
 
-        while True:
-            data_changed = self.refresh_candles()
-            if data_changed:
-                df = self.strategy.add_indicators_and_signals(self.confirmed_candles)
-                logger.info('')
-                logger.info('\n' + df.tail(10).to_string())
-                entry, row, signal_index = self.strategy.find_entry()
-                logger.info(f'last_signal_index: {signal_index}')
-                if entry in [TradeStatus.EnterLong, TradeStatus.EnterShort]:
-                    logger.info(f'{entry}: {row}')
-            time.sleep(1)
+        with open('trace.txt', 'w') as f:
+            while True:
+                data_changed = self.refresh_candles()
+                if data_changed:
+                    df = self.strategy.add_indicators_and_signals(self.confirmed_candles)
+                    f.write('')
+                    print()
+                    f.write('\n' + df.tail(10).to_string())
+                    print('\n' + df.tail(10).to_string())
+                    res = self.strategy.find_entry()
+                    f.write(f"\nlast_signal_index: {res['signal_index']}")
+                    print(f"last_signal_index: {res['signal_index']}")
+                    if res['TradeStatus'] in [TradeStatus.EnterLong, TradeStatus.EnterShort]:
+                        f.write(f"{res['TradeStatus']}: {rapidjson.dumps(res, indent=2)}")
+                        print(f"{res['TradeStatus']}: {rapidjson.dumps(res, indent=2)}")
+                time.sleep(1)
