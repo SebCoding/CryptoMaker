@@ -1,7 +1,7 @@
  {
     "exchange": {
         "name": "Bybit",
-        "testnet": true,
+        "testnet": false,
         "market_type": "perpetual futures",
         "pair": "BTCUSDT",
         "rest": {

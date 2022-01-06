@@ -1,5 +1,5 @@
 import sqlalchemy as sa
-from sqlalchemy import Column, Table, Integer, Date, String, Float, DateTime, BigInteger
+from sqlalchemy import Column, Table, Integer, Date, String, Float, DateTime, BigInteger, PrimaryKeyConstraint
 
 import logger
 from sqlalchemy_utils import database_exists
@@ -70,8 +70,8 @@ class Database:
             if not self.engine.has_table(connection, self.TRADE_ENTRIES):
                 # Create a table with the appropriate Columns
                 Table(self.TRADE_ENTRIES, self.metadata,
-                      Column('IdTimestamp', Integer, primary_key=True, nullable=False),
-                      Column('DateTime', DateTime),
+                      Column('IdTimestamp', Integer, index=True),
+                      Column('DateTime', DateTime, index=True),
                       Column('Pair', String),
                       Column('Interval', String),
                       Column('Signal', String),
@@ -80,6 +80,7 @@ class Database:
                       Column('EMA', Float),
                       Column('RSI', Float),
                       Column('ADX', Float),
-                      Column('Notes', String)
+                      Column('Notes', String),
+                      PrimaryKeyConstraint('IdTimestamp', name='TradeEntries_pk')
                       )
                 self.metadata.create_all()
