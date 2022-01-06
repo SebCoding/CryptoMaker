@@ -1,5 +1,5 @@
 import sqlalchemy as sa
-from sqlalchemy import Column, Table, Integer, Date, String, Float, DateTime, BigInteger, PrimaryKeyConstraint
+from sqlalchemy import Column, Table, Integer, Date, String, Float, DateTime, BigInteger, PrimaryKeyConstraint, Index
 
 import logger
 from sqlalchemy_utils import database_exists
@@ -13,7 +13,7 @@ class Database:
     URL_TEMPLATE = 'postgresql://<username>:<password>@<address>:<port>/<db_name>'
 
     # Table Names
-    TRADE_ENTRIES = 'TradeEntries'
+    TRADE_ENTRIES_TBL_NAME = 'TradeEntries'
 
     def __init__(self):
         self.config = Configuration.get_config()
@@ -57,7 +57,7 @@ class Database:
     # Insert trade entries using a list of dictionary
     # Assuming the table exists
     def add_trade_entries_dict(self, dict_list):
-        table = self.get_table(self.TRADE_ENTRIES)
+        table = self.get_table(self.TRADE_ENTRIES_TBL_NAME)
         with self.engine.connect() as connection:
             connection.execute(table.insert(), dict_list)
 
@@ -67,20 +67,19 @@ class Database:
 
     def init_trade_entries_table(self):
         with self.engine.connect() as connection:
-            if not self.engine.has_table(connection, self.TRADE_ENTRIES):
+            if not self.engine.has_table(connection, self.TRADE_ENTRIES_TBL_NAME):
                 # Create a table with the appropriate Columns
-                Table(self.TRADE_ENTRIES, self.metadata,
-                      Column('IdTimestamp', Integer, index=True),
-                      Column('DateTime', DateTime, index=True),
-                      Column('Pair', String),
-                      Column('Interval', String),
-                      Column('Signal', String),
-                      Column('SignalOffset', Integer),
-                      Column('EntryPrice', Float),
-                      Column('EMA', Float),
-                      Column('RSI', Float),
-                      Column('ADX', Float),
-                      Column('Notes', String),
-                      PrimaryKeyConstraint('IdTimestamp', name='TradeEntries_pk')
-                      )
+                table = Table(self.TRADE_ENTRIES_TBL_NAME, self.metadata,
+                              Column('IdTimestamp', BigInteger, index=True, nullable=False),
+                              Column('DateTime', DateTime, index=True, nullable=False),
+                              Column('Pair', String, nullable=False),
+                              Column('Interval', String, nullable=False),
+                              Column('Signal', String, nullable=False),
+                              Column('SignalOffset', Integer, nullable=False),
+                              Column('EntryPrice', Float, nullable=False),
+                              Column('EMA', Float, nullable=False),
+                              Column('RSI', Float, nullable=False),
+                              Column('ADX', Float, nullable=False),
+                              Column('Notes', String)
+                              )
                 self.metadata.create_all()

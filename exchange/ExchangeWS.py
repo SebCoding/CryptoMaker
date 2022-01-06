@@ -85,9 +85,9 @@ class ExchangeWS:
         '1d': 'D', '1w': 'W', '1M': 'M'
     }
 
-    def __init__(self, interval):
-        self.interval = self.interval_map[interval]
+    def __init__(self):
         self.config = Configuration.get_config()
+        self.interval = self.interval_map[self.config['strategy']['interval']]
         self.name = str(self.config['exchange']['name']).capitalize()
         self.pair = self.config['exchange']['pair']
         self.validate_pair()
@@ -140,14 +140,14 @@ class ExchangeWS:
         )
 
         # private subscriptions, connect with authentication
-        self.private_ws = WebSocket(
-            self.endpoint_private,
-            subscriptions=self.private_topics,
-            api_key=self.api_key,
-            api_secret=self.api_secret,
-            ping_interval=20,
-            ping_timeout=15
-        )
+        # self.private_ws = WebSocket(
+        #     self.endpoint_private,
+        #     subscriptions=self.private_topics,
+        #     api_key=self.api_key,
+        #     api_secret=self.api_secret,
+        #     ping_interval=20,
+        #     ping_timeout=15
+        # )
 
     def build_public_topics_list(self):
         topic_list = [

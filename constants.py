@@ -15,6 +15,9 @@ VALID_INTERVALS = ['1m', '3m', '5m', '15m', '30m', '1h', '2h', '4h', '1d', '1w']
 # Valid intervals for websocket kline topic
 WS_VALID_CANDLE_INTERVALS = ['1', '3', '5', '15', '30', '60', '120', '240', '360', 'D', 'W']
 
+# API Retry count in case of errors, timeouts
+API_RETRY_COUNT = 4
+
 # Location of the config file
 CONFIG_FILE = 'config.json'
 
@@ -25,6 +28,13 @@ CONFIG_SCHEMA = {
     'description': 'json schema to validate config.json file',
     'type': 'object',
     'properties': {
+        'bot': {
+            'type': 'object',
+            'properties': {
+                'throttle_secs': {'type': 'integer', 'minimum': 0}
+            },
+            'required': ['throttle_secs']
+        },
         'exchange': {
             'type': 'object',
             'properties': {
@@ -94,5 +104,5 @@ CONFIG_SCHEMA = {
             'required': ['global_level', 'log_file_path']
         }
     },
-    'required': ['exchange', 'strategy', 'trade', 'database', 'logging']
+    'required': ['bot', 'exchange', 'strategy', 'trade', 'database', 'logging']
 }

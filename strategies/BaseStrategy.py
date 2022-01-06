@@ -43,7 +43,7 @@ class BaseStrategy(ABC):
         pass
 
     @abstractmethod
-    def find_entry(self):
+    def find_entry(self, candles_df):
         pass
 
     def save_enry_to_db(self):

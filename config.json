@@ -1,4 +1,7 @@
  {
+    "bot": {
+        "throttle_secs": 5
+    },
     "exchange": {
         "name": "Bybit",
         "testnet": false,
@@ -24,7 +27,7 @@
          "interval": "1m",
          "takeprofit": 0.01,
          "stoploss": -0.01,
-         "minimum_candles_to_start": 2000
+         "minimum_candles_to_start": 200
      },
      "trade": {
          "trade_on_closed_candles_only": false
