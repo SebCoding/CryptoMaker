@@ -8,3 +8,6 @@ rapidjson
 telegram_send
 Telethon
 tabulate
+
+sqlalchemy
+telebot

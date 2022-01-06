@@ -2,6 +2,8 @@
     Exchange class that implements operations done through the WebSocket API
     This class is hardcoded for the Bybit exchange
 """
+from websocket import WebSocketTimeoutException
+
 """
 To see which endpoints and topics are available, check the Bybit API
 documentation:
@@ -114,7 +116,13 @@ class ExchangeWS:
         # Connect websockets and subscribe to topics
         self.public_topics = self.build_public_topics_list()
         self.private_topics = self.build_private_topics_list()
-        self.subscribe_to_topics()
+
+        # TODO use a trier decorator to retry with timeouts
+        try:
+            self.subscribe_to_topics()
+        except WebSocketTimeoutException as e:
+            logger.exception(f'Websocket Timeout')
+            raise e
 
     def validate_pair(self):
         if 'USDT' not in self.pair:

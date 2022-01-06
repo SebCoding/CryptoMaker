@@ -45,3 +45,6 @@ class BaseStrategy(ABC):
     @abstractmethod
     def find_entry(self):
         pass
+
+    def save_enry_to_db(self):
+        pass

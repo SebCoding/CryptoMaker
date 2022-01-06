@@ -7,8 +7,8 @@ import rapidjson
 import logger
 import utils
 from configuration import Configuration
-from enums import TradeStatus
-from enums.TradeStatus import TradeStatus
+from enums import TradeSignalsStates
+from enums.TradeSignalsStates import TradeSignalsStates
 from exchange.ExchangeREST import ExchangeREST
 from exchange.ExchangeWS import ExchangeWS
 from strategies.ScalpEmaRsiAdx import ScalpEmaRsiAdx
@@ -66,7 +66,7 @@ class Bot:
         if data and data['timestamp'] > self.last_candle_timestamp:
 
             # If we only trade on closed candles ignore data that is not confirmed
-            if self.config['trade_entries']['trade_on_closed_candles_only'] and not data['confirm']:
+            if self.config['trade']['trade_on_closed_candles_only'] and not data['confirm']:
                 return False
 
             to_append = [
@@ -185,20 +185,26 @@ class Bot:
 
     def run_forever(self):
         # self.print_orderbook(5, 0.5)
-
         with open('trace.txt', 'w') as f:
             while True:
                 data_changed = self.refresh_candles()
                 if data_changed:
                     df = self.strategy.add_indicators_and_signals(self.confirmed_candles)
+                    #if self.confirmed_candles["confirm"].iloc[-1]:
                     f.write('')
                     print()
                     f.write('\n' + df.tail(10).to_string())
                     print('\n' + df.tail(10).to_string())
                     res = self.strategy.find_entry()
-                    if res['TradeStatus'] in [TradeStatus.EnterLong, TradeStatus.EnterShort]:
-                        f.write(f"\nlast_signal_index: {res['signal_index']}")
-                        print(f"last_signal_index: {res['signal_index']}")
-                        f.write(f"{res['TradeStatus']}: {rapidjson.dumps(res, indent=2)}")
-                        print(f"{res['TradeStatus']}: {rapidjson.dumps(res, indent=2)}")
+                    f.write(f"\nLast valid signal offset: {res['SignalOffset']}\n")
+                    print(f"Last valid signal offset: {res['SignalOffset']}\n")
+                    if res['Signal'] in [TradeSignalsStates.EnterLong, TradeSignalsStates.EnterShort]:
+                        f.write('')
+                        print()
+                        f.write('\n' + df.tail(10).to_string())
+                        print('\n' + df.tail(10).to_string())
+                        f.write(f"\nLast valid signal offset: {res['SignalOffset']}\n")
+                        print(f"Last valid signal offset: {res['SignalOffset']}\n")
+                        f.write(f"{res['Signal']}: {rapidjson.dumps(res, indent=2)}")
+                        print(f"{res['Signal']}: {rapidjson.dumps(res, indent=2)}")
                 time.sleep(1)

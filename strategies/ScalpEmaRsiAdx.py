@@ -1,12 +1,14 @@
 import talib
-
+import datetime as dt
 import constants
 import logger
-from enums import TradeStatus
-from enums.TradeStatus import TradeStatus
+from database.database import Database
+from enums import TradeSignalsStates
+from enums.TradeSignalsStates import TradeSignalsStates
 from strategies.BaseStrategy import BaseStrategy
 
 logger = logger.init_custom_logger(__name__)
+
 
 class ScalpEmaRsiAdx(BaseStrategy):
     # Values for interval, takeprofit and stoploss come from the config.json file
@@ -35,6 +37,7 @@ class ScalpEmaRsiAdx(BaseStrategy):
         super().__init__()
         logger.info(f'Initializing strategy [{self.name}] ' + self.get_strategy_text_details())
         self.last_trade_index = self.minimum_candles_to_start
+        self.db = Database()
 
     def get_strategy_text_details(self):
         details = f'EMA({self.EMA_PERIODS}), RSI({self.RSI_PERIODS}), ADX({self.ADX_PERIODS}) ' \
@@ -89,16 +92,13 @@ class ScalpEmaRsiAdx(BaseStrategy):
         # logger.info('Looking trading trade entry.')
         signal_list = self.data.query('signal in [-1, 1]').index
         signal_index = max(signal_list)
+        data_length = len(self.data)
         # print(f'last signal index: {signal_index}')
 
         # We ignore all signals for candles prior to when the application
         # was started or when the last trade entry that we signaled
         if signal_index <= self.last_trade_index:
-            return \
-                {
-                    'TradeStatus': TradeStatus.NoTrade,
-                    'signal_index': signal_index
-                }
+            return {'Signal': TradeSignalsStates.NoTrade, 'SignalOffset': 0}
 
         long_signal = True if self.data['signal'].iloc[signal_index] == 1 else False
         short_signal = True if self.data['signal'].iloc[signal_index] == -1 else False
@@ -107,50 +107,50 @@ class ScalpEmaRsiAdx(BaseStrategy):
         for i, row in self.data.iloc[start_scan:].iterrows():
             # If after receiving a long signal the EMA or ADX are no longer satisfied, cancel signal
             if long_signal and (row.close < row.EMA or row.ADX < self.ADX_THRESHOLD):
-                return \
-                    {
-                        'TradeStatus': TradeStatus.NoTrade,
-                        'signal_index': signal_index
-                    }
+                return {'Signal': TradeSignalsStates.NoTrade, 'SignalOffset': signal_index - data_length + 1}
 
             # If after receiving a short signal the EMA or ADX are no longer satisfied, cancel signal
             if short_signal and (row.close > row.EMA or row.ADX < self.ADX_THRESHOLD):
-                return \
-                    {
-                        'TradeStatus': TradeStatus.NoTrade,
-                        'signal_index': signal_index
-                    }
+                return {'Signal': TradeSignalsStates.NoTrade, 'SignalOffset': signal_index - data_length + 1}
 
             # RSI exiting oversold area. Long Entry
             if long_signal and row.RSI > self.RSI_MIN_ENTRY_THRESHOLD:
                 self.last_trade_index = i
-                return \
-                    {
-                        'TradeStatus': TradeStatus.EnterLong,
-                        'signal_index': signal_index,
-                        'datetime': row.datetime.strftime(constants.DATETIME_FORMAT),
-                        'entry_price': row.close,
-                        'EMA': row.EMA,
-                        'RSI': row.RSI,
-                        'ADX': row.ADX,
-                    }
+                signal = {
+                    'Timestamp': row.timestamp/1000000,
+                     # 'DateTime': row.datetime.strftime(constants.DATETIME_FORMAT),
+                    'DateTime': dt.datetime.fromtimestamp(row.timestamp/1000000).strftime(constants.DATETIME_FORMAT),
+                    'Pair': row.pair,
+                    'Interval': self.interval,
+                    'Signal': TradeSignalsStates.EnterShort,
+                    'SignalOffset': signal_index - data_length + 1,
+                    'EntryPrice': row.close,
+                    'EMA': row.EMA,
+                    'RSI': row.RSI,
+                    'ADX': row.ADX,
+                    'Notes': self.get_strategy_text_details()
+                }
+                self.db.add_trade_entries_dict(signal)
+                return signal
 
             # RSI exiting overbought area. Short Entry
             elif short_signal and row.RSI < self.RSI_MAX_ENTRY_THRESHOLD:
                 self.last_trade_index = i
-                return \
-                    {
-                        'TradeStatus': TradeStatus.EnterShort,
-                        'signal_index': signal_index,
-                        'datetime': row.datetime.strftime(constants.DATETIME_FORMAT),
-                        'entry_price': row.close,
-                        'EMA': row.EMA,
-                        'RSI': row.RSI,
-                        'ADX': row.ADX,
-                    }
+                signal = {
+                    'Timestamp': row.timestamp/1000000,
+                    # 'DateTime': row.datetime.strftime(constants.DATETIME_FORMAT),
+                    'DateTime': dt.datetime.fromtimestamp(row.timestamp / 1000000).strftime(constants.DATETIME_FORMAT),
+                    'Pair': row.pair,
+                    'Interval': self.interval,
+                    'Signal': TradeSignalsStates.EnterShort,
+                    'SignalOffset': signal_index - data_length + 1,
+                    'EntryPrice': row.close,
+                    'EMA': row.EMA,
+                    'RSI': row.RSI,
+                    'ADX': row.ADX,
+                    'Notes': self.get_strategy_text_details()
+                }
+                self.db.add_trade_entries_dict(signal)
+                return signal
 
-        return \
-            {
-                'TradeStatus': TradeStatus.NoTrade,
-                'signal_index': signal_index
-            }
+        return {'Signal': TradeSignalsStates.NoTrade, 'SignalOffset': signal_index - data_length + 1}

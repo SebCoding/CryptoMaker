@@ -26,8 +26,15 @@
          "stoploss": -0.01,
          "minimum_candles_to_start": 2000
      },
-     "trade_entries": {
+     "trade": {
          "trade_on_closed_candles_only": false
+     },
+     "database": {
+         "db_name": "CryptoMaker",
+         "address": "localhost",
+         "port": 5432,
+         "username": "postgres",
+         "password": "postgres"
      },
     "logging": {
         "global_level": "debug",

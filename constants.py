@@ -67,12 +67,23 @@ CONFIG_SCHEMA = {
             },
             'required': ['name', 'interval', 'takeprofit', 'stoploss', 'minimum_candles_to_start', ]
         },
-        'trade_entries': {
+        'trade': {
             'type': 'object',
             'properties': {
                 'trade_on_closed_candles_only': {'type': 'boolean', 'default': False}
             },
             'required': ['trade_on_closed_candles_only']
+        },
+        'database': {
+            'type': 'object',
+            'properties': {
+                'db_name': {'type': 'string', 'default': 'CryptoMaker'},
+                'address': {'type': 'string', 'default': 'localhost'},
+                'port': {'type': 'integer', 'default': 5432},
+                'username': {'type': 'string', 'default': 'postgres'},
+                'password': {'type': 'string', 'default': 'postgres'}
+            },
+            'required': ['db_name', 'address', 'port', 'username', 'password']
         },
         'logging': {
             'type': 'object',
@@ -83,5 +94,5 @@ CONFIG_SCHEMA = {
             'required': ['global_level', 'log_file_path']
         }
     },
-    'required': ['exchange', 'strategy', 'logging']
+    'required': ['exchange', 'strategy', 'trade', 'database', 'logging']
 }
