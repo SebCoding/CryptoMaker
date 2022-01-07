@@ -1,17 +1,17 @@
 import pandas as pd
 import logger
+import time
 from configuration import Configuration
 from exchange.ExchangeWS import ExchangeWS
-
-logger = logger.init_custom_logger(__name__)
 
 
 class Orderbook:
 
     def __init__(self):
+        self.logger = logger.init_custom_logger(__name__)
         self.config = Configuration.get_config()
         self.pair = self.config['exchange']['pair']
-        self.exchange_ws = ExchangeWS(self.config['strategy']['interval'])
+        self.exchange_ws = ExchangeWS()
         self.public_ws = self.exchange_ws.public_ws
         self.orderbook_top25_topic_name = self.exchange_ws.get_orderbook25_topic(self.pair)
 

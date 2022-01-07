@@ -1,10 +1,7 @@
 """
     Exchange class that implements operations done through the WebSocket API
     This class is hardcoded for the Bybit exchange
-"""
-from websocket import WebSocketTimeoutException
-
-"""
+----------------------------------------------------------------------------
 To see which endpoints and topics are available, check the Bybit API
 documentation:
     https://bybit-exchange.github.io/docs/inverse/#t-websocket
@@ -57,14 +54,13 @@ executionReport
 ticketInfo
 
 """
-
+from websocket._exceptions import WebSocketTimeoutException
 import api_keys
 import constants
 from pybit import WebSocket
 import logger
 from configuration import Configuration
-
-logger = logger.init_custom_logger(__name__)
+import websocket
 
 
 class ExchangeWS:
@@ -86,6 +82,7 @@ class ExchangeWS:
     }
 
     def __init__(self):
+        self.logger = logger.init_custom_logger(__name__)
         self.config = Configuration.get_config()
         self.interval = self.interval_map[self.config['strategy']['interval']]
         self.name = str(self.config['exchange']['name']).capitalize()
@@ -110,7 +107,7 @@ class ExchangeWS:
         # Market type hardcoded for perpetual futures
         if self.config['exchange']['market_type'] != 'perpetual futures':
             msg = f"Unsupported market type [{self.config['exchange']['market_type']}]."
-            logger.error(msg)
+            self.logger.error(msg)
             raise Exception(msg)
 
         # Connect websockets and subscribe to topics
@@ -121,13 +118,13 @@ class ExchangeWS:
         try:
             self.subscribe_to_topics()
         except WebSocketTimeoutException as e:
-            logger.exception(f'Websocket Timeout')
+            self.logger.exception(f'Websocket Timeout')
             raise e
 
     def validate_pair(self):
         if 'USDT' not in self.pair:
             msg = f'Application only supports USDT perpetuals.'
-            logger.error(msg)
+            self.logger.error(msg)
             raise Exception(msg)
 
     def subscribe_to_topics(self):
@@ -140,14 +137,14 @@ class ExchangeWS:
         )
 
         # private subscriptions, connect with authentication
-        # self.private_ws = WebSocket(
-        #     self.endpoint_private,
-        #     subscriptions=self.private_topics,
-        #     api_key=self.api_key,
-        #     api_secret=self.api_secret,
-        #     ping_interval=20,
-        #     ping_timeout=15
-        # )
+        self.private_ws = WebSocket(
+            self.endpoint_private,
+            subscriptions=self.private_topics,
+            api_key=self.api_key,
+            api_secret=self.api_secret,
+            ping_interval=20,
+            ping_timeout=15
+        )
 
     def build_public_topics_list(self):
         topic_list = [

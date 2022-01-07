@@ -7,16 +7,20 @@ class BaseStrategy(ABC):
     # Optimal timeframe for the strategy.
     interval = '5m'
 
+    # Ratio of the total account balance allowed to be traded.
+    # Positive float between 0.0 and 1.0
+    # tradable_balance_ratio = 1.0
+
     # Optimal takeprofit designed for the strategy.
     # 0.01 = 1%
-    takeprofit = 0.01
+    # takeprofit = 0.01
 
     # Optimal stoploss designed for the strategy.
     # -0.01 = -1%
-    stoploss = -0.01
+    # stoploss = -0.01
 
     # Trailing stoploss
-    trailing_stop = False
+    # trailing_stop = False
 
     # candles + indicators dataframe
     data = None
@@ -26,7 +30,7 @@ class BaseStrategy(ABC):
     # INIT_CANDLES_COUNT-1 historical candles will be downloaded and
     # inserted it prior to it in the dataframe so that we can
     # start trading as soon as the application is started
-    minimum_candles_to_start = 200
+    minimum_candles_to_start = 0
 
 
     def __init__(self):
@@ -34,8 +38,9 @@ class BaseStrategy(ABC):
         self.name = self.__class__.__name__
         self.config = Configuration.get_config()
         self.interval = self.config['strategy']['interval']
-        self.takeprofit = self.config['strategy']['takeprofit']
-        self.stoploss = self.config['strategy']['stoploss']
+        # self.takeprofit = self.config['trade']['takeprofit']
+        # self.stoploss = self.config['trade']['stoploss']
+        # self.tradable_balance_ratio = self.config['trade']['tradable_balance_ratio']
         self.minimum_candles_to_start = self.config['strategy']['minimum_candles_to_start']
 
     @abstractmethod

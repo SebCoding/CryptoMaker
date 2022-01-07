@@ -12,4 +12,10 @@ telebot
 sqlalchemy
 sqlalchemy_utils
 psycopg2
+mypy
+arrow
+websocket-client
+
+
+
 

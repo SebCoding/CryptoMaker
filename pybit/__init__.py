@@ -20,9 +20,11 @@ import hmac
 import json
 import logging
 import threading
+
+import pandas as pd
 import requests
 import websocket
-
+import logger
 from datetime import datetime as dt
 from concurrent.futures import ThreadPoolExecutor
 
@@ -109,7 +111,7 @@ class HTTP:
 
         # Setup logger.
 
-        self.logger = logging.getLogger(__name__)
+        self.logger = logger.init_custom_logger(__name__)
 
         if len(logging.root.handlers) == 0:
             #no handler on root logger set -> we add handler just for this logger to not mess with custom logic from outside
@@ -2062,6 +2064,14 @@ class WebSocket:
             if self.purge:
                 self.data[topic] = []
             return data
+        # SEB: Purge Candles on fetch()
+        elif 'candle' in topic:
+            # print('PURGE')
+            if self.data[topic]:
+                data = self.data[topic].copy()
+                self.data[topic] = None
+                return data
+            return None
         else:
             try:
                 return self.data[topic]
@@ -2359,10 +2369,26 @@ class WebSocket:
                 if len(self.data[topic]) > self.max_length:
                     self.data[topic].pop(0)
 
+            # SEB: Do not overwrite confirmed candles that have not been fetched
+            elif 'candle' in topic:
+                to_insert = msg_json['data'][0] if self.trim else msg_json
+                if self.data[topic] and self.data[topic][-1]['confirm']: # Append
+                    # print('append')
+                    self.data[topic].append(to_insert)
+                    # print(pd.DataFrame(self.data[topic]).to_string())
+                elif self.data[topic] and len(self.data[topic]) > 1 and not self.data[topic][-1]['confirm']: # Overwrite last row
+                    # print('overwrite last row')
+                    self.data[topic][-1] = to_insert
+                    # print(pd.DataFrame(self.data[topic]).to_string())
+                else: # Insert a new list
+                    # print('reset list')
+                    self.data[topic] = [to_insert]
+                    # print(pd.DataFrame(self.data[topic]).to_string())
+
             # If incoming data is in a topic which only pushes messages in
             # the snapshot format
             elif any(i in topic for i in ['insurance', 'kline', 'wallet',
-                                          'candle', 'realtimes', '"depth"',
+                                          'realtimes', '"depth"',
                                           '"mergedDepth"', 'bookTicker']):
 
                 # Record incoming data.

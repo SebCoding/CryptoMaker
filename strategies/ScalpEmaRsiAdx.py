@@ -7,15 +7,9 @@ from enums import TradeSignalsStates
 from enums.TradeSignalsStates import TradeSignalsStates
 from strategies.BaseStrategy import BaseStrategy
 
-logger = logger.init_custom_logger(__name__)
-
 
 class ScalpEmaRsiAdx(BaseStrategy):
     # Values for interval, takeprofit and stoploss come from the config.json file
-
-    # Ratio of the total account balance allowed to be traded.
-    # Positive float between 0.0 and 1.0
-    TRADABLE_BALANCE_RATIO = 1.0
 
     # Trend indicator: EMA - Exponential Moving Average
     EMA_PERIODS = 40
@@ -35,7 +29,8 @@ class ScalpEmaRsiAdx(BaseStrategy):
 
     def __init__(self):
         super().__init__()
-        logger.info(f'Initializing strategy [{self.name}] ' + self.get_strategy_text_details())
+        self.logger = logger.init_custom_logger(__name__)
+        self.logger.info(f'Initializing strategy [{self.name}] ' + self.get_strategy_text_details())
         self.last_trade_index = self.minimum_candles_to_start
         self.db = Database()
 

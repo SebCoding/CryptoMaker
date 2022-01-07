@@ -4,9 +4,10 @@
     },
     "exchange": {
         "name": "Bybit",
-        "testnet": false,
+        "testnet": true,
         "market_type": "perpetual futures",
         "pair": "BTCUSDT",
+        "stake_currency": "USDT",
         "rest": {
             "linear_testnet": "https://api-testnet.bybit.com",
             "linear_mainnet": "https://api.bybit.com",
@@ -25,11 +26,12 @@
      "strategy": {
          "name": "ScalpEmaRsiAdx",
          "interval": "1m",
-         "takeprofit": 0.01,
-         "stoploss": -0.01,
-         "minimum_candles_to_start": 200
+         "minimum_candles_to_start": 2000
      },
      "trade": {
+         "takeprofit": 0.01,
+         "stoploss": -0.01,
+         "tradable_balance_ratio": 1.0,
          "trade_on_closed_candles_only": false
      },
      "database": {

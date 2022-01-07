@@ -1,5 +1,3 @@
-import logging
-
 APPLICATION_NAME = 'CryptoMaker'
 SUPPORTED_EXCHANGES = ['Bybit']
 MARKET_TYPES = ['perpetual futures']
@@ -42,6 +40,7 @@ CONFIG_SCHEMA = {
                 'testnet': {'type': 'boolean', 'default': True},
                 'market_type': {'type': 'string', 'enum': MARKET_TYPES},
                 'pair': {'type': 'string'},
+                'stake_currency': {'type': 'string'},
                 'rest': {
                     'type': 'object',
                     'properties': {
@@ -64,25 +63,26 @@ CONFIG_SCHEMA = {
                     }
                 }
             },
-            'required': ['name', 'testnet', 'market_type', 'rest', 'websockets']
+            'required': ['name', 'testnet', 'market_type', 'pair', 'stake_currency', 'rest', 'websockets']
         },
         'strategy': {
             'type': 'object',
             'properties': {
                 'name': {'type': 'string', 'enum': IMPLEMENTED_STRATEGIES},
                 'interval': {'type': 'string', 'enum': VALID_INTERVALS},
-                'takeprofit': {'type': 'number'},
-                'stoploss': {'type': 'number'},
                 'minimum_candles_to_start': {'type': 'integer', 'minimum': 0}
             },
-            'required': ['name', 'interval', 'takeprofit', 'stoploss', 'minimum_candles_to_start', ]
+            'required': ['name', 'interval', 'minimum_candles_to_start', ]
         },
         'trade': {
             'type': 'object',
             'properties': {
+                'takeprofit': {'type': 'number'},
+                'stoploss': {'type': 'number'},
+                'tradable_balance_ratio': {'type': 'number', 'minimum': 0.0, 'maximum': 1.0},
                 'trade_on_closed_candles_only': {'type': 'boolean', 'default': False}
             },
-            'required': ['trade_on_closed_candles_only']
+            'required': ['takeprofit', 'stoploss', 'tradable_balance_ratio', 'trade_on_closed_candles_only']
         },
         'database': {
             'type': 'object',

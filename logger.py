@@ -1,35 +1,19 @@
 import logging
 
+import constants
 from configuration import Configuration
 
 
 def init_root_logger(level):
-    # logging.basicConfig(
-    #     level=level,
-    #     format='%(asctime)s %(filename)s - %(module)s - %(funcName)s() - line:%(lineno)d - %(name)s - %(levelname)s - %(message)s',
-    #     datefmt='%Y-%m-%d %H:%M:%S'
-    # )
     config = Configuration.get_config()
     config_level = logging_level_str_to_int(config['logging']['global_level'])
-
-    # Console Handler
-    c_handler = logging.StreamHandler()
-    c_format = logging.Formatter('[%(name)s] %(levelname)s:  %(message)s')
-    c_handler.setFormatter(c_format)
-    c_handler.setLevel(config_level)
-
-    # File Handler
-    f_handler = logging.FileHandler('log.txt', mode='w')
-    f_format = logging.Formatter(fmt='[%(name)s] - %(levelname)s - %(message)s')  # datefmt='%Y-%m-%d %H:%M:%S'
-    f_handler.setFormatter(f_format)
-    f_handler.setLevel(config_level)
+    filename = Configuration.get_config()['logging']['log_file_path']
     logging.basicConfig(
         level=level,
         format='%(levelname)s: %(module)s.%(funcName)s, %(message)s',
         datefmt='%Y-%m-%d %H:%M:%S',
-        handlers=[f_handler, c_handler]
+        handlers=get_default_handlers(config_level, filename)
     )
-
 
 # Default level is the one specified in the config.json file.
 # Level passed as parameter will override config file
@@ -40,6 +24,15 @@ def init_custom_logger(module_name, filename=Configuration.get_config()['logging
     logger = logging.getLogger(module_name)
     logger.setLevel(config_level)
 
+    # Add handlers to the logger
+    for h in get_default_handlers(config_level, filename):
+        logger.addHandler(h)
+
+    logger.propagate = False
+    return logger
+
+
+def get_default_handlers(config_level, filename):
     # Console Handler
     c_handler = logging.StreamHandler()
     c_format = logging.Formatter('[%(name)s] %(levelname)s:  %(message)s')
@@ -48,15 +41,10 @@ def init_custom_logger(module_name, filename=Configuration.get_config()['logging
 
     # File Handler
     f_handler = logging.FileHandler(filename, mode='w')
-    f_format = logging.Formatter(fmt='[%(name)s] - %(levelname)s - %(message)s')  # datefmt='%Y-%m-%d %H:%M:%S'
+    f_format = logging.Formatter(fmt='[%(name)s] - %(levelname)s - %(message)s')  # datefmt=constants.DATETIME_FORMAT
     f_handler.setFormatter(f_format)
     f_handler.setLevel(config_level)
-
-    # Add handlers to the logger
-    logger.addHandler(c_handler)
-    logger.addHandler(f_handler)
-    logger.propagate = False
-    return logger
+    return [c_handler, f_handler]
 
 
 def logging_level_str_to_int(level_str):

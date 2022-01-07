@@ -12,7 +12,9 @@ telegram-send --configure
 """
 import telegram_send as ts
 
+
 def send_telegram_message(message):
     ts.send(messages=[str(message)])
+
 
 send_telegram_message("Hello")

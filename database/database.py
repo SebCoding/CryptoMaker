@@ -6,8 +6,6 @@ from sqlalchemy_utils import database_exists
 
 from configuration import Configuration
 
-logger = logger.init_custom_logger(__name__)
-
 
 class Database:
     URL_TEMPLATE = 'postgresql://<username>:<password>@<address>:<port>/<db_name>'
@@ -16,6 +14,7 @@ class Database:
     TRADE_ENTRIES_TBL_NAME = 'TradeEntries'
 
     def __init__(self):
+        self.logger = logger.init_custom_logger(__name__)
         self.config = Configuration.get_config()
         self.name = self.config['database']['db_name']
         self.db_url = self.get_db_url()
@@ -47,7 +46,7 @@ class Database:
             result = connection.execute(query)
             if result.rowcount > 0:
                 for row in result:
-                    logger.info(f'SQL Query Result: {row}')
+                    self.logger.info(f'SQL Query Result: {row}')
 
     # Log trade entries to the db
     # def add_trade_entries_df(self, df):

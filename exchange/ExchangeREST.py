@@ -7,12 +7,10 @@ import ccxt
 import pandas as pd
 
 import api_keys
-import constants
 import logger
 import utils
 from configuration import Configuration
-
-logger = logger.init_custom_logger(__name__)
+from exchange.retrier import retrier
 
 
 class ExchangeREST:
@@ -20,45 +18,53 @@ class ExchangeREST:
     use_testnet = False  # Boolean True/False.
 
     def __init__(self):
-        self.config = Configuration.get_config()
+        self.logger = logger.init_custom_logger(__name__)
+        self._config = Configuration.get_config()
 
         # Unauthenticated
         # self.exchange = getattr(ccxt, self.config['exchange']['name'].lower())()
 
         # Authenticated
-        exchange_id = self.config['exchange']['name'].lower()
+        exchange_id = self._config['exchange']['name'].lower()
         exchange_class = getattr(ccxt, exchange_id)
-        self.exchange = exchange_class({
-            'apiKey': api_keys.BYBIT_API_KEY,
-            'secret': api_keys.BYBIT_API_SECRET,
-            'enableRateLimit': True,
-            # 'options': {
-            #      'defaultType': 'future',  # 'spot', 'future', 'margin', 'delivery'
-            # },
-        })
 
-        self.name = self.exchange.name
-
-        # Testnet/Mainnet
-        if self.config['exchange']['testnet']:
+        # Testnet
+        if self._config['exchange']['testnet']:
+            self._exchange = exchange_class({
+                'apiKey': api_keys.TESTNET_BYBIT_API_KEY,
+                'secret': api_keys.TESTNET_BYBIT_API_SECRET,
+                'enableRateLimit': True,
+                # 'options': {
+                #      'defaultType': 'future',  # 'spot', 'future', 'margin', 'delivery'
+                # },
+            })
+            self.name = self._exchange.name + '-Testnet'
             self.use_testnet = True
-            # Testnet
-            self.exchange.set_sandbox_mode(True)
-            self.name += '-Testnet'
+            self._exchange.set_sandbox_mode(True)
+        # Mainnet
         else:
-            # Mainnet
-            self.exchange.set_sandbox_mode(False)
+            self._exchange = exchange_class({
+                'apiKey': api_keys.BYBIT_API_KEY,
+                'secret': api_keys.BYBIT_API_SECRET,
+                'enableRateLimit': True,
+                # 'options': {
+                #      'defaultType': 'future',  # 'spot', 'future', 'margin', 'delivery'
+                # },
+            })
+            self.name = self._exchange.name
+            self._exchange.set_sandbox_mode(False)
+
         # Market type
-        if self.config['exchange']['market_type'] == 'perpetual futures':
-            self.exchange.options['defaultType'] = 'future'
+        if self._config['exchange']['market_type'] == 'perpetual futures':
+            self._exchange.options['defaultType'] = 'future'
         else:
-            msg = f"Unsupported market type [{self.config['exchange']['market_type']}]."
-            logger.error(msg)
+            msg = f"Unsupported market type [{self._config['exchange']['market_type']}]."
+            self.logger.error(msg)
             raise Exception(msg)
 
         # number in milliseconds, default 10000
-        self.exchange.timeout = int(self.config['exchange']['rest']['timeout'])
-        self.exchange.load_markets()
+        self._exchange.timeout = int(self._config['exchange']['rest']['timeout'])
+        self._exchange.load_markets()
 
     # from_time, to_time must be timestamps
     def get_candle_data(self, pair, from_time, to_time, interval, verbose=False):
@@ -75,7 +81,7 @@ class ExchangeREST:
         to_time_stamp = to_time * 1000
 
         while last_datetime_stamp < to_time_stamp:
-            result = self.exchange.fetch_ohlcv(
+            result = self._exchange.fetch_ohlcv(
                 symbol=pair,
                 timeframe=interval,
                 since=int(last_datetime_stamp)
@@ -133,13 +139,13 @@ class ExchangeREST:
 
         # Adjust from_time for example to add 200 additional prior entries for example ema200
         if include_prior > 0:
-            start_time = utils.adjust_from_time(from_time, interval, include_prior)
+            start_time = utils.adjust_from_time_datetime(from_time, interval, include_prior)
 
         last_datetime_stamp = start_time.timestamp() * 1000
         to_time_stamp = to_time.timestamp() * 1000
 
         while last_datetime_stamp < to_time_stamp:
-            result = self.exchange.fetch_ohlcv(
+            result = self._exchange.fetch_ohlcv(
                 symbol=pair,
                 timeframe=interval,
                 since=int(last_datetime_stamp)
@@ -176,25 +182,41 @@ class ExchangeREST:
         return df
 
     def validate_interval(self, interval):
-        valid_intervals = list(self.exchange.timeframes.keys())
+        valid_intervals = list(self._exchange.timeframes.keys())
         valid_intervals_str = ' '
         valid_intervals_str = valid_intervals_str.join(valid_intervals)
         if interval not in valid_intervals:
             msg = f'\nInvalid Interval [{interval}]. Expected values: {valid_intervals_str}'
-            logger.error(msg)
+            self.logger.error(msg)
             raise Exception(msg)
 
     def validate_pair(self, pair):
-        market = self.exchange.market(pair)
+        market = self._exchange.market(pair)
         if market is None:
             msg = f'\nInvalid [{pair}] for exchange {self.name}.'
-            logger.error(msg)
+            self.logger.error(msg)
             raise Exception(msg)
 
     def get_maker_fee(self, pair):
-        market = self.exchange.market(pair)
+        market = self._exchange.market(pair)
         return market['maker']
 
     def get_taker_fee(self, pair):
-        market = self.exchange.market(pair)
+        market = self._exchange.market(pair)
         return market['taker']
+
+    @retrier
+    def get_balances(self) -> dict:
+        try:
+            balances = self._exchange.fetch_balance()
+            # Remove additional info from ccxt results
+            balances.pop("info", None)
+            balances.pop("free", None)
+            balances.pop("total", None)
+            balances.pop("used", None)
+            return balances
+        except (ccxt.NetworkError, ccxt.ExchangeError) as e:
+            msg = f'Could not get balance due to {e.__class__.__name__}. Message: {e}'
+            self.logger.exception(msg)
+            raise Exception(msg) from e
+
