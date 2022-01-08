@@ -1,4 +1,4 @@
-import logger
+from Logger import Logger
 
 
 class Orders:
@@ -6,7 +6,7 @@ class Orders:
     _stop_orders_topic_name = 'stop_order'
 
     def __init__(self, exchange_ws):
-        self.logger = logger.init_custom_logger(__name__)
+        self.logger = Logger.get_module_logger(__name__)
         self._exchange_ws = exchange_ws
         self.update_orders()
         self.update_stop_orders()

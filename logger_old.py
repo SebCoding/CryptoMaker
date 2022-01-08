@@ -1,12 +1,12 @@
 import logging
 
 import constants
-from configuration import Configuration
+from Configuration import Configuration
 
 
 def init_root_logger(level):
     config = Configuration.get_config()
-    config_level = logging_level_str_to_int(config['logging']['global_level'])
+    config_level = logging_level_str_to_int(config['logging']['logging_level'])
     filename = Configuration.get_config()['logging']['log_file_path']
     logging.basicConfig(
         level=level,
@@ -19,7 +19,7 @@ def init_root_logger(level):
 # Level passed as parameter will override config file
 def init_custom_logger(module_name, filename=Configuration.get_config()['logging']['log_file_path']):
     config = Configuration.get_config()
-    config_level = logging_level_str_to_int(config['logging']['global_level'])
+    config_level = logging_level_str_to_int(config['logging']['logging_level'])
 
     logger = logging.getLogger(module_name)
     logger.setLevel(config_level)
@@ -81,6 +81,6 @@ def logging_level_str_to_int(level_str):
 #   logging.exception("Une erreur est survenue")
 #
 # # Test custom logger
-# logger = init_custom_logger()
+# logger = get_module_logger()
 # logger.warning('This is a warning')
 # logger.error('This is an error')

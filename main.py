@@ -1,12 +1,12 @@
 import logging
 
 import constants
-import logger
-from bot import Bot
-from configuration import Configuration
+from Logger import Logger
+from Bot import Bot
+from Configuration import Configuration
 
-logger.init_root_logger(logging.DEBUG)
-logger = logger.init_custom_logger(constants.APPLICATION_NAME)
+Logger.init_root_logger()
+logger = Logger.get_module_logger(constants.APPLICATION_NAME)
 
 
 def main():

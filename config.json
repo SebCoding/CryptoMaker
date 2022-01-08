@@ -4,7 +4,7 @@
     },
     "exchange": {
         "name": "Bybit",
-        "testnet": true,
+        "testnet": false,
         "market_type": "perpetual futures",
         "pair": "BTCUSDT",
         "stake_currency": "USDT",
@@ -29,7 +29,7 @@
          "minimum_candles_to_start": 2000
      },
      "trade": {
-         "takeprofit": 0.01,
+         "takeprofit": 0.012,
          "stoploss": -0.01,
          "tradable_balance_ratio": 1.0,
          "trade_on_closed_candles_only": false
@@ -42,8 +42,9 @@
          "password": "postgres"
      },
     "logging": {
-        "global_level": "debug",
-        "log_file_path": "log.txt",
+        "logging_level": "info",
+        "debug_file_path": "debug_log.txt",
+        "output_file_path": "output_log.txt",
         "order_submission": true,
         "order_cancellation": true,
         "order_execution": true,

@@ -1,10 +1,10 @@
 import pandas as pd
 import time
 import utils
-from configuration import Configuration
+from Configuration import Configuration
 from exchange.ExchangeREST import ExchangeREST
 from exchange.ExchangeWS import ExchangeWS
-import logger
+from Logger import Logger
 import datetime as dt
 
 
@@ -13,11 +13,11 @@ class CandleHandler:
     _last_candle_timestamp = 0
 
     def __init__(self, exchange_rest, exchange_ws):
-        self.logger = logger.init_custom_logger(__name__)
-        self.config = Configuration.get_config()
-        self.pair = self.config['exchange']['pair']
-        self.interval = self.config['strategy']['interval']
-        self.minimum_candles_to_start = int(self.config['strategy']['minimum_candles_to_start'])
+        self._logger = Logger.get_module_logger(__name__)
+        self._config = Configuration.get_config()
+        self.pair = self._config['exchange']['pair']
+        self.interval = self._config['strategy']['interval']
+        self.minimum_candles_to_start = int(self._config['strategy']['minimum_candles_to_start'])
         self.exchange_rest = exchange_rest
         self.exchange_ws = exchange_ws
         self.candle_topic_name = \
@@ -26,7 +26,7 @@ class CandleHandler:
 
     # Fetch 'minimum_candles_to_start' candles preceding 'to_time' (not including to_time)
     def get_historic_candles(self, to_time):
-        self.logger.info(f'Fetching {self.minimum_candles_to_start} prior historical candles.')
+        self._logger.info(f'Fetching {self.minimum_candles_to_start} prior historical candles.')
         from_time = utils.adjust_from_time_timestamp(to_time, self.interval, self.minimum_candles_to_start)
         to_time -= 1  # subtract 1s because get_candle_data() includes candle to 'to_time'
         df = self.exchange_rest.get_candle_data(self.pair, from_time, to_time, self.interval)
@@ -59,7 +59,7 @@ class CandleHandler:
             for data in data_list:
                 if data['timestamp'] > self._last_candle_timestamp:
                     # If we only trade on closed candles ignore data that is not confirmed
-                    if self.config['trade']['trade_on_closed_candles_only'] and not data['confirm']:
+                    if self._config['trade']['trade_on_closed_candles_only'] and not data['confirm']:
                         return self._candles_df, False
                     to_append = [
                         {
@@ -109,12 +109,12 @@ class CandleHandler:
                     if len(self._candles_df) >= 2 and (self._candles_df["start"].iloc[-1] != self._candles_df["end"].iloc[-2]):
                         msg = f'*******  start[{self._candles_df["start"].iloc[-1]}] != prev_end[{self._candles_df["end"].iloc[-2]}]  *******\n'
                         msg += self._candles_df.tail(2).to_string() + '\n'
-                        self.logger.error(msg)
+                        self._logger.error(msg)
                         # The dataframe is corrupted. Rebuild the dataframe from scratch
-                        self.logger.error('Recovering from missing candle data. rebuilding the dataframe from scratch.')
+                        self._logger.error('Recovering from missing candle data. rebuilding the dataframe from scratch.')
                         self._candles_df = self.get_historic_candles(int(data['start']))
                         self._candles_df = self._candles_df.append(to_append, ignore_index=True)
-                        self.logger.error('Candles dataframe has been rebuilt successfully.')
+                        self._logger.error('Candles dataframe has been rebuilt successfully.')
 
                     self._last_candle_timestamp = data['timestamp']
                     data_changed = True

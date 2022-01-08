@@ -1,8 +1,8 @@
 import talib
 import datetime as dt
 import constants
-import logger
-from database.database import Database
+from Logger import Logger
+from database.Database import Database
 from enums import TradeSignalsStates
 from enums.TradeSignalsStates import TradeSignalsStates
 from strategies.BaseStrategy import BaseStrategy
@@ -29,7 +29,7 @@ class ScalpEmaRsiAdx(BaseStrategy):
 
     def __init__(self):
         super().__init__()
-        self.logger = logger.init_custom_logger(__name__)
+        self.logger = Logger.get_module_logger(__name__)
         self.logger.info(f'Initializing strategy [{self.name}] ' + self.get_strategy_text_details())
         self.last_trade_index = self.minimum_candles_to_start
         self.db = Database()

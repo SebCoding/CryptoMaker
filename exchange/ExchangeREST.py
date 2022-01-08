@@ -2,14 +2,15 @@
     Exchange class that implements operations done through the REST API
 """
 import datetime as dt
+import logging
 
 import ccxt
 import pandas as pd
 
 import api_keys
-import logger
+from Logger import Logger
 import utils
-from configuration import Configuration
+from Configuration import Configuration
 from exchange.retrier import retrier
 
 
@@ -18,7 +19,7 @@ class ExchangeREST:
     use_testnet = False  # Boolean True/False.
 
     def __init__(self):
-        self.logger = logger.init_custom_logger(__name__)
+        self._logger = Logger.get_module_logger(__name__)
         self._config = Configuration.get_config()
 
         # Unauthenticated
@@ -30,7 +31,7 @@ class ExchangeREST:
 
         # Testnet
         if self._config['exchange']['testnet']:
-            self._exchange = exchange_class({
+            self.exchange = exchange_class({
                 'apiKey': api_keys.TESTNET_BYBIT_API_KEY,
                 'secret': api_keys.TESTNET_BYBIT_API_SECRET,
                 'enableRateLimit': True,
@@ -38,12 +39,12 @@ class ExchangeREST:
                 #      'defaultType': 'future',  # 'spot', 'future', 'margin', 'delivery'
                 # },
             })
-            self.name = self._exchange.name + '-Testnet'
+            self.name = self.exchange.name + '-Testnet'
             self.use_testnet = True
-            self._exchange.set_sandbox_mode(True)
+            self.exchange.set_sandbox_mode(True)
         # Mainnet
         else:
-            self._exchange = exchange_class({
+            self.exchange = exchange_class({
                 'apiKey': api_keys.BYBIT_API_KEY,
                 'secret': api_keys.BYBIT_API_SECRET,
                 'enableRateLimit': True,
@@ -51,20 +52,23 @@ class ExchangeREST:
                 #      'defaultType': 'future',  # 'spot', 'future', 'margin', 'delivery'
                 # },
             })
-            self.name = self._exchange.name
-            self._exchange.set_sandbox_mode(False)
+            self.name = self.exchange.name
+            self.exchange.set_sandbox_mode(False)
+
+        # TODO: Figure out to deal with the logging of the ccxt module
+        self.exchange.logger.setLevel(logging.INFO)
 
         # Market type
         if self._config['exchange']['market_type'] == 'perpetual futures':
-            self._exchange.options['defaultType'] = 'future'
+            self.exchange.options['defaultType'] = 'linear'
         else:
             msg = f"Unsupported market type [{self._config['exchange']['market_type']}]."
-            self.logger.error(msg)
+            self._logger.error(msg)
             raise Exception(msg)
 
         # number in milliseconds, default 10000
-        self._exchange.timeout = int(self._config['exchange']['rest']['timeout'])
-        self._exchange.load_markets()
+        self.exchange.timeout = int(self._config['exchange']['rest']['timeout'])
+        self.exchange.load_markets()
 
     # from_time, to_time must be timestamps
     def get_candle_data(self, pair, from_time, to_time, interval, verbose=False):
@@ -81,11 +85,12 @@ class ExchangeREST:
         to_time_stamp = to_time * 1000
 
         while last_datetime_stamp < to_time_stamp:
-            result = self._exchange.fetch_ohlcv(
+            result = self.exchange.fetch_ohlcv(
                 symbol=pair,
                 timeframe=interval,
                 since=int(last_datetime_stamp)
             )
+
             tmp_df = pd.DataFrame(result, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
 
             if tmp_df is None or (len(tmp_df.index) == 0):
@@ -145,7 +150,7 @@ class ExchangeREST:
         to_time_stamp = to_time.timestamp() * 1000
 
         while last_datetime_stamp < to_time_stamp:
-            result = self._exchange.fetch_ohlcv(
+            result = self.exchange.fetch_ohlcv(
                 symbol=pair,
                 timeframe=interval,
                 since=int(last_datetime_stamp)
@@ -182,33 +187,33 @@ class ExchangeREST:
         return df
 
     def validate_interval(self, interval):
-        valid_intervals = list(self._exchange.timeframes.keys())
+        valid_intervals = list(self.exchange.timeframes.keys())
         valid_intervals_str = ' '
         valid_intervals_str = valid_intervals_str.join(valid_intervals)
         if interval not in valid_intervals:
             msg = f'\nInvalid Interval [{interval}]. Expected values: {valid_intervals_str}'
-            self.logger.error(msg)
+            self._logger.error(msg)
             raise Exception(msg)
 
     def validate_pair(self, pair):
-        market = self._exchange.market(pair)
+        market = self.exchange.market(pair)
         if market is None:
             msg = f'\nInvalid [{pair}] for exchange {self.name}.'
-            self.logger.error(msg)
+            self._logger.error(msg)
             raise Exception(msg)
 
     def get_maker_fee(self, pair):
-        market = self._exchange.market(pair)
+        market = self.exchange.market(pair)
         return market['maker']
 
     def get_taker_fee(self, pair):
-        market = self._exchange.market(pair)
+        market = self.exchange.market(pair)
         return market['taker']
 
     @retrier
     def get_balances(self) -> dict:
         try:
-            balances = self._exchange.fetch_balance()
+            balances = self.exchange.fetch_balance()
             # Remove additional info from ccxt results
             balances.pop("info", None)
             balances.pop("free", None)
@@ -217,6 +222,6 @@ class ExchangeREST:
             return balances
         except (ccxt.NetworkError, ccxt.ExchangeError) as e:
             msg = f'Could not get balance due to {e.__class__.__name__}. Message: {e}'
-            self.logger.exception(msg)
+            self._logger.exception(msg)
             raise Exception(msg) from e
 

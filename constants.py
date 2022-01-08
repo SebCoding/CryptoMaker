@@ -98,10 +98,11 @@ CONFIG_SCHEMA = {
         'logging': {
             'type': 'object',
             'properties': {
-                'global_level': {'type': 'string', 'enum': LOGGING_LEVELS},
-                'log_file_path': {'type': 'string'}
+                'logging_level': {'type': 'string', 'enum': LOGGING_LEVELS},
+                'debug_file_path': {'type': 'string'},
+                'output_file_path': {'type': 'string'}
             },
-            'required': ['global_level', 'log_file_path']
+            'required': ['logging_level', 'debug_file_path', 'output_file_path']
         }
     },
     'required': ['bot', 'exchange', 'strategy', 'trade', 'database', 'logging']

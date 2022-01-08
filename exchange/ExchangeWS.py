@@ -58,8 +58,8 @@ from websocket._exceptions import WebSocketTimeoutException
 import api_keys
 import constants
 from pybit import WebSocket
-import logger
-from configuration import Configuration
+from Logger import Logger
+from Configuration import Configuration
 import websocket
 
 
@@ -82,32 +82,32 @@ class ExchangeWS:
     }
 
     def __init__(self):
-        self.logger = logger.init_custom_logger(__name__)
-        self.config = Configuration.get_config()
-        self.interval = self.interval_map[self.config['strategy']['interval']]
-        self.name = str(self.config['exchange']['name']).capitalize()
-        self.pair = self.config['exchange']['pair']
+        self._logger = Logger.get_module_logger(__name__)
+        self._config = Configuration.get_config()
+        self.interval = self.interval_map[self._config['strategy']['interval']]
+        self.name = str(self._config['exchange']['name']).capitalize()
+        self.pair = self._config['exchange']['pair']
         self.validate_pair()
 
         # Testnet/Mainnet
-        if self.config['exchange']['testnet']:
+        if self._config['exchange']['testnet']:
             self.use_testnet = True
             self.name = self.name + '-Testnet'
-            self.endpoint_public = self.config['exchange']['websockets']['ws_linear_public_testnet']
-            self.endpoint_private = self.config['exchange']['websockets']['ws_linear_private_testnet']
+            self.endpoint_public = self._config['exchange']['websockets']['ws_linear_public_testnet']
+            self.endpoint_private = self._config['exchange']['websockets']['ws_linear_private_testnet']
             self.api_key = api_keys.TESTNET_BYBIT_API_KEY
             self.api_secret = api_keys.TESTNET_BYBIT_API_SECRET
         else:
             self.use_testnet = False
-            self.endpoint_public = self.config['exchange']['websockets']['ws_linear_public_mainnet']
-            self.endpoint_private = self.config['exchange']['websockets']['ws_linear_private_mainnet']
+            self.endpoint_public = self._config['exchange']['websockets']['ws_linear_public_mainnet']
+            self.endpoint_private = self._config['exchange']['websockets']['ws_linear_private_mainnet']
             self.api_key = api_keys.BYBIT_API_KEY
             self.api_secret = api_keys.BYBIT_API_SECRET
 
         # Market type hardcoded for perpetual futures
-        if self.config['exchange']['market_type'] != 'perpetual futures':
-            msg = f"Unsupported market type [{self.config['exchange']['market_type']}]."
-            self.logger.error(msg)
+        if self._config['exchange']['market_type'] != 'perpetual futures':
+            msg = f"Unsupported market type [{self._config['exchange']['market_type']}]."
+            self._logger.error(msg)
             raise Exception(msg)
 
         # Connect websockets and subscribe to topics
@@ -118,13 +118,13 @@ class ExchangeWS:
         try:
             self.subscribe_to_topics()
         except WebSocketTimeoutException as e:
-            self.logger.exception(f'Websocket Timeout')
+            self._logger.exception(f'Websocket Timeout')
             raise e
 
     def validate_pair(self):
         if 'USDT' not in self.pair:
             msg = f'Application only supports USDT perpetuals.'
-            self.logger.error(msg)
+            self._logger.error(msg)
             raise Exception(msg)
 
     def subscribe_to_topics(self):

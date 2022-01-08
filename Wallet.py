@@ -1,16 +1,17 @@
-"""
-    Wallet data structure
-"""
-import logger
+
+from Logger import Logger
 import arrow
 from copy import deepcopy
 from typing import NamedTuple, Dict, Any
 
-from configuration import Configuration
+from Configuration import Configuration
 from exchange.ExchangeREST import ExchangeREST
 
 
 class Wallet(NamedTuple):
+    """
+        Wallet data structure
+    """
     currency: str
     free: float = 0.0
     used: float = 0.0
@@ -23,7 +24,7 @@ class Wallet(NamedTuple):
 
 class Wallets:
     def __init__(self, exchange: ExchangeREST) -> None:
-        self.logger = logger.init_custom_logger(__name__)
+        self._logger = Logger.get_module_logger(__name__)
         self._config = Configuration.get_config()
         self._exchange = exchange
         self._wallets: Dict[str, Wallet] = {}
@@ -77,7 +78,7 @@ class Wallets:
         """
         if require_update or (self._last_wallet_refresh + 3600 < arrow.utcnow().int_timestamp):
             self._update_live()
-            self.logger.info('Wallets synced.')
+            self._logger.info('Wallets synced.')
             self._last_wallet_refresh = arrow.utcnow().int_timestamp
 
     def get_wallet(self, currency: str) -> Wallet:

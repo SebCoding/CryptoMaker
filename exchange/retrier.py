@@ -18,9 +18,9 @@ import time
 import ccxt
 
 import constants
-import logger
+from Logger import Logger
 
-logger = logger.init_custom_logger(__name__)
+logger = Logger.get_module_logger(__name__)
 
 
 def calculate_backoff(retry_count, max_retries):

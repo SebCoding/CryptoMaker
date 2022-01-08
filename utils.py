@@ -1,8 +1,8 @@
 import constants
 import datetime as dt
-import logger
+from Logger import Logger
 
-logger = logger.init_custom_logger(__name__)
+_logger = Logger.get_module_logger(__name__)
 
 
 # Offsets the 'from_time' backwards from 'nb_candles' in the specified timeframe (interval).
@@ -11,7 +11,7 @@ logger = logger.init_custom_logger(__name__)
 def adjust_from_time_timestamp(from_time, interval, nb_candles, backward=True):
     if interval not in constants.VALID_INTERVALS:
         msg = f'Invalid interval value: {interval}'
-        logger.error(msg)
+        _logger.error(msg)
         raise Exception(msg)
     if backward:
         nb_candles = nb_candles * -1
@@ -31,7 +31,7 @@ def adjust_from_time_timestamp(from_time, interval, nb_candles, backward=True):
 def adjust_from_time_datetime(from_time, interval, include_prior):
     if interval not in constants.VALID_INTERVALS:
         msg = f'Invalid interval value: {interval}'
-        logger.error(msg)
+        _logger.error(msg)
         raise Exception(msg)
 
     delta = include_prior - 1
@@ -42,9 +42,8 @@ def adjust_from_time_datetime(from_time, interval, include_prior):
         interval = interval.replace('h', '')
         from_time = from_time - dt.timedelta(hours=int(interval) * delta)
     elif 'd' in interval:
-        interval = interval.replace('d', '')
         from_time = from_time - dt.timedelta(days=delta)
     elif 'w' in interval:
-        interval = interval.replace('w', '')
         from_time = from_time - dt.timedelta(weeks=delta)
     return from_time
+

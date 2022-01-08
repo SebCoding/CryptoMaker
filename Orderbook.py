@@ -1,14 +1,14 @@
 import pandas as pd
-import logger
+from Logger import Logger
 import time
-from configuration import Configuration
+from Configuration import Configuration
 from exchange.ExchangeWS import ExchangeWS
 
 
 class Orderbook:
 
     def __init__(self):
-        self.logger = logger.init_custom_logger(__name__)
+        self.logger = Logger.get_module_logger(__name__)
         self.config = Configuration.get_config()
         self.pair = self.config['exchange']['pair']
         self.exchange_ws = ExchangeWS()

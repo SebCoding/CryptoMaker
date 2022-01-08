@@ -1,10 +1,10 @@
 import sqlalchemy as sa
 from sqlalchemy import Column, Table, Integer, Date, String, Float, DateTime, BigInteger, PrimaryKeyConstraint, Index
 
-import logger
+from Logger import Logger
 from sqlalchemy_utils import database_exists
 
-from configuration import Configuration
+from Configuration import Configuration
 
 
 class Database:
@@ -14,7 +14,7 @@ class Database:
     TRADE_ENTRIES_TBL_NAME = 'TradeEntries'
 
     def __init__(self):
-        self.logger = logger.init_custom_logger(__name__)
+        self.logger = Logger.get_module_logger(__name__)
         self.config = Configuration.get_config()
         self.name = self.config['database']['db_name']
         self.db_url = self.get_db_url()

@@ -2,14 +2,14 @@
     Wallet for USDT perpetual futures only.
     Using websockets private topic ['wallet']
 """
-import logger
+from Logger import Logger
 
 
 class WalletUSDT:
     _wallet_topic_name = 'wallet'
 
     def __init__(self, exchange_ws):
-        self.logger = logger.init_custom_logger(__name__)
+        self.logger = Logger.get_module_logger(__name__)
         self._wallet_balance = 0.0
         self._available_balance = 0.0
         self._exchange_ws = exchange_ws
