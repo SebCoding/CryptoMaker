@@ -3,6 +3,7 @@ api_keys.py
 log.txt
 trace.txt
 debug_log.txt
+config.json
 
 
 # Byte-compiled / optimized / DLL files
