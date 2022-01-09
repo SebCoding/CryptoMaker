@@ -7,6 +7,7 @@ from Logger import Logger
 import utils
 from CandleHandler import CandleHandler
 from Configuration import Configuration
+from Orders import Orders
 from Position import Position
 from enums import TradeSignalsStates
 from enums.TradeSignalsStates import TradeSignalsStates
@@ -37,6 +38,7 @@ class Bot:
         self._candle_handler = CandleHandler(self._exchange)
         self._wallet = WalletUSDT(self._exchange, self.stake_currency)
         self._position = Position(self._exchange)
+        self._orders = Orders(self._exchange)
 
     """
            Example of testing: throttle()
@@ -75,14 +77,16 @@ class Bot:
         self._candles_df, data_changed = self._candle_handler.get_refreshed_candles()
         if data_changed:
             df, result = self.strategy.find_entry(self._candles_df)
-            f.write('')
-            print()
-            f.write('\n' + df.tail(10).to_string())
-            print('\n' + df.tail(10).to_string())
-            f.write(f"\nLast valid signal offset: {result['SignalOffset']}\n")
-            print(f"Last valid signal offset: {result['SignalOffset']}\n")
+            # f.write('')
+            # print()
+            # f.write('\n' + df.tail(10).to_string())
+            # print('\n' + df.tail(10).to_string())
+            # f.write(f"\nLast valid signal offset: {result['SignalOffset']}\n")
+            # print(f"Last valid signal offset: {result['SignalOffset']}\n")
             # print(self._wallet.to_string())
             # print(self._position.get_positions_df().to_string())
+            # print(self._orders.get_orders_df().to_string())
+            # exit(1)
 
 
             if result['Signal'] in [TradeSignalsStates.EnterLong, TradeSignalsStates.EnterShort]:

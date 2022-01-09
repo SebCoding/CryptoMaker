@@ -123,7 +123,7 @@ class ScalpEmaRsiAdx(BaseStrategy):
                     'DateTime': dt.datetime.fromtimestamp(row.timestamp / 1000000).strftime(constants.DATETIME_FORMAT),
                     'Pair': row.pair,
                     'Interval': self.interval,
-                    'Signal': TradeSignalsStates.EnterShort,
+                    'Signal': TradeSignalsStates.EnterLong,
                     'SignalOffset': signal_index - data_length + 1,
                     'EntryPrice': row.close,
                     'EMA': row.EMA,

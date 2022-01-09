@@ -80,6 +80,7 @@ class ExchangeBybit:
     _ws_endpoint_private = None
     _wallet_topic_name = 'wallet'
     _position_topic_name = 'position'
+    _order_topic_name = 'order'
     ws_public = None
     ws_private = None
 
@@ -240,20 +241,139 @@ class ExchangeBybit:
     def get_balances(self):
         data = self.ws_private.fetch(self._wallet_topic_name)
         if data:
-            return data
+            return data['data']['USDT']
         else:
             data = self.session_auth.get_wallet_balance()
             if data and data['ret_msg'] == 'OK' and data['result']:
                 return data['result']['USDT']
 
+    # Get my position list.
     def get_position(self, pair):
         data = self.ws_private.fetch(self._position_topic_name)
         if data:
-            return data
+            return data['data']
         else:
             data = self.session_auth.my_position(symbol=pair)
             if data and data['ret_msg'] == 'OK' and data['result']:
                 return data['result']
+
+    """ 
+        Order Statuses that can be used as filter: 
+        Created, Rejected, New, PartiallyFilled, Filled, Cancelled, PendingCancel
+    """
+
+    # Because order creation/cancellation is asynchronous, there can be a data delay in
+    # this endpoint. You can get real-time order info with the Query Active Order
+    # (real-time) endpoint.
+    # Returns list of active orders for this 'pair'
+    def get_orders(self, pair, order_status=None):
+        data = self.ws_private.fetch(self._order_topic_name)
+        if data:
+            return data['data']
+        else:
+            data = self.session_auth.get_active_order(symbol=pair, order_status=order_status)
+            if data and data['ret_msg'] == 'OK' and data['result']:
+                return data['result']['data']
+
+    # Get active order by id
+    def get_order_by_id(self, pair, order_id):
+        data = self.ws_private.fetch(self._order_topic_name)
+        if data:
+            for order in data['data']:
+                if order['order_id'] == order_id:
+                    return order
+            return None
+        else:
+            data = self.session_auth.get_active_order(pair=pair, order_id=order_id)
+            if data and data['ret_msg'] == 'OK' and data['result'] and len(data['result']) > 0:
+                return data['result']['data'][0]
+            return None
+
+    # Query real-time active order information. If only order_id or order_link_id are passed,
+    # a single order will be returned; otherwise, returns up to 500 unfilled orders.
+    def query_orders_rt(self, pair, order_status=None):
+        data = self.session_auth.query_active_order(pair=pair, order_status=order_status)
+        if data and data['ret_msg'] == 'OK' and data['result']:
+            return data['result']
+
+    def query_orders_rt_by_id(self, pair, order_id):
+        data = self.session_auth.query_active_order(pair=pair, order_id=order_id)
+        if data and data['ret_msg'] == 'OK' and data['result'] and len(data['result']) > 0:
+            return data['result'][0]
+        return None
+
+    """
+        Place an active order.
+        Params (* are mandatory):
+            *side: Buy, Sell
+            *symbol: BTCUSDT 
+            *order_type: Market, Limit
+            *qty: (Order quantity in BTC)
+            *price: (Order price. Required if you make limit price order)
+            *time_in_force: PostOnly, GoodTillCancel, ImmediateOrCancel, FillOrKill
+            *close_on_trigger: true, false
+            *reduce_only: true, false
+            order_link_id: (Unique user-set order ID. Maximum length of 36 characters)
+            take_profit: (Take profit price, only take effect upon opening the position)
+            stop_loss: (Stop loss price, only take effect upon opening the position)
+            tp_trigger_by: LastPrice, IndexPrice, MarkPrice
+            sl_trigger_by: LastPrice, IndexPrice, MarkPrice
+            position_idx: 0, 1, 2 (Modes: 0-One-Way Mode, 1-Buy side of both side mode, 2-Sell side of both side mode)
+    """
+    def place_market_order(self, side, symbol, qty, stop_loss):
+        data = self.session_auth.place_active_order(
+            side=side,
+            symbol=self.pair,
+            order_type='Market',
+            qty=qty,
+            stop_loss=stop_loss,
+            time_in_force='GoodTillCancel',
+            close_on_trigger=False,
+            reduce_only=False
+        )
+        if data['ret_code'] == 0 and data['ret_msg'] == 'OK':
+            return data['result']
+        else:
+            self._logger.error(f"Placing market(side={side}, qty={qty}, stop_loss={stop_loss})",
+                               f"order failed. Error code: {data['ext_code']}.")
+            return None
+
+    """
+        Place an active order.
+        Params (* are mandatory):
+            *side: Buy, Sell
+            *symbol: BTCUSDT 
+            *order_type: Market, Limit
+            *qty: (Order quantity in BTC)
+            *price: (Order price. Required if you make limit price order)
+            *time_in_force: PostOnly, GoodTillCancel, ImmediateOrCancel, FillOrKill
+            *close_on_trigger: true, false
+            *reduce_only: true, false
+            order_link_id: (Unique user-set order ID. Maximum length of 36 characters)
+            take_profit: (Take profit price, only take effect upon opening the position)
+            stop_loss: (Stop loss price, only take effect upon opening the position)
+            tp_trigger_by: LastPrice, IndexPrice, MarkPrice
+            sl_trigger_by: LastPrice, IndexPrice, MarkPrice
+            position_idx: 0, 1, 2 (Modes: 0-One-Way Mode, 1-Buy side of both side mode, 2-Sell side of both side mode)
+    """
+    def place_limit_order(self, side, symbol, qty, price, stop_loss):
+        data = self.session_auth.place_active_order(
+            side=side,
+            symbol=self.pair,
+            order_type='Limit',
+            qty=qty,
+            price=price,
+            stop_loss=stop_loss,
+            time_in_force='PostOnly',
+            close_on_trigger=False,
+            reduce_only=False
+        )
+        if data['ret_code'] == 0 and data['ret_msg'] == 'OK':
+            return data['result']
+        else:
+            self._logger.error(f"Placing market(side={side}, qty={qty}, stop_loss={stop_loss})",
+                               f"order failed. Error code: {data['ext_code']}.")
+            return None
 
     # ===============================================================================
     #   Websockets Related Methods

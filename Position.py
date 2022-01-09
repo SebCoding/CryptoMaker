@@ -48,8 +48,8 @@ from Logger import Logger
 class Position:
     _position_topic_name = 'position'
 
-    long_position = None
-    short_position = None
+    _long_position = None
+    _short_position = None
 
     def __init__(self, exchange):
         self.logger = Logger.get_module_logger(__name__)
@@ -65,31 +65,35 @@ class Position:
         data = self._exchange.get_position(self._pair)
         if data:
             if data[0]['side'] == 'Buy':
-                self.long_position = data[0]
+                self._long_position = data[0]
             if data[1]['side'] == 'Buy':
-                self.long_position = data[1]
+                self._long_position = data[1]
             if data[0]['side'] == 'Sell':
-                self.short_position = data[0]
+                self._short_position = data[0]
             if data[1]['side'] == 'Sell':
-                self.short_position = data[1]
+                self._short_position = data[1]
 
     def get_long_position(self):
         self.refresh_position()
-        return self.long_position
+        return self._long_position
 
     def get_short_position(self):
         self.refresh_position()
-        return self.short_position
+        return self._short_position
 
     # Return a list containing 2 dictionaries
     def get_positions(self):
         self.refresh_position()
-        return [self.long_position, self.short_position]
+        return [self._long_position, self._short_position]
+
+    long_position = property(get_long_position)
+    short_position = property(get_short_position)
+    positions = property(get_positions)
 
     # returns a DataFrame containing the Long/Short positions
     def get_positions_df(self):
         self.refresh_position()
-        df = pd.DataFrame(self.get_positions())
+        df = pd.DataFrame(self.positions)
         # Only keep relevant columns and reorder
         df = df.loc[:,
              ['symbol', 'leverage', 'side', 'size', 'position_value', 'entry_price', 'liq_price',
