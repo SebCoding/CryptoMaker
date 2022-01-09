@@ -110,7 +110,7 @@ class ExchangeBybit:
             self.api_secret = api_keys.TESTNET_BYBIT_API_SECRET
         else:
             self.use_testnet = False
-            self._http_endpoint = self._config['exchange']['linear_mainnet2']
+            self._http_endpoint = self._config['exchange']['http']['linear_mainnet2']
             self._ws_endpoint_public = self._config['exchange']['websockets']['ws_linear_public_mainnet2']
             self._ws_endpoint_private = self._config['exchange']['websockets']['ws_linear_private_mainnet2']
             self.api_key = api_keys.BYBIT_API_KEY
@@ -264,8 +264,8 @@ class ExchangeBybit:
         self.ws_public = WebSocket(
             self._ws_endpoint_public,
             subscriptions=self.public_topics,
-            ping_interval=20,
-            ping_timeout=15
+            ping_interval=25,
+            ping_timeout=24
         )
 
         # private subscriptions, connect with authentication
@@ -274,8 +274,8 @@ class ExchangeBybit:
             subscriptions=self.private_topics,
             api_key=self.api_key,
             api_secret=self.api_secret,
-            ping_interval=20,
-            ping_timeout=15
+            ping_interval=25,
+            ping_timeout=24
         )
 
     def build_public_topics_list(self):

@@ -36,7 +36,7 @@ except ImportError:
     from json.decoder import JSONDecodeError
 
 # SEB: use our custom logger instead
-#from Logger import Logger
+from Logger import Logger
 
 # Versioning.
 VERSION = '1.3.4'
@@ -113,7 +113,7 @@ class HTTP:
 
         # Setup logger.
 
-        self.logger = logging.getLogger(__name__) #.get_module_logger(__name__)
+        self.logger = Logger.get_module_logger(__name__)
 
         if len(logging.root.handlers) == 0:
             #no handler on root logger set -> we add handler just for this logger to not mess with custom logic from outside
@@ -2069,7 +2069,7 @@ class WebSocket:
         # SEB: Purge Candles on fetch()
         elif 'candle' in topic:
             # print('PURGE')
-            if self.data[topic]:
+            if topic in self.data.keys() and self.data[topic]:
                 data = self.data[topic].copy()
                 self.data[topic] = None
                 return data
@@ -2145,10 +2145,10 @@ class WebSocket:
         self.wst.start()
 
         # Attempt to connect for X seconds.
-        retries = 10
+        retries = 15
         while retries > 0 and (not self.ws.sock or not self.ws.sock.connected):
             retries -= 1
-            time.sleep(1)
+            time.sleep(2)
 
         # If connection was not successful, raise error.
         if retries <= 0:
@@ -2450,7 +2450,8 @@ class WebSocket:
         """
 
         if not self.exited:
-            self.logger.error(f'WebSocket {self.wsName} encountered error: {error}.')
+            name = 'Public' if {self.wsName} == 'Authenticated' else 'Private'
+            self.logger.error(f'On_Error: {name} WebSocket encountered error: {error}.')
             self.exit()
 
         # Reconnect.
@@ -2462,13 +2463,15 @@ class WebSocket:
         """
         Log WS open.
         """
-        self.logger.debug(f'WebSocket {self.wsName} opened.')
+        name = 'Public' if {self.wsName}  == 'Authenticated' else 'Private'
+        self.logger.debug(f'On_Open: {name} WebSocket opened.')
 
     def _on_close(self):
         """
         Log WS close.
         """
-        self.logger.debug(f'WebSocket {self.wsName} closed.')
+        name = 'Public' if {self.wsName} == 'Authenticated' else 'Private'
+        self.logger.debug(f'On_Open: {name} WebSocket closed.')
 
     def _reset(self):
         """

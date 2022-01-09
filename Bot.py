@@ -75,15 +75,15 @@ class Bot:
         self._candles_df, data_changed = self._candle_handler.get_refreshed_candles()
         if data_changed:
             df, result = self.strategy.find_entry(self._candles_df)
-            # f.write('')
-            # print()
-            # f.write('\n' + df.tail(10).to_string())
-            # print('\n' + df.tail(10).to_string())
-            # f.write(f"\nLast valid signal offset: {result['SignalOffset']}\n")
-            # print(f"Last valid signal offset: {result['SignalOffset']}\n")
+            f.write('')
+            print()
+            f.write('\n' + df.tail(10).to_string())
+            print('\n' + df.tail(10).to_string())
+            f.write(f"\nLast valid signal offset: {result['SignalOffset']}\n")
+            print(f"Last valid signal offset: {result['SignalOffset']}\n")
             # print(self._wallet.to_string())
             # print(self._position.get_positions_df().to_string())
-            # exit(1)
+
 
             if result['Signal'] in [TradeSignalsStates.EnterLong, TradeSignalsStates.EnterShort]:
                 f.write('')
@@ -96,6 +96,7 @@ class Bot:
                 print(f"{result['Signal']}: {rapidjson.dumps(result, indent=2)}")
 
     def run_forever(self):
+        self._logger.info(f"Initializing Main Loop.")
         with open('trace.txt', 'w') as f:
             while True:
                 self.print_candles_and_entries(f)

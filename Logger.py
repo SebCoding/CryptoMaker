@@ -48,8 +48,7 @@ class Logger:
     def get_debug_file_handler(cls, filename=Configuration.get_config()['logging']['debug_file_path']):
         if not cls._debug_file_handler:
             f_handler = logging.FileHandler(filename, mode='w')
-            f_format = logging.Formatter(
-                fmt='[%(name)s] - %(levelname)s - %(message)s')
+            f_format = logging.Formatter(fmt='%(asctime)s [%(name)s] - %(levelname)s - %(message)s', datefmt=cls._datefmt)
             f_handler.setFormatter(f_format)
             f_handler.setLevel(logging.DEBUG)
             cls._debug_file_handler = f_handler
