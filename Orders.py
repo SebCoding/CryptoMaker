@@ -12,14 +12,14 @@ class Orders:
         self.update_stop_orders()
 
     def update_orders(self):
-        data = self._exchange_ws.private_ws.fetch(self._orders_topic_name)
+        data = self._exchange_ws.ws_private.fetch(self._orders_topic_name)
         if data:
             pass
         # else:
         #     self.logger.debug("Websocket has no orders data available.")
 
     def update_stop_orders(self):
-        data = self._exchange_ws.private_ws.fetch(self._stop_orders_topic_name)
+        data = self._exchange_ws.ws_private.fetch(self._stop_orders_topic_name)
         if data:
             pass
         # else:

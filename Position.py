@@ -38,35 +38,64 @@
         ]
     }
 """
+import pandas as pd
 import rapidjson
 
 from Configuration import Configuration
 from Logger import Logger
 
 
-class Positions:
+class Position:
     _position_topic_name = 'position'
-    position_list = None
 
-    def __init__(self, exchange_rest, exchange_ws):
+    long_position = None
+    short_position = None
+
+    def __init__(self, exchange):
         self.logger = Logger.get_module_logger(__name__)
         self._config = Configuration.get_config()
         self._pair = self._config['exchange']['pair']
-        self._exchange_rest = exchange_rest
-        self._exchange_ws = exchange_ws
+        self._exchange = exchange
         self._stake_currency = self._config['exchange']['stake_currency']
-        self.refresh_positions()
+        self.refresh_position()
 
-    def refresh_positions(self):
-        data = self._exchange_ws.private_ws.fetch(self._position_topic_name)
+    def refresh_position(self):
+        # Data contains a list of 2 dictionaries.
+        # one for Short position and the other for Long
+        data = self._exchange.get_position(self._pair)
         if data:
-            self.position_list = data
-            print(f'position socket: {data}')
-            exit(1)
-        else:
-            balances = self._exchange_rest.get_positions(self._pair)
-            if balances:
-                print(rapidjson.dumps(balances, indent=2))
+            if data[0]['side'] == 'Buy':
+                self.long_position = data[0]
+            if data[1]['side'] == 'Buy':
+                self.long_position = data[1]
+            if data[0]['side'] == 'Sell':
+                self.short_position = data[0]
+            if data[1]['side'] == 'Sell':
+                self.short_position = data[1]
+
+    def get_long_position(self):
+        self.refresh_position()
+        return self.long_position
+
+    def get_short_position(self):
+        self.refresh_position()
+        return self.short_position
+
+    # Return a list containing 2 dictionaries
+    def get_positions(self):
+        self.refresh_position()
+        return [self.long_position, self.short_position]
+
+    # returns a DataFrame containing the Long/Short positions
+    def get_positions_df(self):
+        self.refresh_position()
+        df = pd.DataFrame(self.get_positions())
+        # Only keep relevant columns and reorder
+        df = df.loc[:,
+             ['symbol', 'leverage', 'side', 'size', 'position_value', 'entry_price', 'liq_price',
+              'is_isolated', 'position_margin', 'unrealised_pnl', 'stop_loss', 'take_profit', 'trailing_stop']]
+        #df.rename(columns={'open_time': 'start'}, inplace=True)
+        return df
 
     # def get_free(self):
     #     self.update_wallet()

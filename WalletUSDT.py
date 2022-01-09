@@ -11,29 +11,22 @@ from Logger import Logger
 class WalletUSDT:
     _wallet_topic_name = 'wallet'
 
-    def __init__(self, exchange_rest, exchange_ws):
+    def __init__(self, exchange, stake_currency):
         self.logger = Logger.get_module_logger(__name__)
         self._config = Configuration.get_config()
-        self._exchange_rest = exchange_rest
-        self._exchange_ws = exchange_ws
-        self._stake_currency = self._config['exchange']['stake_currency']
+        self._exchange = exchange
+        self._stake_currency = stake_currency
         self._free = 0.0
         self._used = 0.0
         self._total = 0.0
         self.update_wallet()
 
     def update_wallet(self):
-        data = self._exchange_ws.private_ws.fetch(self._wallet_topic_name)
-        if data:
-            self._free = data['available_balance']
-            self._total = data['wallet_balance']
+        balances = self._exchange.get_balances()
+        if balances:
+            self._free = balances['available_balance']
+            self._total = balances['wallet_balance']
             self._used = self._total - self._free
-        else:
-            balances = self._exchange_rest.get_balances()[self._stake_currency]
-            if balances:
-                self._free = balances['free']
-                self._used = balances['used']
-                self._total = balances['total']
 
     def get_free(self):
         self.update_wallet()

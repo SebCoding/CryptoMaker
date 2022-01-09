@@ -41,7 +41,7 @@ CONFIG_SCHEMA = {
                 'market_type': {'type': 'string', 'enum': MARKET_TYPES},
                 'pair': {'type': 'string'},
                 'stake_currency': {'type': 'string'},
-                'rest': {
+                'http': {
                     'type': 'object',
                     'properties': {
                         'linear_testnet': {'type': 'string', 'format': 'uri'},
@@ -63,7 +63,7 @@ CONFIG_SCHEMA = {
                     }
                 }
             },
-            'required': ['name', 'testnet', 'market_type', 'pair', 'stake_currency', 'rest', 'websockets']
+            'required': ['name', 'testnet', 'market_type', 'pair', 'stake_currency', 'http', 'websockets']
         },
         'strategy': {
             'type': 'object',

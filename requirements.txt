@@ -1,7 +1,6 @@
 ccxt
 jsonschema
 pandas
-pybit
 pyTelegramBotAPI
 python_rapidjson
 rapidjson

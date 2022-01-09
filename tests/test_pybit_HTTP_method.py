@@ -16,35 +16,36 @@ session_auth = HTTP(
 #############################################################################
 
 # Balances
-balance = session_auth.get_wallet_balance()['result']['USDT']
+# balance = session_auth.get_wallet_balance()['result']['USDT']
 # print(f'balance:\n{rapidjson.dumps(balance, indent=2)}')
-balance_df = pd.DataFrame([balance])
-print(balance_df.to_string())
-print()
+# balance_df = pd.DataFrame([balance])
+# print(balance_df.to_string())
+# print()
 
 # Positions
 positions = session_auth.my_position(symbol='BTCUSDT')['result']
 # for x in positions:
 #     print(f'Positions:\n{rapidjson.dumps(x, indent=2)}')
-position_df = pd.DataFrame(positions)
-print(position_df.to_string())
+print(f'Position:\n{rapidjson.dumps(positions[0], indent=2)}')
+# position_df = pd.DataFrame(positions)
+# print(position_df.to_string())
 print()
 
 # Check time difference with Bybit server
-print(dt.datetime.now())
-server_time = session_auth.server_time()
-print(dt.datetime.fromtimestamp(float(server_time['time_now'])))
-print()
+# print(dt.datetime.now())
+# server_time = session_auth.server_time()
+# print(dt.datetime.fromtimestamp(float(server_time['time_now'])))
+# print()
 
 # Trade Records
-trade_records = session_auth.user_trade_records(symbol='BTCUSDT')['result']['data']
-#print(rapidjson.dumps(trade_records, indent=2))
-df = pd.DataFrame(trade_records)
-df['datetime'] = df.trade_time.apply(lambda x: dt.datetime.fromtimestamp(x))
-print(df.to_string())
-print()
+# trade_records = session_auth.user_trade_records(symbol='BTCUSDT')['result']['data']
+# print(rapidjson.dumps(trade_records, indent=2))
+# df = pd.DataFrame(trade_records)
+# df['datetime'] = df.trade_time.apply(lambda x: dt.datetime.fromtimestamp(x))
+# print(df.to_string())
+# print()
 
-session_auth._exit()
+
 
 
 

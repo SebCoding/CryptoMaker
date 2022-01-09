@@ -7,15 +7,13 @@ from Logger import Logger
 import utils
 from CandleHandler import CandleHandler
 from Configuration import Configuration
-from Positions import Positions
+from Position import Position
 from enums import TradeSignalsStates
 from enums.TradeSignalsStates import TradeSignalsStates
 from typing import Any, Callable, Dict, Optional
 
-from exchange.ExchangeREST import ExchangeREST
-from exchange.ExchangeWS import ExchangeWS
+from exchange.ExchangeBybit import ExchangeBybit
 from strategies.ScalpEmaRsiAdx import ScalpEmaRsiAdx
-from Wallet import Wallets
 
 from WalletUSDT import WalletUSDT
 
@@ -35,11 +33,10 @@ class Bot:
         self.stake_currency = self._config['exchange']['stake_currency']
         self.strategy = globals()[self._config['strategy']['name']]()
 
-        self.exchange_rest = ExchangeREST()
-        self.exchange_ws = ExchangeWS()
-        self._candle_handler = CandleHandler(self.exchange_rest, self.exchange_ws)
-        self._wallet = WalletUSDT(self.exchange_rest, self.exchange_ws)
-        self._positions = Positions(self.exchange_rest, self.exchange_ws)
+        self._exchange = ExchangeBybit()
+        self._candle_handler = CandleHandler(self._exchange)
+        self._wallet = WalletUSDT(self._exchange, self.stake_currency)
+        self._position = Position(self._exchange)
 
     """
            Example of testing: throttle()
@@ -78,13 +75,16 @@ class Bot:
         self._candles_df, data_changed = self._candle_handler.get_refreshed_candles()
         if data_changed:
             df, result = self.strategy.find_entry(self._candles_df)
-            f.write('')
-            print()
-            f.write('\n' + df.tail(10).to_string())
-            print('\n' + df.tail(10).to_string())
-            f.write(f"\nLast valid signal offset: {result['SignalOffset']}\n")
-            print(f"Last valid signal offset: {result['SignalOffset']}\n")
-            print(self._wallet.to_string())
+            # f.write('')
+            # print()
+            # f.write('\n' + df.tail(10).to_string())
+            # print('\n' + df.tail(10).to_string())
+            # f.write(f"\nLast valid signal offset: {result['SignalOffset']}\n")
+            # print(f"Last valid signal offset: {result['SignalOffset']}\n")
+            # print(self._wallet.to_string())
+            # print(self._position.get_positions_df().to_string())
+            # exit(1)
+
             if result['Signal'] in [TradeSignalsStates.EnterLong, TradeSignalsStates.EnterShort]:
                 f.write('')
                 print()
@@ -94,7 +94,6 @@ class Bot:
                 print(f"Last valid signal offset: {result['SignalOffset']}\n")
                 f.write(f"{result['Signal']}: {rapidjson.dumps(result, indent=2)}")
                 print(f"{result['Signal']}: {rapidjson.dumps(result, indent=2)}")
-                print(self._wallet.to_string())
 
     def run_forever(self):
         with open('trace.txt', 'w') as f:
