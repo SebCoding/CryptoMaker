@@ -225,3 +225,13 @@ class ExchangeREST:
             self._logger.exception(msg)
             raise Exception(msg) from e
 
+    @retrier
+    def get_positions(self, pair):
+        try:
+            positions = self.exchange.fetch_positions([pair])
+            return positions
+        except (ccxt.NetworkError, ccxt.ExchangeError) as e:
+            msg = f'Could not get positions due to {e.__class__.__name__}. Message: {e}'
+            self._logger.exception(msg)
+            raise Exception(msg) from e
+

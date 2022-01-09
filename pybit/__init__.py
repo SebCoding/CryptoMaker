@@ -36,7 +36,7 @@ except ImportError:
     from json.decoder import JSONDecodeError
 
 # SEB: use our custom logger instead
-from Logger import Logger
+#from Logger import Logger
 
 # Versioning.
 VERSION = '1.3.4'
@@ -113,7 +113,7 @@ class HTTP:
 
         # Setup logger.
 
-        self.logger = Logger.get_module_logger(__name__)
+        self.logger = logging.getLogger(__name__) #.get_module_logger(__name__)
 
         if len(logging.root.handlers) == 0:
             #no handler on root logger set -> we add handler just for this logger to not mess with custom logic from outside
