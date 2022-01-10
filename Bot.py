@@ -7,7 +7,7 @@ from Logger import Logger
 import utils
 from CandleHandler import CandleHandler
 from Configuration import Configuration
-from Orders import Orders
+from Orders import Orders, Order
 from Position import Position
 from enums import TradeSignalsStates
 from enums.TradeSignalsStates import TradeSignalsStates
@@ -27,7 +27,7 @@ class Bot:
         self._logger = Logger.get_module_logger(__name__)
         self._config = Configuration.get_config()
         net = 'Testnet' if self._config['exchange']['testnet'] else 'Mainnet'
-        self._logger.info(f"Initializing Bot. Running on {self._config['exchange']['name']} {net}")
+        self._logger.info(f"Initializing Bot to run on {self._config['exchange']['name']} {net}.")
         self._last_throttle_start_time = 0.0
         self.throttle_secs = self._config['bot']['throttle_secs']
         self.pair = self._config['exchange']['pair']
@@ -77,16 +77,16 @@ class Bot:
         self._candles_df, data_changed = self._candle_handler.get_refreshed_candles()
         if data_changed:
             df, result = self.strategy.find_entry(self._candles_df)
-            # f.write('')
-            # print()
-            # f.write('\n' + df.tail(10).to_string())
-            # print('\n' + df.tail(10).to_string())
-            # f.write(f"\nLast valid signal offset: {result['SignalOffset']}\n")
-            # print(f"Last valid signal offset: {result['SignalOffset']}\n")
-            # print(self._wallet.to_string())
-            # print(self._position.get_positions_df().to_string())
-            # print(self._orders.get_orders_df().to_string())
-            # exit(1)
+            f.write('')
+            print()
+            f.write('\n' + df.tail(10).to_string())
+            print('\n' + df.tail(10).to_string())
+            f.write(f"\nLast valid signal offset: {result['SignalOffset']}\n")
+            print(f"Last valid signal offset: {result['SignalOffset']}\n")
+            print(self._wallet.to_string())
+            print(self._position.get_positions_df().to_string())
+            print(self._orders.get_orders_df().to_string())
+            exit(1)
 
 
             if result['Signal'] in [TradeSignalsStates.EnterLong, TradeSignalsStates.EnterShort]:
@@ -101,8 +101,31 @@ class Bot:
 
     def run_forever(self):
         self._logger.info(f"Initializing Main Loop.")
-        with open('trace.txt', 'w') as f:
-            while True:
-                self.print_candles_and_entries(f)
-                time.sleep(0.5)
+
+        print(self._wallet.to_string()+"\n")
+        print('Position:\n' + self._position.get_positions_df().to_string() + "\n")
+        print('Orders:\n' + self._orders.get_orders_df(order_status='New').to_string() + '\n')
+
+        order1 = Order('Buy', self.pair, 'Limit', 0.1, 10000, take_profit=11000, stop_loss=9000)
+        result = self._orders.place_order(order1)
+        print("Order Result:\n", rapidjson.dumps(result, indent=2))
+
+        self._wallet.update_wallet()
+        print(self._wallet.to_string()+"\n")
+        print('Position:\n' + self._position.get_positions_df().to_string() + "\n")
+        print('Orders:\n' + self._orders.get_orders_df(order_status='New').to_string() + '\n')
+
+        order2 = Order('Sell', self.pair, 'Market', 0.001, take_profit=35000, stop_loss=50000)
+        result = self._orders.place_order(order2)
+        print("Order Result:\n", rapidjson.dumps(result, indent=2))
+
+        self._wallet.update_wallet()
+        print(self._wallet.to_string()+"\n")
+        print('Position:\n' + self._position.get_positions_df().to_string() + "\n")
+        print('Orders:\n' + self._orders.get_orders_df(order_status='New').to_string() + '\n')
+
+        # with open('trace.txt', 'w') as f:
+        #     while True:
+        #         self.print_candles_and_entries(f)
+        #         time.sleep(0.5)
                 # self.throttle(self.print_candles_and_entries, throttle_secs=5, f=f)

@@ -1,14 +1,41 @@
+import time
+
 import pandas as pd
 
 from Configuration import Configuration
 from Logger import Logger
 
 
+class Order:
+    def __init__(self, side, symbol, order_type, qty, price=0, take_profit=0, stop_loss=0):
+        self.side = side
+        self.symbol = symbol
+        self.order_type = order_type
+        self.qty = qty
+        self.price = price
+        self.take_profit = take_profit
+        self.stop_loss = stop_loss
+        self.time_in_force = 'GoodTillCancel' if order_type == 'Market' else 'PostOnly'
+        self.close_on_trigger = False
+        self.reduce_only = False
+
+    def to_string(self):
+        order_str = f'[symbol={self.symbol} type={self.order_type} side={self.side} qty={self.qty}'
+        if self.order_type == 'Limit':
+            order_str += f' price={self.price}'
+        if self.take_profit > 0:
+            order_str += f' tp={self.take_profit}'
+        if self.stop_loss > 0:
+            order_str += f' sl={self.stop_loss}'
+        order_str += f' time_in_force={self.time_in_force}]'
+        return order_str
+
+
 class Orders:
     _orders = None
 
     def __init__(self, exchange):
-        self.logger = Logger.get_module_logger(__name__)
+        self._logger = Logger.get_module_logger(__name__)
         self._config = Configuration.get_config()
         self._pair = self._config['exchange']['pair']
         self._exchange = exchange
@@ -17,26 +44,26 @@ class Orders:
 
     # Order Statuses that can be used as filter:
     # Created, Rejected, New, PartiallyFilled, Filled, Cancelled, PendingCancel
-    def refresh_orders(self):
-        data = self._exchange.get_orders(self._pair, order_status=None)
+    def refresh_orders(self, order_status=None):
+        data = self._exchange.get_orders(self._pair, order_status)
         if data:
             self._orders = data
 
-    def get_orders(self):
-        self.refresh_orders()
+    def get_orders(self, order_status=None):
+        self.refresh_orders(order_status)
         return self._orders
 
     orders = property(get_orders)
 
     # returns a DataFrame containing the Long/Short positions
-    def get_orders_df(self):
-        self.refresh_orders()
+    def get_orders_df(self, order_status=None):
+        self.refresh_orders(order_status)
         df = pd.DataFrame(self._orders)
         # Only keep relevant columns and reorder
         # df = df.loc[:,
         #      ['symbol', 'leverage', 'side', 'size', 'position_value', 'entry_price', 'liq_price',
         #       'is_isolated', 'position_margin', 'unrealised_pnl', 'stop_loss', 'take_profit', 'trailing_stop']]
-        #df.rename(columns={'open_time': 'start'}, inplace=True)
+        # df.rename(columns={'open_time': 'start'}, inplace=True)
         return df
 
     """
@@ -47,11 +74,13 @@ class Orders:
             *order_type: Market, Limit
             *qty: (Order quantity in BTC)
             *price: (Order price. Required if you make limit price order)
-            *time_in_force: PostOnly, GoodTillCancel, ImmediateOrCancel, FillOrKill
-            *close_on_trigger: true, false
-            *reduce_only: true, false
+            take_profit: (Take profit price, only take effect upon opening the position)
             stop_loss: (Stop loss price, only take effect upon opening the position)
     """
-    def place_order(self, side, symbol, order_type, qty, price, time_in_force, close_on_trigger, reduce_only,
-                    stop_loss):
-        pass
+
+    def place_order(self, order):
+        self._logger.info(f"Placing {order.order_type} Order: " + order.to_string())
+        result = self._exchange.place_order(order)
+        time.sleep(0.5)  # Sleep to let the order info be available by http or websocket
+        return result
+

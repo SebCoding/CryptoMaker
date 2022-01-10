@@ -1,4 +1,5 @@
 import logging
+import sys
 
 import constants
 from Configuration import Configuration
@@ -35,7 +36,7 @@ class Logger:
     # Each module can have their own console logger set to different custom levels
     @classmethod
     def get_console_handler(cls, level=logging_level_str_to_int(_logging_level)):
-        c_handler = logging.StreamHandler()
+        c_handler = logging.StreamHandler(sys.stdout)
         c_format = logging.Formatter('[%(name)s] %(levelname)s:  %(message)s')
         c_handler.setFormatter(c_format)
         c_handler.setLevel(level)
@@ -75,7 +76,8 @@ class Logger:
         # Always keep logger level set to logging.DEBUG,
         # but limit the level in handlers as desired
         logger.setLevel(logging.DEBUG)
-        logger.addHandler(cls.get_console_handler(level))
-        logger.addHandler(cls._debug_file_handler)
+        if not logger.handlers:
+            logger.addHandler(cls.get_console_handler(level))
+            logger.addHandler(cls._debug_file_handler)
         logger.propagate = False
         return logger

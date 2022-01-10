@@ -23,7 +23,7 @@ class CandleHandler:
 
     # Fetch 'minimum_candles_to_start' candles preceding 'to_time' (not including to_time)
     def get_historic_candles(self, to_time):
-        self._logger.info(f'Fetching {self.minimum_candles_to_start} prior historical candles.')
+        self._logger.info(f'Fetching {self.minimum_candles_to_start} historical candles.')
         from_time = utils.adjust_from_time_timestamp(to_time, self.interval, self.minimum_candles_to_start)
         to_time -= 1  # subtract 1s because get_candle_data() includes candle to 'to_time'
         df = self._exchange.get_candle_data(self.pair, from_time, to_time, self.interval)

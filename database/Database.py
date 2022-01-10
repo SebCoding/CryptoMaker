@@ -14,24 +14,27 @@ class Database:
     TRADE_ENTRIES_TBL_NAME = 'TradeEntries'
 
     def __init__(self):
-        self.logger = Logger.get_module_logger(__name__)
-        self.config = Configuration.get_config()
-        self.name = self.config['database']['db_name']
+        self._logger = Logger.get_module_logger(__name__)
+        self._config = Configuration.get_config()
+        self.name = self._config['database']['db_name']
         self.db_url = self.get_db_url()
-        self.validate_db_url()
+        self.validate_db()
+        self._logger.info(f"Connection to {self.name} database successful.")
         self.engine = sa.create_engine(self.db_url)
         self.metadata = sa.MetaData(self.engine)
         self.init_tables()
 
+
+
     def get_db_url(self):
-        url = self.URL_TEMPLATE.replace('<db_name>', self.config['database']['db_name'])
-        url = url.replace('<address>', self.config['database']['address'])
-        url = url.replace('<port>', str(self.config['database']['port']))
-        url = url.replace('<username>', self.config['database']['username'])
-        url = url.replace('<password>', self.config['database']['password'])
+        url = self.URL_TEMPLATE.replace('<db_name>', self._config['database']['db_name'])
+        url = url.replace('<address>', self._config['database']['address'])
+        url = url.replace('<port>', str(self._config['database']['port']))
+        url = url.replace('<username>', self._config['database']['username'])
+        url = url.replace('<password>', self._config['database']['password'])
         return url
 
-    def validate_db_url(self):
+    def validate_db(self):
         if not database_exists(self.db_url):
             raise Exception(f'{self.db_url} database does not exists.')
 
@@ -46,7 +49,7 @@ class Database:
             result = connection.execute(query)
             if result.rowcount > 0:
                 for row in result:
-                    self.logger.info(f'SQL Query Result: {row}')
+                    self._logger.info(f'SQL Query Result: {row}')
 
     # Log trade entries to the db
     # def add_trade_entries_df(self, df):

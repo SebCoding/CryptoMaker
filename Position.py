@@ -92,13 +92,21 @@ class Position:
 
     # returns a DataFrame containing the Long/Short positions
     def get_positions_df(self):
-        self.refresh_position()
+        # No need to call: self.refresh_position(). self.positions does it internally
         df = pd.DataFrame(self.positions)
+
         # Only keep relevant columns and reorder
-        df = df.loc[:,
-             ['symbol', 'leverage', 'side', 'size', 'position_value', 'entry_price', 'liq_price',
-              'is_isolated', 'position_margin', 'unrealised_pnl', 'stop_loss', 'take_profit', 'trailing_stop']]
-        #df.rename(columns={'open_time': 'start'}, inplace=True)
+        if 'is_isolated' in df.columns:
+            df.rename(columns={"is_isolated": "isolated"}, inplace=True)
+        if 'unrealised_pnl' in df.columns:
+            df = df.loc[:,
+                 ['symbol', 'leverage', 'side', 'size', 'position_value', 'entry_price', 'liq_price',
+                  'isolated', 'position_margin', 'unrealised_pnl', 'realised_pnl', 'stop_loss', 'take_profit', 'trailing_stop']]
+        else:
+            df = df.loc[:,
+                 ['symbol', 'leverage', 'side', 'size', 'position_value', 'entry_price', 'liq_price',
+                  'isolated', 'position_margin', 'realised_pnl', 'stop_loss', 'take_profit', 'trailing_stop']]
+
         return df
 
     # def get_free(self):

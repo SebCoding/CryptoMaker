@@ -56,7 +56,7 @@ class ExchangeREST:
             self.exchange.set_sandbox_mode(False)
 
         # TODO: Figure out to deal with the logging of the ccxt module
-        self.exchange.logger.setLevel(logging.INFO)
+        self.exchange._logger.setLevel(logging.INFO)
 
         # Market type
         if self._config['exchange']['market_type'] == 'perpetual futures':
