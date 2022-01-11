@@ -127,7 +127,7 @@ class Bot:
                 sys.stdout.write(next(self.status_bar))
                 sys.stdout.flush()
                 self.throttle(self.run, throttle_secs=self.throttle_secs)
-                sys.stdout.write(Bot.erase_status_bar_str(self.STATUS_BAR_LENGTH))
+                print('\r', end='')
                 sys.stdout.flush()
         except Exception as e:
             self._logger.exception(e)
@@ -182,13 +182,6 @@ class Bot:
         while True:
             for bar in bars:
                 yield bar
-
-    @staticmethod
-    def erase_status_bar_str(length):
-        s = 'Bot Running: '
-        for i in range(len(s) * 2 + length):
-            s += '\b'
-        return s
 
     @staticmethod
     def beep(nb, frequency, duration):
