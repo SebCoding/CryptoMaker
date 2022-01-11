@@ -339,7 +339,7 @@ class ExchangeBybit:
                 stop_loss=o.stop_loss,      # TODO: Check what happens when these are 0
                 time_in_force=o.time_in_force,
                 close_on_trigger=False,
-                reduce_only=False
+                reduce_only=o.reduce_only
             )
         elif o.order_type == OrderType.Limit:
             data = self.session_auth.place_active_order(
@@ -352,7 +352,7 @@ class ExchangeBybit:
                 stop_loss=o.stop_loss,
                 time_in_force=o.time_in_force,
                 close_on_trigger=False,
-                reduce_only=False
+                reduce_only=o.reduce_only
             )
         if data and data['ret_code'] == 0 and data['ret_msg'] == 'OK':
             return data['result']

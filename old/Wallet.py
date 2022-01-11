@@ -93,5 +93,5 @@ class Wallets:
         Calculated as: free amount * tradable_balance_ratio
         """
         available_amount = self.get_free(self._config['exchange']['stake_currency']) \
-                           * self._config['trade']['tradable_balance_ratio']
+                           * self._config['trading']['tradable_balance_ratio']
         return available_amount

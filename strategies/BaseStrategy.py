@@ -38,9 +38,9 @@ class BaseStrategy(ABC):
         self.name = self.__class__.__name__
         self.config = Configuration.get_config()
         self.interval = self.config['strategy']['interval']
-        # self.takeprofit = self.config['trade']['takeprofit']
-        # self.stoploss = self.config['trade']['stoploss']
-        # self.tradable_balance_ratio = self.config['trade']['tradable_balance_ratio']
+        # self.takeprofit = self.config['trading']['takeprofit']
+        # self.stoploss = self.config['trading']['stoploss']
+        # self.tradable_balance_ratio = self.config['trading']['tradable_balance_ratio']
         self.minimum_candles_to_start = self.config['strategy']['minimum_candles_to_start']
 
     @abstractmethod

@@ -11,7 +11,8 @@ class Database:
     URL_TEMPLATE = 'postgresql://<username>:<password>@<address>:<port>/<db_name>'
 
     # Table Names
-    TRADE_ENTRIES_TBL_NAME = 'TradeEntries'
+    TRADE_SIGNALS_TBL_NAME = 'TradeSignals'
+    ORDERS_TBL_NAME = 'Orders'
 
     def __init__(self):
         self._logger = Logger.get_module_logger(__name__)
@@ -23,8 +24,6 @@ class Database:
         self.engine = sa.create_engine(self.db_url)
         self.metadata = sa.MetaData(self.engine)
         self.init_tables()
-
-
 
     def get_db_url(self):
         url = self.URL_TEMPLATE.replace('<db_name>', self._config['database']['db_name'])
@@ -51,27 +50,35 @@ class Database:
                 for row in result:
                     self._logger.info(f'SQL Query Result: {row}')
 
-    # Log trade entries to the db
-    # def add_trade_entries_df(self, df):
-    #     table_name = self.TRADE_ENTRIES
+    # Log trade signals to the db
+    # def add_trade_signals_df(self, df):
+    #     table_name = self.TRADE_SIGNALS
     #     df.to_sql(table_name, self.engine, index=False, if_exists='append')
 
-    # Insert trade entries using a list of dictionary
+    # Insert trade signals using a list of dictionary
     # Assuming the table exists
-    def add_trade_entries_dict(self, dict_list):
-        table = self.get_table(self.TRADE_ENTRIES_TBL_NAME)
+    def add_trade_signals_dict(self, dict_list):
+        table = self.get_table(self.TRADE_SIGNALS_TBL_NAME)
+        with self.engine.connect() as connection:
+            connection.execute(table.insert(), dict_list)
+
+    # Insert orders using a list of dictionary
+    # Assuming the table exists
+    def add_order_dict(self, dict_list):
+        table = self.get_table(self.ORDERS_TBL_NAME)
         with self.engine.connect() as connection:
             connection.execute(table.insert(), dict_list)
 
     # Create tables if they don't exist
     def init_tables(self):
-        self.init_trade_entries_table()
+        self.init_trade_signals_table()
+        self.init_orders_table()
 
-    def init_trade_entries_table(self):
+    def init_trade_signals_table(self):
         with self.engine.connect() as connection:
-            if not self.engine.has_table(connection, self.TRADE_ENTRIES_TBL_NAME):
+            if not self.engine.has_table(connection, self.TRADE_SIGNALS_TBL_NAME):
                 # Create a table with the appropriate Columns
-                table = Table(self.TRADE_ENTRIES_TBL_NAME, self.metadata,
+                table = Table(self.TRADE_SIGNALS_TBL_NAME, self.metadata,
                               Column('IdTimestamp', BigInteger, index=True, nullable=False),
                               Column('DateTime', DateTime, index=True, nullable=False),
                               Column('Pair', String, nullable=False),
@@ -83,5 +90,32 @@ class Database:
                               Column('RSI', Float, nullable=False),
                               Column('ADX', Float, nullable=False),
                               Column('Notes', String)
+                              )
+                self.metadata.create_all()
+
+    def init_orders_table(self):
+        with self.engine.connect() as connection:
+            if not self.engine.has_table(connection, self.ORDERS_TBL_NAME):
+                # Create a table with the appropriate Columns
+                table = Table(self.ORDERS_TBL_NAME, self.metadata,
+                              Column('order_id', String, index=True, nullable=False),
+                              Column('user_id', String, nullable=False),
+                              Column('symbol', String, nullable=False),
+                              Column('side', String, nullable=False),
+                              Column('reason', String, nullable=False),
+                              Column('order_type', String, nullable=False),
+                              Column('price', Float, nullable=False),
+                              Column('qty', Float, nullable=False),
+                              Column('time_in_force', String, nullable=False),
+                              Column('order_status', String, nullable=False),
+                              Column('last_exec_price', Float, nullable=False),
+                              Column('cum_exec_qty', Float),
+                              Column('cum_exec_value', Float),
+                              Column('cum_exec_fee', Float),
+                              Column('order_link_id', String),
+                              Column('reduce_only', String, nullable=False),
+                              Column('close_on_trigger', String, nullable=False),
+                              Column('created_time', DateTime, index=True, nullable=False),
+                              Column('updated_time', DateTime, index=True, nullable=False)
                               )
                 self.metadata.create_all()

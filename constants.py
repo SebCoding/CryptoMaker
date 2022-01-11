@@ -75,7 +75,7 @@ CONFIG_SCHEMA = {
             },
             'required': ['name', 'interval', 'minimum_candles_to_start', ]
         },
-        'trade': {
+        'trading': {
             'type': 'object',
             'properties': {
                 'take_profit': {'type': 'number'},
@@ -107,5 +107,5 @@ CONFIG_SCHEMA = {
             'required': ['logging_level', 'debug_file_path', 'output_file_path']
         }
     },
-    'required': ['bot', 'exchange', 'strategy', 'trade', 'database', 'logging']
+    'required': ['bot', 'exchange', 'strategy', 'trading', 'database', 'logging']
 }

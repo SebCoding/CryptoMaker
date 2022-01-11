@@ -56,7 +56,7 @@ class CandleHandler:
             for data in data_list:
                 if data['timestamp'] > self._last_candle_timestamp:
                     # If we only trade on closed candles ignore data that is not confirmed
-                    if self._config['trade']['trade_on_closed_candles_only'] and not data['confirm']:
+                    if self._config['trading']['trade_on_closed_candles_only'] and not data['confirm']:
                         return self._candles_df, False
                     to_append = [
                         {

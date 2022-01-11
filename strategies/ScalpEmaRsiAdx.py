@@ -27,12 +27,12 @@ class ScalpEmaRsiAdx(BaseStrategy):
     ADX_PERIODS = 3
     ADX_THRESHOLD = 30
 
-    def __init__(self):
+    def __init__(self, database):
         super().__init__()
         self.logger = Logger.get_module_logger(__name__)
         self.logger.info(f'Initializing strategy [{self.name}] ' + self.get_strategy_text_details())
         self.last_trade_index = self.minimum_candles_to_start
-        self.db = Database()
+        self.db = database
 
     def get_strategy_text_details(self):
         details = f'EMA({self.EMA_PERIODS}), RSI({self.RSI_PERIODS}), ADX({self.ADX_PERIODS}) ' \
@@ -132,7 +132,7 @@ class ScalpEmaRsiAdx(BaseStrategy):
                     'ADX': row.ADX,
                     'Notes': self.get_strategy_text_details()
                 }
-                self.db.add_trade_entries_dict(signal)
+                self.db.add_trade_signals_dict(signal)
                 return self.data, signal
 
             # RSI exiting overbought area. Short Entry
@@ -152,7 +152,7 @@ class ScalpEmaRsiAdx(BaseStrategy):
                     'ADX': row.ADX,
                     'Notes': self.get_strategy_text_details()
                 }
-                self.db.add_trade_entries_dict(signal)
+                self.db.add_trade_signals_dict(signal)
                 return self.data, signal
 
         return self.data, {'Signal': TradeSignals.NoTrade, 'SignalOffset': signal_index - data_length + 1}
