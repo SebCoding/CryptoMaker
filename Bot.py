@@ -1,5 +1,4 @@
 import datetime as dt
-import logging
 import os
 import sys
 import time
@@ -7,9 +6,7 @@ import time
 import pandas as pd
 import rapidjson
 
-import api_keys
 from Logger import Logger
-import utils
 from CandleHandler import CandleHandler
 from Configuration import Configuration
 from Orders import Orders, Order
@@ -18,10 +15,9 @@ from database.Database import Database
 from enums import TradeSignals
 from enums.BybitEnums import Side, OrderType, OrderStatus
 from enums.TradeSignals import TradeSignals
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable
 
 from exchange.ExchangeBybit import ExchangeBybit
-from pybit import HTTP
 from strategies.ScalpEmaRsiAdx import ScalpEmaRsiAdx
 
 from WalletUSDT import WalletUSDT
@@ -55,112 +51,7 @@ class Bot:
         self._orders = Orders(self._exchange, self.db)
         self.status_bar = self.moving_status_bar(self.STATUS_BAR_CHAR, self.STATUS_BAR_LENGTH)
 
-    @staticmethod
-    def spinning_cursor():
-        while True:
-            for cursor in '|/-\\':
-                yield cursor
-
-    # Create the list of all possible bars for the specified length
-    @staticmethod
-    def init_status_bar(c, length):
-        # c = '#'
-        c = chr(0x2588)
-        bars = []
-        for i in range(length + 1):
-            #bar = '['
-            bar = 'Bot Running: '
-            for j in range(i):
-                bar += c
-            for j in range(i, length):
-                bar += ' '
-            #bar += ']'
-            bars.append(bar)
-        bars[0] = ''
-        return bars
-
-    @staticmethod
-    def moving_status_bar(c, length):
-        bars = Bot.init_status_bar(c, length)
-        while True:
-            for bar in bars:
-                yield bar
-
-    @staticmethod
-    def erase_status_bar_str(length):
-        s = 'Bot Running: '
-        for i in range(len(s)*2 + length):
-            s += '\b'
-        return s
-
-    @staticmethod
-    def beep(nb, silence_time=0.1):
-        if os.name == 'nt':
-            import winsound
-            frequency = 1500  # Set Frequency To 2500 Hertz
-            duration = 500  # Set Duration To 1000 ms == 1 second
-            for i in range(nb):
-                winsound.Beep(frequency, duration)
-                time.sleep(silence_time)
-
-    """
-           Example of testing: throttle()
-           def test_throttle_with_assets(mocker, default_conf) -> None:
-               def throttled_func(nb_assets=-1):
-                   return nb_assets
-
-               worker = get_patched_worker(mocker, default_conf)
-
-               result = worker.throttle(throttled_func, throttle_secs=0.1, nb_assets=777)
-               assert result == 777
-
-               result = worker.throttle(throttled_func, throttle_secs=0.1)
-               assert result == -1
-       """
-
-    def throttle(self, func: Callable[..., Any], throttle_secs: float, *args, **kwargs) -> Any:
-        """
-        Throttles the given callable that it
-        takes at least `min_secs` to finish execution.
-        :param func: Any callable
-        :param throttle_secs: throttling interation execution time limit in seconds
-        :return: Any (result of execution of func)
-        """
-        self._last_throttle_start_time = time.time()
-        # self._logger.debug("========================================")
-        result = func(*args, **kwargs)
-        time_passed = time.time() - self._last_throttle_start_time
-        sleep_duration = max(throttle_secs - time_passed, 0.0)
-        # self._logger.debug(f"Throttling '{func.__name__}()': sleep for {sleep_duration:.2f} s, "
-        #                    f"last iteration took {time_passed:.2f} s.")
-        time.sleep(sleep_duration)
-        return result
-
-    def print_candles_and_entries(self, f):
-        self._candles_df, data_changed = self._candle_handler.get_refreshed_candles()
-        if data_changed:
-            df, result = self.strategy.find_entry(self._candles_df)
-            f.write('')
-            print()
-            f.write('\n' + df.tail(10).to_string())
-            print('\n' + df.tail(10).to_string())
-            f.write(f"\nLast valid signal offset: {result['SignalOffset']}\n")
-            print(f"Last valid signal offset: {result['SignalOffset']}\n")
-            print(self._wallet.to_string())
-            print(self._position.get_positions_df().to_string())
-            print(self._orders.get_orders_df().to_string())
-            exit(1)
-
-            if result['Signal'] in [TradeSignals.EnterLong, TradeSignals.EnterShort]:
-                f.write('')
-                print()
-                f.write('\n' + df.tail(10).to_string())
-                print('\n' + df.tail(10).to_string())
-                f.write(f"\nLast valid signal offset: {result['SignalOffset']}\n")
-                print(f"Last valid signal offset: {result['SignalOffset']}\n")
-                f.write(f"{result['Signal']}: {rapidjson.dumps(result, indent=2)}")
-                print(f"{result['Signal']}: {rapidjson.dumps(result, indent=2)}")
-
+    # Heart of the Bot. Work done at each iteration.
     def run(self):
         # Step 1: Get fresh candle data
         self._candles_df, data_changed = self._candle_handler.get_refreshed_candles()
@@ -168,16 +59,14 @@ class Bot:
         # Step 2: Calculate Indicators, Signals and Find Entries
         if data_changed:
             df, result = self.strategy.find_entry(self._candles_df)
-            # print('.', end='')
 
             # Step 3: Check if we received an entry signal and we are not in an open position
             if result['Signal'] in [TradeSignals.EnterLong, TradeSignals.EnterShort] \
                     and not self._position.currently_in_position():
-                Bot.beep(5)
+                Bot.beep(5, 2500, 100)
                 print(df.tail(10).to_string() + '\n')
                 print(f"{result['Signal']}: {rapidjson.dumps(result, indent=2)}")
                 result = self.enter_trade(result['Signal'])
-
 
     def enter_trade(self, signal):
         entry_mode = self._config['trading']['trade_entry_mode']
@@ -200,9 +89,14 @@ class Bot:
         if side == Side.Buy:
             stop_loss = current_price - stop_loss
             take_profit = current_price + take_profit
+            assert (stop_loss < current_price < take_profit)
         if side == Side.Sell:
             stop_loss = current_price + stop_loss
             take_profit = current_price - take_profit
+            assert (stop_loss > current_price > take_profit)
+
+        stop_loss = round(stop_loss, 0)
+        take_profit = round(take_profit, 0)
 
         # Place Market Order
         if entry_mode == 'taker':
@@ -228,13 +122,83 @@ class Bot:
     def run_forever(self):
         self._logger.info(f'Trading Settings:\n' + rapidjson.dumps(self._config['trading'], indent=2))
         self._logger.info(f"Starting Main Loop with throttling = {self.throttle_secs} sec.")
-        while True:
-            sys.stdout.write(next(self.status_bar))
-            sys.stdout.flush()
-            self.throttle(self.run, throttle_secs=self.throttle_secs)
-            sys.stdout.write(Bot.erase_status_bar_str(self.STATUS_BAR_LENGTH))
-            sys.stdout.flush()
+        try:
+            while True:
+                sys.stdout.write(next(self.status_bar))
+                sys.stdout.flush()
+                self.throttle(self.run, throttle_secs=self.throttle_secs)
+                sys.stdout.write(Bot.erase_status_bar_str(self.STATUS_BAR_LENGTH))
+                sys.stdout.flush()
+        except Exception as e:
+            self._logger.exception(e)
+            raise e
+            Bot.beep(3, 500, 1000)
 
+    def throttle(self, func: Callable[..., Any], throttle_secs: float, *args, **kwargs) -> Any:
+        """
+        Throttles the given callable that it
+        takes at least `min_secs` to finish execution.
+        :param func: Any callable
+        :param throttle_secs: throttling interation execution time limit in seconds
+        :return: Any (result of execution of func)
+        """
+        self._last_throttle_start_time = time.time()
+        # self._logger.debug("========================================")
+        result = func(*args, **kwargs)
+        time_passed = time.time() - self._last_throttle_start_time
+        sleep_duration = max(throttle_secs - time_passed, 0.0)
+        # self._logger.debug(f"Throttling '{func.__name__}()': sleep for {sleep_duration:.2f} s, "
+        #                    f"last iteration took {time_passed:.2f} s.")
+        time.sleep(sleep_duration)
+        return result
+
+    @staticmethod
+    def spinning_cursor():
+        while True:
+            for cursor in '|/-\\':
+                yield cursor
+
+    # Create the list of all possible bars for the specified length
+    @staticmethod
+    def init_status_bar(c, length):
+        # c = '#'
+        c = chr(0x2588)
+        bars = []
+        for i in range(length + 1):
+            # bar = '['
+            bar = 'Bot Running: '
+            for j in range(i):
+                bar += c
+            for j in range(i, length):
+                bar += ' '
+            # bar += ']'
+            bars.append(bar)
+        bars[0] = ''
+        return bars
+
+    @staticmethod
+    def moving_status_bar(c, length):
+        bars = Bot.init_status_bar(c, length)
+        while True:
+            for bar in bars:
+                yield bar
+
+    @staticmethod
+    def erase_status_bar_str(length):
+        s = 'Bot Running: '
+        for i in range(len(s) * 2 + length):
+            s += '\b'
+        return s
+
+    @staticmethod
+    def beep(nb, frequency, duration):
+        # frequency: Set Frequency To 2500 Hertz
+        # duration: Set Duration To 1000 ms == 1 second
+        if os.name == 'nt':
+            import winsound
+            for i in range(nb):
+                winsound.Beep(frequency, duration)
+                time.sleep(0.1)
 
     def run_forever2(self):
         self._logger.info(f"Initializing Main Loop.")
@@ -266,3 +230,28 @@ class Bot:
         #         self.print_candles_and_entries(f)
         #         time.sleep(0.5)
         # self.throttle(self.print_candles_and_entries, throttle_secs=5, f=f)
+
+    def print_candles_and_entries(self, f):
+        self._candles_df, data_changed = self._candle_handler.get_refreshed_candles()
+        if data_changed:
+            df, result = self.strategy.find_entry(self._candles_df)
+            f.write('')
+            print()
+            f.write('\n' + df.tail(10).to_string())
+            print('\n' + df.tail(10).to_string())
+            f.write(f"\nLast valid signal offset: {result['SignalOffset']}\n")
+            print(f"Last valid signal offset: {result['SignalOffset']}\n")
+            print(self._wallet.to_string())
+            print(self._position.get_positions_df().to_string())
+            print(self._orders.get_orders_df().to_string())
+            exit(1)
+
+            if result['Signal'] in [TradeSignals.EnterLong, TradeSignals.EnterShort]:
+                f.write('')
+                print()
+                f.write('\n' + df.tail(10).to_string())
+                print('\n' + df.tail(10).to_string())
+                f.write(f"\nLast valid signal offset: {result['SignalOffset']}\n")
+                print(f"Last valid signal offset: {result['SignalOffset']}\n")
+                f.write(f"{result['Signal']}: {rapidjson.dumps(result, indent=2)}")
+                print(f"{result['Signal']}: {rapidjson.dumps(result, indent=2)}")
