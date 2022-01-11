@@ -5,7 +5,7 @@ from copy import deepcopy
 from typing import NamedTuple, Dict, Any
 
 from Configuration import Configuration
-from exchange.ExchangeREST import ExchangeREST
+from old.ExchangeREST import ExchangeREST
 
 
 class Wallet(NamedTuple):

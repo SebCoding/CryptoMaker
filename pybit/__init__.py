@@ -35,9 +35,6 @@ try:
 except ImportError:
     from json.decoder import JSONDecodeError
 
-# SEB: use our custom logger instead
-# from Logger import Logger
-
 # Versioning.
 VERSION = '1.3.4'
 
@@ -98,7 +95,7 @@ class HTTP:
 
     """
 
-    def __init__(self, endpoint=None, api_key=None, api_secret=None,
+    def __init__(self, endpoint=None, api_key=None, api_secret=None, logger=None,
                  logging_level=logging.INFO, log_requests=False,
                  request_timeout=10, recv_window=5000, force_retry=False,
                  retry_codes=None, ignore_codes=None, max_retries=3,
@@ -112,18 +109,18 @@ class HTTP:
             self.endpoint = endpoint
 
         # Setup logger.
-
-        self.logger = logging.getLogger(__name__)  # Logger.get_module_logger(__name__)
-
-        if len(logging.root.handlers) == 0:
-            #no handler on root logger set -> we add handler just for this logger to not mess with custom logic from outside
-            handler = logging.StreamHandler()
-            handler.setFormatter(logging.Formatter(fmt='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-                                                   datefmt='%Y-%m-%d %H:%M:%S'
-                                                   )
-                                 )
-            handler.setLevel(logging_level)
-            self.logger.addHandler(handler)
+        self.logger = logger
+        if not self.logger:
+            self.logger = logging.getLogger(__name__)
+            if len(logging.root.handlers) == 0:
+                #no handler on root logger set -> we add handler just for this logger to not mess with custom logic from outside
+                handler = logging.StreamHandler()
+                handler.setFormatter(logging.Formatter(fmt='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+                                                       datefmt='%Y-%m-%d %H:%M:%S'
+                                                       )
+                                     )
+                handler.setLevel(logging_level)
+                self.logger.addHandler(handler)
 
         self.logger.debug('Initializing HTTP session.')
         self.log_requests = log_requests
@@ -1905,7 +1902,7 @@ class WebSocket:
     """
 
     def __init__(self, endpoint, api_key=None, api_secret=None,
-                 subscriptions=None, logging_level=logging.INFO,
+                 subscriptions=None, logging_level=logging.INFO, logger=None,
                  max_data_length=200, ping_interval=30, ping_timeout=10,
                  restart_on_error=True, purge_on_fetch=True,
                  trim_data=True):
@@ -1990,17 +1987,18 @@ class WebSocket:
         self.wsName = 'Authenticated' if api_key else 'Non-Authenticated'
 
         # Setup logger.
-        self.logger = logging.getLogger(__name__)
-
-        if len(logging.root.handlers) == 0:
-            # no handler on root logger set -> we add handler just for this logger to not mess with custom logic from outside
-            handler = logging.StreamHandler()
-            handler.setFormatter(logging.Formatter(fmt='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-                                                   datefmt='%Y-%m-%d %H:%M:%S'
-                                                   )
-                                 )
-            handler.setLevel(logging_level)
-            self.logger.addHandler(handler)
+        self.logger = logger
+        if not self.logger:
+            self.logger = logging.getLogger(__name__)
+            if len(logging.root.handlers) == 0:
+                # no handler on root logger set -> we add handler just for this logger to not mess with custom logic from outside
+                handler = logging.StreamHandler()
+                handler.setFormatter(logging.Formatter(fmt='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+                                                       datefmt='%Y-%m-%d %H:%M:%S'
+                                                       )
+                                     )
+                handler.setLevel(logging_level)
+                self.logger.addHandler(handler)
 
         self.logger.debug(f'Initializing {self.wsName} WebSocket.')
 

@@ -148,6 +148,7 @@ class ExchangeBybit:
         log_requests = True
         logging_level = self._config['logging']['logging_level']  # default is logging.INFO
         spot = False  # spot or futures
+        logger = Logger.get_module_logger('pybit')
 
         # Authenticated
         self.session_auth = HTTP(
@@ -160,6 +161,7 @@ class ExchangeBybit:
             force_retry=force_retry,
             log_requests=log_requests,
             logging_level=logging_level,
+            logger=logger,
             spot=spot)
         # Unauthenticated
         # self.session_unauthenticated = HTTP(
@@ -376,12 +378,14 @@ class ExchangeBybit:
     # ===============================================================================
 
     def subscribe_to_topics(self):
+        logger = Logger.get_module_logger('pybit')
         # public subscriptions
         self.ws_public = WebSocket(
             self._ws_endpoint_public,
             subscriptions=self.public_topics,
             ping_interval=25,
-            ping_timeout=24
+            ping_timeout=24,
+            logger=logger
         )
 
         # private subscriptions, connect with authentication
@@ -391,7 +395,8 @@ class ExchangeBybit:
             api_key=self.api_key,
             api_secret=self.api_secret,
             ping_interval=25,
-            ping_timeout=24
+            ping_timeout=24,
+            logger=logger
         )
 
     def build_public_topics_list(self):

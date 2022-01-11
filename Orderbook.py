@@ -2,7 +2,7 @@ import pandas as pd
 from Logger import Logger
 import time
 from Configuration import Configuration
-from exchange.ExchangeWS import ExchangeWS
+from old.ExchangeWS import ExchangeWS
 
 
 class Orderbook:
