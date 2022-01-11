@@ -1,3 +1,5 @@
+import logging
+
 import pandas as pd
 import rapidjson
 
@@ -8,7 +10,8 @@ import datetime as dt
 session_auth = HTTP(
     endpoint='https://api-testnet.bybit.com',
     api_key=api_keys.TESTNET_BYBIT_API_KEY,
-    api_secret=api_keys.TESTNET_BYBIT_API_SECRET
+    api_secret=api_keys.TESTNET_BYBIT_API_SECRET,
+    logging_level=logging.DEBUG
 )
 
 #############################################################################
@@ -23,13 +26,13 @@ session_auth = HTTP(
 # print()
 
 # Positions
-positions = session_auth.my_position(symbol='BTCUSDT')['result']
+#positions = session_auth.my_position(symbol='BTCUSDT')['result']
 # for x in positions:
 #     print(f'Positions:\n{rapidjson.dumps(x, indent=2)}')
-print(f'Position:\n{rapidjson.dumps(positions[0], indent=2)}')
+#print(f'Position:\n{rapidjson.dumps(positions[0], indent=2)}')
 # position_df = pd.DataFrame(positions)
 # print(position_df.to_string())
-print()
+#print()
 
 # Check time difference with Bybit server
 # print(dt.datetime.now())
@@ -44,6 +47,14 @@ print()
 # df['datetime'] = df.trade_time.apply(lambda x: dt.datetime.fromtimestamp(x))
 # print(df.to_string())
 # print()
+
+# Active Orders
+orders = session_auth.get_active_order(symbol='BTCUSDT', order_status='New')['result']['data']
+print(rapidjson.dumps(orders, indent=2))
+df = pd.DataFrame(orders)
+print(df.to_string())
+print()
+
 
 
 

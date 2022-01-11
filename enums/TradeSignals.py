@@ -1,7 +1,7 @@
 from enum import Enum
 
 
-class TradeSignalsStates(str, Enum):
+class TradeSignals(str, Enum):
     # Longs
     EnterLong = 'EnterLong'
     Long = 'Long'

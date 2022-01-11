@@ -5,6 +5,7 @@ LOGGING_LEVELS = ['debug', 'info', 'warning', 'error', 'critical']
 DATE_FORMAT = '%Y-%m-%d'
 DATETIME_FORMAT = '%Y-%m-%d %H:%M:%S'
 
+TRADE_ENTRY_MODES = ['maker', 'taker']
 IMPLEMENTED_STRATEGIES = ['ScalpEmaRsiAdx']
 
 # Valid Intervals. Some intervals are not supported by Bybit Websockets
@@ -77,12 +78,13 @@ CONFIG_SCHEMA = {
         'trade': {
             'type': 'object',
             'properties': {
-                'takeprofit': {'type': 'number'},
-                'stoploss': {'type': 'number'},
+                'take_profit': {'type': 'number'},
+                'stop_loss': {'type': 'number'},
                 'tradable_balance_ratio': {'type': 'number', 'minimum': 0.0, 'maximum': 1.0},
-                'trade_on_closed_candles_only': {'type': 'boolean', 'default': False}
+                'trade_on_closed_candles_only': {'type': 'boolean', 'default': False},
+                'trade_entry_mode':  {'type': 'string', 'enum': TRADE_ENTRY_MODES},
             },
-            'required': ['takeprofit', 'stoploss', 'tradable_balance_ratio', 'trade_on_closed_candles_only']
+            'required': ['take_profit', 'stop_loss', 'tradable_balance_ratio', 'trade_on_closed_candles_only', 'trade_entry_mode']
         },
         'database': {
             'type': 'object',

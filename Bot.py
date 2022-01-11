@@ -1,19 +1,26 @@
 import datetime as dt
+import logging
+import os
+import sys
 import time
 
+import pandas as pd
 import rapidjson
 
+import api_keys
 from Logger import Logger
 import utils
 from CandleHandler import CandleHandler
 from Configuration import Configuration
 from Orders import Orders, Order
 from Position import Position
-from enums import TradeSignalsStates
-from enums.TradeSignalsStates import TradeSignalsStates
+from enums import TradeSignals
+from enums.BybitEnums import Side, OrderType, OrderStatus
+from enums.TradeSignals import TradeSignals
 from typing import Any, Callable, Dict, Optional
 
 from exchange.ExchangeBybit import ExchangeBybit
+from pybit import HTTP
 from strategies.ScalpEmaRsiAdx import ScalpEmaRsiAdx
 
 from WalletUSDT import WalletUSDT
@@ -23,11 +30,16 @@ class Bot:
     _candles_df = None
     _wallet = None
 
+    MIN_TRADE_AMOUNT = 20
+
+    STATUS_BAR_CHAR = chr(0x2588)
+    STATUS_BAR_LENGTH = 20
+
     def __init__(self):
         self._logger = Logger.get_module_logger(__name__)
         self._config = Configuration.get_config()
-        net = 'Testnet' if self._config['exchange']['testnet'] else 'Mainnet'
-        self._logger.info(f"Initializing Bot to run on {self._config['exchange']['name']} {net}.")
+        net = '** Testnet **' if self._config['exchange']['testnet'] else 'Mainnet'
+        self._logger.info(f"Initializing Bot to run on: {self._config['exchange']['name']} {net}.")
         self._last_throttle_start_time = 0.0
         self.throttle_secs = self._config['bot']['throttle_secs']
         self.pair = self._config['exchange']['pair']
@@ -39,6 +51,56 @@ class Bot:
         self._wallet = WalletUSDT(self._exchange, self.stake_currency)
         self._position = Position(self._exchange)
         self._orders = Orders(self._exchange)
+
+        self.status_bar = self.moving_status_bar(self.STATUS_BAR_CHAR, self.STATUS_BAR_LENGTH)
+
+    @staticmethod
+    def spinning_cursor():
+        while True:
+            for cursor in '|/-\\':
+                yield cursor
+
+    # Create the list of all possible bars for the specified length
+    @staticmethod
+    def init_status_bar(c, length):
+        # c = '#'
+        c = chr(0x2588)
+        bars = []
+        for i in range(length + 1):
+            #bar = '['
+            bar = 'Bot Running: '
+            for j in range(i):
+                bar += c
+            for j in range(i, length):
+                bar += ' '
+            #bar += ']'
+            bars.append(bar)
+        bars[0] = ''
+        return bars
+
+    @staticmethod
+    def moving_status_bar(c, length):
+        bars = Bot.init_status_bar(c, length)
+        while True:
+            for bar in bars:
+                yield bar
+
+    @staticmethod
+    def erase_status_bar_str(length):
+        s = 'Bot Running: '
+        for i in range(len(s)*2 + length):
+            s += '\b'
+        return s
+
+    @staticmethod
+    def beep(nb, silence_time=0.1):
+        if os.name == 'nt':
+            import winsound
+            frequency = 1500  # Set Frequency To 2500 Hertz
+            duration = 500  # Set Duration To 1000 ms == 1 second
+            for i in range(nb):
+                winsound.Beep(frequency, duration)
+                time.sleep(silence_time)
 
     """
            Example of testing: throttle()
@@ -64,12 +126,12 @@ class Bot:
         :return: Any (result of execution of func)
         """
         self._last_throttle_start_time = time.time()
-        self._logger.debug("========================================")
+        # self._logger.debug("========================================")
         result = func(*args, **kwargs)
         time_passed = time.time() - self._last_throttle_start_time
         sleep_duration = max(throttle_secs - time_passed, 0.0)
-        self._logger.debug(f"Throttling '{func.__name__}()': sleep for {sleep_duration:.2f} s, "
-                           f"last iteration took {time_passed:.2f} s.")
+        # self._logger.debug(f"Throttling '{func.__name__}()': sleep for {sleep_duration:.2f} s, "
+        #                    f"last iteration took {time_passed:.2f} s.")
         time.sleep(sleep_duration)
         return result
 
@@ -88,8 +150,7 @@ class Bot:
             print(self._orders.get_orders_df().to_string())
             exit(1)
 
-
-            if result['Signal'] in [TradeSignalsStates.EnterLong, TradeSignalsStates.EnterShort]:
+            if result['Signal'] in [TradeSignals.EnterLong, TradeSignals.EnterShort]:
                 f.write('')
                 print()
                 f.write('\n' + df.tail(10).to_string())
@@ -99,33 +160,97 @@ class Bot:
                 f.write(f"{result['Signal']}: {rapidjson.dumps(result, indent=2)}")
                 print(f"{result['Signal']}: {rapidjson.dumps(result, indent=2)}")
 
+    def run(self):
+        # Step 1: Get fresh candle data
+        self._candles_df, data_changed = self._candle_handler.get_refreshed_candles()
+
+        # Step 2: Calculate Indicators, Signals and Find Entries
+        if data_changed:
+            df, result = self.strategy.find_entry(self._candles_df)
+            # print('.', end='')
+
+            # Step 3: Check if we received an entry signal and we are not in an open position
+            if result['Signal'] in [TradeSignals.EnterLong, TradeSignals.EnterShort] \
+                    and not self._position.currently_in_position():
+                Bot.beep(5)
+                print(df.tail(10).to_string() + '\n')
+                result = self.enter_trade(result['Signal'])
+
+
+    def enter_trade(self, signal):
+        entry_mode = self._config['trade']['trade_entry_mode']
+        take_profit_pct = self._config['trade']['take_profit']
+        stop_loss_pct = self._config['trade']['stop_loss']
+        tradable_ratio = self._config['trade']['tradable_balance_ratio']
+        side = Side.Buy if signal == TradeSignals.EnterLong else Side.Sell
+        side_tp = Side.Buy if side == Side.Sell else Side.Sell  # TP is opposite side of the order
+        balance = self._wallet.free
+        current_price = self._candle_handler.get_latest_price()
+
+        tradable_balance = balance * tradable_ratio
+        if tradable_balance < self.MIN_TRADE_AMOUNT:
+            return None
+
+        amount = round(tradable_balance / current_price, 4)
+        stop_loss = round(current_price + (current_price * stop_loss_pct), 0)
+        take_profit = round(current_price + (current_price * take_profit_pct), 0)
+
+        # Place Market Order
+        if entry_mode == 'taker':
+            order = Order(side=side, symbol=self.pair, order_type=OrderType.Market, qty=amount, stop_loss=stop_loss)
+            result = self._orders.place_order(order)
+            time.sleep(1)  # Sleep to let the order info be available by http or websocket
+
+            tp_order = Order(side=side_tp, symbol=self.pair, order_type=OrderType.Limit, qty=amount, price=take_profit)
+            while not self._position.currently_in_position(side):
+                time.sleep(0.5)
+            result = self._orders.place_order(tp_order)
+
+        # Place Limit Order
+        elif entry_mode == 'maker':
+            msg = f'Config Error: trade_entry_mode={entry_mode} not yet implemented'
+            self._logger(msg)
+            raise Exception(msg)
+
+        return True
+
     def run_forever(self):
+        self._logger.info(f"Starting Main Loop with throttling = {self.throttle_secs} sec.")
+        while True:
+            sys.stdout.write(next(self.status_bar))
+            sys.stdout.flush()
+            self.throttle(self.run, throttle_secs=self.throttle_secs)
+            sys.stdout.write(Bot.erase_status_bar_str(self.STATUS_BAR_LENGTH))
+            sys.stdout.flush()
+        print()
+
+    def run_forever2(self):
         self._logger.info(f"Initializing Main Loop.")
 
-        print(self._wallet.to_string()+"\n")
+        print(self._wallet.to_string() + "\n")
         print('Position:\n' + self._position.get_positions_df().to_string() + "\n")
-        print('Orders:\n' + self._orders.get_orders_df(order_status='New').to_string() + '\n')
+        print('Orders:\n' + self._orders.get_orders_df(order_status=OrderStatus.New).to_string() + '\n')
 
-        order1 = Order('Buy', self.pair, 'Limit', 0.1, 10000, take_profit=11000, stop_loss=9000)
+        order1 = Order(Side.Buy, self.pair, OrderType.Limit, 0.1, 10000, take_profit=11000, stop_loss=9000)
         result = self._orders.place_order(order1)
         print("Order Result:\n", rapidjson.dumps(result, indent=2))
 
         self._wallet.update_wallet()
-        print(self._wallet.to_string()+"\n")
+        print(self._wallet.to_string() + "\n")
         print('Position:\n' + self._position.get_positions_df().to_string() + "\n")
-        print('Orders:\n' + self._orders.get_orders_df(order_status='New').to_string() + '\n')
+        print('Orders:\n' + self._orders.get_orders_df(order_status=OrderStatus.New).to_string() + '\n')
 
-        order2 = Order('Sell', self.pair, 'Market', 0.001, take_profit=35000, stop_loss=50000)
+        order2 = Order(Side.Sell, self.pair, OrderType.Market, 0.001, take_profit=35000, stop_loss=50000)
         result = self._orders.place_order(order2)
         print("Order Result:\n", rapidjson.dumps(result, indent=2))
 
         self._wallet.update_wallet()
-        print(self._wallet.to_string()+"\n")
+        print(self._wallet.to_string() + "\n")
         print('Position:\n' + self._position.get_positions_df().to_string() + "\n")
-        print('Orders:\n' + self._orders.get_orders_df(order_status='New').to_string() + '\n')
+        print('Orders:\n' + self._orders.get_orders_df(order_status=OrderStatus.New).to_string() + '\n')
 
         # with open('trace.txt', 'w') as f:
         #     while True:
         #         self.print_candles_and_entries(f)
         #         time.sleep(0.5)
-                # self.throttle(self.print_candles_and_entries, throttle_secs=5, f=f)
+        # self.throttle(self.print_candles_and_entries, throttle_secs=5, f=f)

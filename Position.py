@@ -43,6 +43,7 @@ import rapidjson
 
 from Configuration import Configuration
 from Logger import Logger
+from enums.BybitEnums import Side
 
 
 class Position:
@@ -109,22 +110,14 @@ class Position:
 
         return df
 
-    # def get_free(self):
-    #     self.update_wallet()
-    #     return self._free
-    #
-    # def get_used(self):
-    #     self.update_wallet()
-    #     return self._used
-    #
-    # def get_total(self):
-    #     self.update_wallet()
-    #     return self._total
-    #
-    # free = property(get_free)
-    # used = property(get_used)
-    # total = property(get_total)
-    #
-    # def to_string(self) -> str:
-    #     result = f'{self._stake_currency} Wallet (free: {self._free}, used: {self._used}, total: {self._total})'
-    #     return result
+    def currently_in_position(self, side=None):
+        self.refresh_position()
+        if not side:
+            return self._long_position['size'] > 0 or self._short_position['size'] > 0
+        if side == Side.Buy:
+            return self._long_position['size'] > 0
+        if side == Side.Sell:
+            return self._short_position['size'] > 0
+
+    0
+

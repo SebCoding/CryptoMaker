@@ -4,6 +4,7 @@ import pandas as pd
 
 from Configuration import Configuration
 from Logger import Logger
+from enums.BybitEnums import TimeInForce, OrderType
 
 
 class Order:
@@ -15,7 +16,7 @@ class Order:
         self.price = price
         self.take_profit = take_profit
         self.stop_loss = stop_loss
-        self.time_in_force = 'GoodTillCancel' if order_type == 'Market' else 'PostOnly'
+        self.time_in_force = TimeInForce.GTC if order_type == OrderType.Market else TimeInForce.PostOnly
         self.close_on_trigger = False
         self.reduce_only = False
 
@@ -77,10 +78,8 @@ class Orders:
             take_profit: (Take profit price, only take effect upon opening the position)
             stop_loss: (Stop loss price, only take effect upon opening the position)
     """
-
     def place_order(self, order):
         self._logger.info(f"Placing {order.order_type} Order: " + order.to_string())
         result = self._exchange.place_order(order)
-        time.sleep(0.5)  # Sleep to let the order info be available by http or websocket
         return result
 

@@ -64,6 +64,7 @@ import utils
 from Logger import Logger
 from Configuration import Configuration
 from Orders import Order
+from enums.BybitEnums import OrderType
 from pybit import HTTP, WebSocket
 
 
@@ -328,7 +329,7 @@ class ExchangeBybit:
     """
     def place_order(self, o: Order):
         data = None
-        if o.order_type == 'Market':
+        if o.order_type == OrderType.Market:
             data = self.session_auth.place_active_order(
                 side=o.side,
                 symbol=o.symbol,
@@ -340,7 +341,7 @@ class ExchangeBybit:
                 close_on_trigger=False,
                 reduce_only=False
             )
-        elif o.order_type == 'Limit':
+        elif o.order_type == OrderType.Limit:
             data = self.session_auth.place_active_order(
                 side=o.side,
                 symbol=self.pair,
@@ -362,6 +363,13 @@ class ExchangeBybit:
                 msg = f"Placing {o.order_type}(side={o.side}, qty={o.qty}, price={o.price}, tp={o.take_profit}, sl={o.stop_loss})"
             self._logger.error(msg, f" order failed. Error code: {data['ext_code']}.")
         return None
+
+    # Get the latest price and other information of the current pair
+    # TODO: not finished, never tested
+    def public_trading_records(self):
+        data = self.session_auth.public_trading_records(symbol=self.pair)
+        if data:
+            return data['result']
 
     # ===============================================================================
     #   Websockets Related Methods

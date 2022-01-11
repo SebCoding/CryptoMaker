@@ -3,8 +3,8 @@ import datetime as dt
 import constants
 from Logger import Logger
 from database.Database import Database
-from enums import TradeSignalsStates
-from enums.TradeSignalsStates import TradeSignalsStates
+from enums import TradeSignals
+from enums.TradeSignals import TradeSignals
 from strategies.BaseStrategy import BaseStrategy
 
 
@@ -37,7 +37,8 @@ class ScalpEmaRsiAdx(BaseStrategy):
     def get_strategy_text_details(self):
         details = f'EMA({self.EMA_PERIODS}), RSI({self.RSI_PERIODS}), ADX({self.ADX_PERIODS}) ' \
                   f'RSI_SIGNAL({self.RSI_MIN_SIGNAL_THRESHOLD}, {self.RSI_MAX_SIGNAL_THRESHOLD}), ' \
-                  f'RSI_ENTRY({self.RSI_MIN_ENTRY_THRESHOLD}, {self.RSI_MAX_ENTRY_THRESHOLD})'
+                  f'RSI_ENTRY({self.RSI_MIN_ENTRY_THRESHOLD}, {self.RSI_MAX_ENTRY_THRESHOLD}), ' \
+                  f'ADX_THRESHOLD({self.ADX_THRESHOLD})'
         return details
 
     # Step 1: Calculate indicator values required to determine long/short signals
@@ -99,7 +100,7 @@ class ScalpEmaRsiAdx(BaseStrategy):
         # We ignore all signals for candles prior to when the application
         # was started or when the last trade entry that we signaled
         if signal_index <= self.last_trade_index:
-            return self.data, {'Signal': TradeSignalsStates.NoTrade, 'SignalOffset': 0}
+            return self.data, {'Signal': TradeSignals.NoTrade, 'SignalOffset': 0}
 
         long_signal = True if self.data['signal'].iloc[signal_index] == 1 else False
         short_signal = True if self.data['signal'].iloc[signal_index] == -1 else False
@@ -108,11 +109,11 @@ class ScalpEmaRsiAdx(BaseStrategy):
         for i, row in self.data.iloc[start_scan:].iterrows():
             # If after receiving a long signal the EMA or ADX are no longer satisfied, cancel signal
             if long_signal and (row.close < row.EMA or row.ADX < self.ADX_THRESHOLD):
-                return self.data, {'Signal': TradeSignalsStates.NoTrade, 'SignalOffset': signal_index - data_length + 1}
+                return self.data, {'Signal': TradeSignals.NoTrade, 'SignalOffset': signal_index - data_length + 1}
 
             # If after receiving a short signal the EMA or ADX are no longer satisfied, cancel signal
             if short_signal and (row.close > row.EMA or row.ADX < self.ADX_THRESHOLD):
-                return self.data, {'Signal': TradeSignalsStates.NoTrade, 'SignalOffset': signal_index - data_length + 1}
+                return self.data, {'Signal': TradeSignals.NoTrade, 'SignalOffset': signal_index - data_length + 1}
 
             # RSI exiting oversold area. Long Entry
             if long_signal and row.RSI > self.RSI_MIN_ENTRY_THRESHOLD:
@@ -123,7 +124,7 @@ class ScalpEmaRsiAdx(BaseStrategy):
                     'DateTime': dt.datetime.fromtimestamp(row.timestamp / 1000000).strftime(constants.DATETIME_FORMAT),
                     'Pair': row.pair,
                     'Interval': self.interval,
-                    'Signal': TradeSignalsStates.EnterLong,
+                    'Signal': TradeSignals.EnterLong,
                     'SignalOffset': signal_index - data_length + 1,
                     'EntryPrice': row.close,
                     'EMA': row.EMA,
@@ -143,7 +144,7 @@ class ScalpEmaRsiAdx(BaseStrategy):
                     'DateTime': dt.datetime.fromtimestamp(row.timestamp / 1000000).strftime(constants.DATETIME_FORMAT),
                     'Pair': row.pair,
                     'Interval': self.interval,
-                    'Signal': TradeSignalsStates.EnterShort,
+                    'Signal': TradeSignals.EnterShort,
                     'SignalOffset': signal_index - data_length + 1,
                     'EntryPrice': row.close,
                     'EMA': row.EMA,
@@ -154,4 +155,4 @@ class ScalpEmaRsiAdx(BaseStrategy):
                 self.db.add_trade_entries_dict(signal)
                 return self.data, signal
 
-        return self.data, {'Signal': TradeSignalsStates.NoTrade, 'SignalOffset': signal_index - data_length + 1}
+        return self.data, {'Signal': TradeSignals.NoTrade, 'SignalOffset': signal_index - data_length + 1}

@@ -103,12 +103,14 @@ class CandleHandler:
 
                     # Confirm that the websocket did not skip any data
                     # Current candle 'start' time must be equal to prior candle 'end' time
-                    if len(self._candles_df) >= 2 and (self._candles_df["start"].iloc[-1] != self._candles_df["end"].iloc[-2]):
+                    if len(self._candles_df) >= 2 and (
+                            self._candles_df["start"].iloc[-1] != self._candles_df["end"].iloc[-2]):
                         msg = f'*******  start[{self._candles_df["start"].iloc[-1]}] != prev_end[{self._candles_df["end"].iloc[-2]}]  *******\n'
                         msg += self._candles_df.tail(2).to_string() + '\n'
                         self._logger.error(msg)
                         # The dataframe is corrupted. Rebuild the dataframe from scratch
-                        self._logger.error('Recovering from missing candle data. rebuilding the dataframe from scratch.')
+                        self._logger.error(
+                            'Recovering from missing candle data. rebuilding the dataframe from scratch.')
                         self._candles_df = self.get_historic_candles(int(data['start']))
                         self._candles_df = self._candles_df.append(to_append, ignore_index=True)
                         self._logger.error('Candles dataframe has been rebuilt successfully.')
@@ -116,6 +118,10 @@ class CandleHandler:
                     self._last_candle_timestamp = data['timestamp']
                     data_changed = True
         return self._candles_df, data_changed
+
+    def get_latest_price(self):
+        self.get_refreshed_candles()
+        return self._candles_df["close"].iloc[-1]
 
     # For experimenting with websockets and ohlcv data
     def print_candles(self, sleep=0.0):
