@@ -78,13 +78,17 @@ CONFIG_SCHEMA = {
         'trading': {
             'type': 'object',
             'properties': {
+                'leverage_long': {'type': 'number', 'minimum': 1, 'maximum': 50},
+                'leverage_short': {'type': 'number', 'minimum': 1, 'maximum': 50},
                 'take_profit': {'type': 'number'},
                 'stop_loss': {'type': 'number'},
                 'tradable_balance_ratio': {'type': 'number', 'minimum': 0.01, 'maximum': 1.0},
                 'trade_on_closed_candles_only': {'type': 'boolean', 'default': False},
                 'trade_entry_mode':  {'type': 'string', 'enum': TRADE_ENTRY_MODES},
             },
-            'required': ['take_profit', 'stop_loss', 'tradable_balance_ratio', 'trade_on_closed_candles_only', 'trade_entry_mode']
+            'required': ['leverage_long', 'leverage_short', 'take_profit', 'stop_loss',
+                         'tradable_balance_ratio', 'trade_on_closed_candles_only',
+                         'trade_entry_mode']
         },
         'database': {
             'type': 'object',

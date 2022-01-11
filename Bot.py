@@ -35,16 +35,16 @@ class Bot:
     def __init__(self):
         self._logger = Logger.get_module_logger(__name__)
         self._config = Configuration.get_config()
+        self.pair = self._config['exchange']['pair']
         net = '** Testnet **' if self._config['exchange']['testnet'] else 'Mainnet'
-        self._logger.info(f"Initializing Bot to run on: {self._config['exchange']['name']} {net}.")
+        self._logger.info(f"Initializing Bot to trade {self.pair} on {self._config['exchange']['name']} {net}.")
+        self.stake_currency = self._config['exchange']['stake_currency']
         self._last_throttle_start_time = 0.0
         self.throttle_secs = self._config['bot']['throttle_secs']
-        self.pair = self._config['exchange']['pair']
-        self.stake_currency = self._config['exchange']['stake_currency']
-        self.db = Database()
-        self.strategy = globals()[self._config['strategy']['name']](self.db)
 
+        self.db = Database()
         self._exchange = ExchangeBybit()
+        self.strategy = globals()[self._config['strategy']['name']](self.db)
         self._candle_handler = CandleHandler(self._exchange)
         self._wallet = WalletUSDT(self._exchange, self.stake_currency)
         self._position = Position(self._exchange)
@@ -131,8 +131,40 @@ class Bot:
                 sys.stdout.flush()
         except Exception as e:
             self._logger.exception(e)
-            raise e
             Bot.beep(3, 500, 1000)
+            raise e
+
+
+    def run_forever2(self):
+        self._logger.info(f"Initializing Main Loop.")
+
+        print(self._wallet.to_string() + "\n")
+        print('Position:\n' + self._position.get_positions_df().to_string() + "\n")
+        print('Orders:\n' + self._orders.get_orders_df(order_status=OrderStatus.New).to_string() + '\n')
+
+        order1 = Order(Side.Buy, self.pair, OrderType.Limit, 0.1, 10000, take_profit=11000, stop_loss=9000)
+        result = self._orders.place_order(order1, 'TakeProfit')
+        print("Order Result:\n", rapidjson.dumps(result, indent=2))
+
+        # self._wallet.update_wallet()
+        # print(self._wallet.to_string() + "\n")
+        # print('Position:\n' + self._position.get_positions_df().to_string() + "\n")
+        # print('Orders:\n' + self._orders.get_orders_df(order_status=OrderStatus.New).to_string() + '\n')
+        #
+        # order2 = Order(Side.Sell, self.pair, OrderType.Market, 0.001, take_profit=35000, stop_loss=50000)
+        # result = self._orders.place_order(order2)
+        # print("Order Result:\n", rapidjson.dumps(result, indent=2))
+        #
+        # self._wallet.update_wallet()
+        # print(self._wallet.to_string() + "\n")
+        # print('Position:\n' + self._position.get_positions_df().to_string() + "\n")
+        # print('Orders:\n' + self._orders.get_orders_df(order_status=OrderStatus.New).to_string() + '\n')
+
+        # with open('trace.txt', 'w') as f:
+        #     while True:
+        #         self.print_candles_and_entries(f)
+        #         time.sleep(0.5)
+        # self.throttle(self.print_candles_and_entries, throttle_secs=5, f=f)
 
     def throttle(self, func: Callable[..., Any], throttle_secs: float, *args, **kwargs) -> Any:
         """
@@ -192,37 +224,6 @@ class Bot:
             for i in range(nb):
                 winsound.Beep(frequency, duration)
                 time.sleep(0.1)
-
-    def run_forever2(self):
-        self._logger.info(f"Initializing Main Loop.")
-
-        print(self._wallet.to_string() + "\n")
-        print('Position:\n' + self._position.get_positions_df().to_string() + "\n")
-        print('Orders:\n' + self._orders.get_orders_df(order_status=OrderStatus.New).to_string() + '\n')
-
-        order1 = Order(Side.Buy, self.pair, OrderType.Limit, 0.1, 10000, take_profit=11000, stop_loss=9000)
-        result = self._orders.place_order(order1, 'TakeProfit')
-        print("Order Result:\n", rapidjson.dumps(result, indent=2))
-
-        # self._wallet.update_wallet()
-        # print(self._wallet.to_string() + "\n")
-        # print('Position:\n' + self._position.get_positions_df().to_string() + "\n")
-        # print('Orders:\n' + self._orders.get_orders_df(order_status=OrderStatus.New).to_string() + '\n')
-        #
-        # order2 = Order(Side.Sell, self.pair, OrderType.Market, 0.001, take_profit=35000, stop_loss=50000)
-        # result = self._orders.place_order(order2)
-        # print("Order Result:\n", rapidjson.dumps(result, indent=2))
-        #
-        # self._wallet.update_wallet()
-        # print(self._wallet.to_string() + "\n")
-        # print('Position:\n' + self._position.get_positions_df().to_string() + "\n")
-        # print('Orders:\n' + self._orders.get_orders_df(order_status=OrderStatus.New).to_string() + '\n')
-
-        # with open('trace.txt', 'w') as f:
-        #     while True:
-        #         self.print_candles_and_entries(f)
-        #         time.sleep(0.5)
-        # self.throttle(self.print_candles_and_entries, throttle_secs=5, f=f)
 
     def print_candles_and_entries(self, f):
         self._candles_df, data_changed = self._candle_handler.get_refreshed_candles()

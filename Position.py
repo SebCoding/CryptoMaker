@@ -53,12 +53,25 @@ class Position:
     _short_position = None
 
     def __init__(self, exchange):
-        self.logger = Logger.get_module_logger(__name__)
+        self._logger = Logger.get_module_logger(__name__)
         self._config = Configuration.get_config()
         self._pair = self._config['exchange']['pair']
         self._exchange = exchange
         self._stake_currency = self._config['exchange']['stake_currency']
         self.refresh_position()
+
+        # Adjust leverage
+        leverage_long = round(float(self._config['trading']['leverage_long']), 1)
+        leverage_short = round(float(self._config['trading']['leverage_short']), 1)
+
+        if self._long_position['leverage'] != leverage_long or self._short_position['leverage'] != leverage_short:
+            result = self._exchange.session_auth.set_leverage(
+                symbol=self._pair,
+                buy_leverage=leverage_long,
+                sell_leverage=leverage_short
+            )
+            self.refresh_position()
+        self._logger.info(f"Adjusting Leverage: Long[{leverage_long}x] Short[{leverage_short}x].")
 
     def refresh_position(self):
         # Data contains a list of 2 dictionaries.
@@ -119,5 +132,6 @@ class Position:
         if side == Side.Sell:
             return self._short_position['size'] > 0
 
-    0
+
+
 

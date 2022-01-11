@@ -133,12 +133,7 @@ class ExchangeBybit:
         self.public_topics = self.build_public_topics_list()
         self.private_topics = self.build_private_topics_list()
 
-        # TODO use a trier decorator to retry with timeouts
-        try:
-            self.subscribe_to_topics()
-        except WebSocketTimeoutException as e:
-            self._logger.exception(f'Websocket Timeout')
-            raise e
+        self.subscribe_to_topics()
 
     def create_http_session(self):
         force_retry = True
