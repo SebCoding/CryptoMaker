@@ -105,7 +105,7 @@ class Orders:
         return result
 
     def update_db_order_stop_loss_by_id(self, order_id, new_stop_loss):
-        self.db.update_db_order_stop_loss_by_id(order_id, new_stop_loss)
+        self.db.update_order_stop_loss_by_id(order_id, new_stop_loss)
         self._logger.info(f'DB Order: {order_id} has been updated with new stop_loss={new_stop_loss}.')
 
     """

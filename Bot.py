@@ -110,7 +110,6 @@ class Bot:
         self._logger.info(f'{now} Entered {_side} position, entry_price={entry_price} size={size}.')
 
         # Step 2: Place a limit take_profit order based on the confirmed position entry_price
-        # side_tp = OrderSide.Buy if side == OrderSide.Sell else OrderSide.Sell
         # Calculate take_profit based the on actual position entry price
         take_profit = 0
         if side == OrderSide.Buy:
@@ -119,7 +118,9 @@ class Bot:
             take_profit = self.get_take_profit(side, entry_price)
         take_profit = round(take_profit, 0)
 
-        tp_order = Order(side=side, symbol=self.pair, order_type=OrderType.Limit, qty=trade_amount,
+        # take_profit order side is opposite has trade entry
+        side_tp = OrderSide.Buy if side == OrderSide.Sell else OrderSide.Sell
+        tp_order = Order(side=side_tp, symbol=self.pair, order_type=OrderType.Limit, qty=trade_amount,
                          price=take_profit, reduce_only=True)
         tp_order_id = self._orders.place_order(tp_order, 'TakeProfit')['order_id']
 
