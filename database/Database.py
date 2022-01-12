@@ -21,6 +21,9 @@ class Database:
         self._logger = Logger.get_module_logger(__name__)
         self._config = Configuration.get_config()
         self.name = self._config['database']['db_name']
+        # Switch to test database if user forgot to change it
+        if self._config['exchange']['testnet'] and not self.name.endswith('Test'):
+            self.name = self.name + 'Test'
         self.db_url = self.get_db_url()
         self.validate_db()
         self._logger.info(f"Connection to {self.name} database successful.")
@@ -29,7 +32,7 @@ class Database:
         self.init_tables()
 
     def get_db_url(self):
-        url = self.URL_TEMPLATE.replace('<db_name>', self._config['database']['db_name'])
+        url = self.URL_TEMPLATE.replace('<db_name>', self.name)
         url = url.replace('<address>', self._config['database']['address'])
         url = url.replace('<port>', str(self._config['database']['port']))
         url = url.replace('<username>', self._config['database']['username'])

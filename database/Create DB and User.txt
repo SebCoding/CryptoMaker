@@ -1,8 +1,16 @@
-# Create CryptoMaker database and user
+-- Create CryptoMaker database and user
 CREATE DATABASE "CryptoMaker";
 CREATE USER "CryptoMakerUser" WITH ENCRYPTED PASSWORD 'yourpass';
 
-# Grant privileges to "CryptoMakerUser" user
+-- Grant privileges to "CryptoMakerUser" user
 GRANT CONNECT ON DATABASE "CryptoMaker" TO "CryptoMakerUser";
 GRANT ALL PRIVILEGES ON DATABASE "CryptoMaker" TO "CryptoMakerUser";
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO "CryptoMakerUser";
+
+-- Create CryptoMakerTest database
+CREATE DATABASE "CryptoMakerTest";
+
+-- Grant privileges to "CryptoMakerUser" user
+GRANT CONNECT ON DATABASE "CryptoMakerTest" TO "CryptoMakerUser";
+GRANT ALL PRIVILEGES ON DATABASE "CryptoMakerTest" TO "CryptoMakerUser";
 GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO "CryptoMakerUser";
