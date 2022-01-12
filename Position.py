@@ -39,10 +39,11 @@
     }
 """
 import pandas as pd
-import rapidjson
+import datetime as dt
 
+import constants
 from Configuration import Configuration
-from Logger import Logger
+from logging_.Logger import Logger
 from enums.BybitEnums import OrderSide
 
 
@@ -52,10 +53,11 @@ class Position:
     _long_position = None
     _short_position = None
 
-    def __init__(self, exchange):
+    def __init__(self, database, exchange):
         self._logger = Logger.get_module_logger(__name__)
         self._config = Configuration.get_config()
         self._pair = self._config['exchange']['pair']
+        self._db = database
         self._exchange = exchange
         self._stake_currency = self._config['exchange']['stake_currency']
         self.refresh_position()
@@ -143,6 +145,53 @@ class Position:
             return self._long_position['size'] > 0
         if side == OrderSide.Sell:
             return self._short_position['size'] > 0
+
+    def get_current_stop_loss(self, side):
+        if side == OrderSide.Buy:
+            return self._long_position['stop_loss']
+        if side == OrderSide.Sell:
+            return self._short_position['stop_loss']
+
+    # Set take profit, stop loss, and trailing stop for your open position.
+    def set_trading_stop(self, side, take_profit=0, stop_loss=0, trailing_stop=0):
+        result = self._exchange.session_auth.set_trading_stop(
+            symbol=self._pair,
+            side=side,
+            take_profit=take_profit,
+            stop_loss=stop_loss,
+            trailing_stop=trailing_stop
+        )
+        _side = 'Long' if side == OrderSide.Buy else 'Short'
+        if take_profit != 0:
+            self._logger.info(f'Updated {_side} position with new take_profit={take_profit}.')
+        if stop_loss != 0:
+            self._logger.info(f'Updated {_side} position with new stop_loss={stop_loss}.')
+        if trailing_stop != 0:
+            self._logger.info(f'Updated {_side} position with new trailing_stop={trailing_stop}.')
+        self.refresh_position()
+
+    # Sync all Closed P&L entries for this pair found on Bybit with the ClosedPnL table stored locally
+    def sync_all_closed_pnl_records(self, pair):
+        start_time = dt.datetime(2000, 1, 1).timestamp()  # Make sure we pick up everything available
+        end_time = dt.datetime(2030, 1, 1).timestamp()  # Make sure we pick up everything available
+        list_records = []
+        page = 1
+        while True:
+            # Start timestamp point for result, in seconds
+            # End timestamp point for result, in seconds
+            result = self._exchange.get_closed_profit_and_loss(pair, start_time, end_time, page=page)
+            if result['data']:
+                list_records = list_records + result['data']
+                page += 1
+            else:
+                break
+        # Convert created_at timestamp to datetime string
+        df = pd.DataFrame(list_records)
+        df['created_at'] = [dt.datetime.fromtimestamp(x).strftime(constants.DATETIME_FORMAT) for x in df.created_at]
+        df.sort_values(by=['id'])
+        dict_list = df.to_dict('records')
+        self._db.add_closed_pnl_dict(dict_list)
+        self._logger.info(f'Closed P&L records have been sync on the local database.')
 
 
 

@@ -1,5 +1,5 @@
 
-from Logger import Logger
+from logging_.Logger import Logger
 import arrow
 from copy import deepcopy
 from typing import NamedTuple, Dict, Any

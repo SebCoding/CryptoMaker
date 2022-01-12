@@ -18,7 +18,7 @@ import time
 import ccxt
 
 import constants
-from Logger import Logger
+from logging_.Logger import Logger
 
 logger = Logger.get_module_logger(__name__)
 

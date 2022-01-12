@@ -8,7 +8,7 @@ import ccxt
 import pandas as pd
 
 import api_keys
-from Logger import Logger
+from logging_.Logger import Logger
 import utils
 from Configuration import Configuration
 from exchange.retrier import retrier
@@ -55,7 +55,7 @@ class ExchangeREST:
             self.name = self.exchange.name
             self.exchange.set_sandbox_mode(False)
 
-        # TODO: Figure out to deal with the logging of the ccxt module
+        # TODO: Figure out to deal with the logging_ of the ccxt module
         self.exchange._logger.setLevel(logging.INFO)
 
         # Market type

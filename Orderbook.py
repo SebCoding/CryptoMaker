@@ -1,5 +1,5 @@
 import pandas as pd
-from Logger import Logger
+from logging_.Logger import Logger
 import time
 from Configuration import Configuration
 from old.ExchangeWS import ExchangeWS

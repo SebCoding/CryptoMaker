@@ -39,7 +39,7 @@ class Configuration:
             sys.exit(0)
 
         # print for debug
-        # logging.debug(rapidjson.dumps(data, indent=2))
+        # logging_.debug(rapidjson.dumps(data, indent=2))
         cls._config = data
 
 

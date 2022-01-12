@@ -58,9 +58,8 @@ from websocket._exceptions import WebSocketTimeoutException
 import api_keys
 import constants
 from pybit import WebSocket
-from Logger import Logger
+from logging_.Logger import Logger
 from Configuration import Configuration
-import websocket
 
 
 class ExchangeWS:

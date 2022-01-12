@@ -1,7 +1,9 @@
+import pandas as pd
 import sqlalchemy as sa
-from sqlalchemy import Column, Table, Integer, Date, String, Float, DateTime, BigInteger, PrimaryKeyConstraint, Index
+from sqlalchemy import Column, Table, Integer, String, Float, DateTime, BigInteger
 
-from Logger import Logger
+from exchange.ExchangeBybit import ExchangeBybit
+from logging_.Logger import Logger
 from sqlalchemy_utils import database_exists
 
 from Configuration import Configuration
@@ -13,6 +15,7 @@ class Database:
     # Table Names
     TRADE_SIGNALS_TBL_NAME = 'TradeSignals'
     ORDERS_TBL_NAME = 'Orders'
+    CLOSED_PNL_TBL_NAME = 'ClosedPnL'
 
     def __init__(self):
         self._logger = Logger.get_module_logger(__name__)
@@ -69,10 +72,34 @@ class Database:
         with self.engine.connect() as connection:
             connection.execute(table.insert(), dict_list)
 
+    # Insert closed P&L using a list of dictionary
+    # Assuming the table exists, inserting only none existing rows
+    def add_closed_pnl_dict(self, dict_list):
+        table = self.get_table(self.CLOSED_PNL_TBL_NAME)
+        records_df = pd.DataFrame(dict_list)
+
+        # Get list of PK (Id) in the table to not insert already existing rows
+        query = 'SELECT "id" FROM public."ClosedPnL"'
+        with self.engine.connect() as connection:
+            ids_list = pd.read_sql(query, connection)['id'].tolist()
+
+            # Delete rows that already exist in the db
+            df = records_df[~records_df['id'].isin(ids_list)]
+
+            if len(df) > 0:
+                connection.execute(table.insert(), df.to_dict('records'))
+
+    def update_order_stop_loss_by_id(self, order_id, new_stop_loss):
+        table = self.get_table(self.ORDERS_TBL_NAME)
+        update_statement = table.update().where(table.c.order_id == order_id).values(stop_loss=new_stop_loss)
+        with self.engine.connect() as connection:
+            connection.execute(update_statement)
+
     # Create tables if they don't exist
     def init_tables(self):
         self.init_trade_signals_table()
         self.init_orders_table()
+        self.init_closed_pnl_table()
 
     def init_trade_signals_table(self):
         with self.engine.connect() as connection:
@@ -98,7 +125,7 @@ class Database:
             if not self.engine.has_table(connection, self.ORDERS_TBL_NAME):
                 # Create a table with the appropriate Columns
                 table = Table(self.ORDERS_TBL_NAME, self.metadata,
-                              Column('order_id', String, index=True, nullable=False),
+                              Column('order_id', String, index=True, nullable=False, primary_key=True),
                               Column('user_id', String, nullable=False),
                               Column('symbol', String, nullable=False),
                               Column('side', String, nullable=False),
@@ -121,3 +148,36 @@ class Database:
                               Column('updated_time', DateTime, index=True, nullable=False)
                               )
                 self.metadata.create_all()
+
+    def init_closed_pnl_table(self):
+        with self.engine.connect() as connection:
+            if not self.engine.has_table(connection, self.CLOSED_PNL_TBL_NAME):
+                # Create a table with the appropriate Columns
+                table = Table(self.CLOSED_PNL_TBL_NAME, self.metadata,
+                              Column('id', Integer, index=True, nullable=False, primary_key=True),
+                              Column('user_id', Integer, index=True, nullable=False),
+                              Column('symbol', String, nullable=False),
+                              Column('order_id', String, index=True, nullable=False),
+                              Column('side', String, nullable=False),
+                              Column('qty', Float, nullable=False),
+                              Column('order_price', Float, nullable=False),
+                              Column('order_type', String, nullable=False),
+                              Column('exec_type', String, nullable=False),
+                              Column('closed_size', Float, nullable=False),
+                              # Closed position value
+                              Column('cum_entry_value', Float, nullable=False),
+                              # Average entry price
+                              Column('avg_entry_price', Float, nullable=False),
+                              # Cumulative trading value of position closing orders
+                              Column('cum_exit_value', Float, nullable=False),
+                              # Average exit price
+                              Column('avg_exit_price', Float, nullable=False),
+                              # Closed Profit and Loss
+                              Column('closed_pnl', Float, nullable=False),
+                              # The number of fills in a single order
+                              Column('fill_count', Integer, nullable=False),
+                              Column('leverage', Float, nullable=False),
+                              Column('created_at', DateTime, index=True, nullable=False)
+                              )
+                self.metadata.create_all()
+

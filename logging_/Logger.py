@@ -11,7 +11,7 @@ class Logger:
     _datefmt = constants.DATETIME_FORMAT
 
     # Shared global debug file handler for all modules
-    # with level hardcoded to logging.DEBUG
+    # with level hardcoded to logging_.DEBUG
     _debug_file_handler = None
 
     @staticmethod
@@ -28,7 +28,7 @@ class Logger:
                 return logging.ERROR
             case 'critical':
                 return logging.CRITICAL
-        msg = f"Invalid logging level [{level_str}]"
+        msg = f"Invalid logging_ level [{level_str}]"
         logging.error(msg)
         raise Exception(msg)
 
@@ -57,7 +57,7 @@ class Logger:
 
     @classmethod
     def init_root_logger(cls, level=logging_level_str_to_int(_logging_level)):
-        # Always keep root level set to logging.DEBUG, but limit the level in handlers as desired
+        # Always keep root level set to logging_.DEBUG, but limit the level in handlers as desired
         logging.basicConfig(
             level=logging.DEBUG,
             format='%(levelname)s: %(module)s.%(funcName)s, %(message)s',
@@ -73,11 +73,11 @@ class Logger:
     def get_module_logger(cls, module_name, level=logging_level_str_to_int(_logging_level)):
         logger = logging.getLogger(module_name)
 
-        # Always keep logger level set to logging.DEBUG,
+        # Always keep logger level set to logging_.DEBUG,
         # but limit the level in handlers as desired
         logger.setLevel(logging.DEBUG)
         if not logger.handlers:
             logger.addHandler(cls.get_console_handler(level))
-            logger.addHandler(cls._debug_file_handler)
+            logger.addHandler(cls.get_debug_file_handler())
         logger.propagate = False
         return logger

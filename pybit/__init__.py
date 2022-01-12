@@ -55,10 +55,10 @@ class HTTP:
         endpoints. Defaults to None.
     :type api_secret: str
 
-    :param logging_level: The logging level of the built-in logger. Defaults to
-        logging.INFO. Options are CRITICAL (50), ERROR (40), WARNING (30),
+    :param logging_level: The logging_ level of the built-in logger. Defaults to
+        logging_.INFO. Options are CRITICAL (50), ERROR (40), WARNING (30),
         INFO (20), DEBUG (10), or NOTSET (0).
-    :type logging_level: Union[int, logging.level]
+    :type logging_level: Union[int, logging_.level]
 
     :param log_requests: Whether or not pybit should log each HTTP request.
     :type log_requests: bool
@@ -1918,8 +1918,8 @@ class WebSocket:
         :param subscriptions: A list of desired topics to subscribe to. See API
             documentation for more information. Defaults to an empty list, which
             will raise an error.
-        :param logging_level: The logging level of the built-in logger. Defaults
-            to logging.INFO. Options are CRITICAL (50), ERROR (40),
+        :param logging_level: The logging_ level of the built-in logger. Defaults
+            to logging_.INFO. Options are CRITICAL (50), ERROR (40),
             WARNING (30), INFO (20), DEBUG (10), or NOTSET (0).
         :param max_data_length: The maximum number of rows for the stored
             dataset. A smaller number will prevent performance or memory issues.
@@ -1983,7 +1983,7 @@ class WebSocket:
                     raise Exception('Cannot subscribe to v1 topics with v2 '
                                     'endpoint, or vice versa.')
 
-        # set websocket name for logging purposes
+        # set websocket name for logging_ purposes
         self.wsName = 'Authenticated' if api_key else 'Non-Authenticated'
 
         # Setup logger.

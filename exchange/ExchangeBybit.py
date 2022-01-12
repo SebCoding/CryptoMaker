@@ -55,13 +55,12 @@ ticketInfo
 
 """
 import pandas as pd
-from websocket._exceptions import WebSocketTimeoutException
 import api_keys
 import constants
 import datetime as dt
 
 import utils
-from Logger import Logger
+from logging_.Logger import Logger
 from Configuration import Configuration
 from Orders import Order
 from enums.BybitEnums import OrderType
@@ -141,7 +140,7 @@ class ExchangeBybit:
         retry_delay = 3  # default is 3 seconds
         request_timeout = self._config['exchange']['http']['timeout']  # default is 10 seconds
         log_requests = True
-        logging_level = self._config['logging']['logging_level']  # default is logging.INFO
+        logging_level = self._config['logging']['logging_level']  # default is logging_.INFO
         spot = False  # spot or futures
         logger = Logger.get_module_logger('pybit')
 
@@ -365,6 +364,19 @@ class ExchangeBybit:
                 msg = f"Placing {o.order_type}(side={o.side}, qty={o.qty}, price={o.price}, tp={o.take_profit}, sl={o.stop_loss})"
             self._logger.error(msg, f" order failed. Error code: {data['ext_code']}.")
         return None
+
+    # Get user's closed profit and loss records.
+    # The results are ordered in descending order (the first item is the latest).
+    def get_closed_profit_and_loss(self, pair, start_time, end_time, page=1):
+        result = self.session_auth.closed_profit_and_loss(
+            symbol=pair,
+            start_time=start_time,  # Start timestamp point for result, in seconds
+            end_time=end_time,      # End timestamp point for result, in seconds
+            page=page,  # Page. By default, gets first page of data. Maximum of 50 pages
+            limit=50  # Limit for data size per page, max size is 50.
+            # Optional parameter exec_type: not used by us
+        )
+        return result['result']
 
     # Get the latest price and other information of the current pair
     # TODO: not finished, never tested

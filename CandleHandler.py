@@ -2,7 +2,7 @@ import pandas as pd
 import time
 import utils
 from Configuration import Configuration
-from Logger import Logger
+from logging_.Logger import Logger
 import datetime as dt
 
 

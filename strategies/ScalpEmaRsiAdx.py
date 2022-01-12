@@ -1,8 +1,7 @@
 import talib
 import datetime as dt
 import constants
-from Logger import Logger
-from database.Database import Database
+from logging_.Logger import Logger
 from enums import TradeSignals
 from enums.TradeSignals import TradeSignals
 from strategies.BaseStrategy import BaseStrategy

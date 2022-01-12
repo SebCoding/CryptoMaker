@@ -5,7 +5,7 @@
     Using websockets private topic ['wallet']
 """
 from Configuration import Configuration
-from Logger import Logger
+from logging_.Logger import Logger
 
 
 class WalletUSDT:

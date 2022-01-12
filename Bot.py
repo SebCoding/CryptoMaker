@@ -1,12 +1,12 @@
-import datetime as dt
 import os
 import sys
 import time
+import datetime as dt
 
-import pandas as pd
 import rapidjson
 
-from Logger import Logger
+import constants
+from logging_.Logger import Logger
 from CandleHandler import CandleHandler
 from Configuration import Configuration
 from Orders import Orders, Order
@@ -14,6 +14,7 @@ from Position import Position
 from database.Database import Database
 from enums import TradeSignals
 from enums.BybitEnums import OrderSide, OrderType, OrderStatus
+from enums.EntryMode import EntryMode
 from enums.TradeSignals import TradeSignals
 from typing import Any, Callable
 
@@ -47,7 +48,7 @@ class Bot:
         self.strategy = globals()[self._config['strategy']['name']](self.db)
         self._candle_handler = CandleHandler(self._exchange)
         self._wallet = WalletUSDT(self._exchange, self.stake_currency)
-        self._position = Position(self._exchange)
+        self._position = Position(self.db, self._exchange)
         self._orders = Orders(self._exchange, self.db)
         self.status_bar = self.moving_status_bar(self.STATUS_BAR_CHAR, self.STATUS_BAR_LENGTH)
 
@@ -64,39 +65,17 @@ class Bot:
             if result['Signal'] in [TradeSignals.EnterLong, TradeSignals.EnterShort] \
                     and not self._position.currently_in_position():
                 Bot.beep(5, 2500, 100)
-                print(df.tail(10).to_string() + '\n')
-                print(f"{result['Signal']}: {rapidjson.dumps(result, indent=2)}")
-                result = self.enter_trade(result['Signal'])
+                self._logger.info(f'{df.tail(10).to_string()} \n')
+                self._logger.info(f"{result['Signal']}: {rapidjson.dumps(result, indent=2)}")
+                self.enter_trade(result['Signal'])
 
     def enter_trade(self, signal):
         entry_mode = self._config['trading']['trade_entry_mode']
-        take_profit_pct = self._config['trading']['take_profit']
-        stop_loss_pct = self._config['trading']['stop_loss']
         tradable_ratio = self._config['trading']['tradable_balance_ratio']
-        side = OrderSide.Buy if signal == TradeSignals.EnterLong else OrderSide.Sell
-        side_tp = OrderSide.Buy if side == OrderSide.Sell else OrderSide.Sell  # TP is opposite side of the order
         balance = self._wallet.free
-        current_price = self._candle_handler.get_latest_price()
-
         tradable_balance = balance * tradable_ratio
         if tradable_balance < self.MIN_TRADE_AMOUNT:
             return None
-
-        amount = round(tradable_balance / current_price, 4)
-        stop_loss = current_price * stop_loss_pct
-        take_profit = current_price * take_profit_pct
-
-        if side == OrderSide.Buy:
-            stop_loss = current_price - stop_loss
-            take_profit = current_price + take_profit
-            assert (stop_loss < current_price < take_profit)
-        if side == OrderSide.Sell:
-            stop_loss = current_price + stop_loss
-            take_profit = current_price - take_profit
-            assert (stop_loss > current_price > take_profit)
-
-        stop_loss = round(stop_loss, 0)
-        take_profit = round(take_profit, 0)
 
         # This does not call refresh_position() internally, but we know it was just called
         # to verify that there is no ongoing position prior to placing this trade.
@@ -104,26 +83,89 @@ class Bot:
         # because a position was open.
         self._position.set_leverage()
 
-        # Place Market Order
-        if entry_mode == 'taker':
-            order = Order(side=side, symbol=self.pair, order_type=OrderType.Market, qty=amount, stop_loss=stop_loss)
-            result = self._orders.place_order(order, 'TradeEntry')
-            time.sleep(1)  # Sleep to let the order info be available by http or websocket
+        side = OrderSide.Buy if signal == TradeSignals.EnterLong else OrderSide.Sell
+        tentative_entry_price = self._candle_handler.get_latest_price()
+        trade_amount = round(tradable_balance / tentative_entry_price, 4)
+        stop_loss = self.get_stop_loss(side, tentative_entry_price)
 
-            tp_order = Order(side=side_tp, symbol=self.pair, order_type=OrderType.Limit, qty=amount, price=take_profit,
-                             reduce_only=True)
-            while not self._position.currently_in_position(side):
-                time.sleep(0.5)
-            result = self._orders.place_order(tp_order, 'TakeProfit')
-            time.sleep(1)  # Sleep to let the order info be available by http or websocket
+        # Step 1: Place order and open position
 
-        # Place Limit Order
-        elif entry_mode == 'maker':
-            msg = f'Config Error: trade_entry_mode={entry_mode} not yet implemented'
-            self._logger(msg)
-            raise Exception(msg)
+        # Enter with market order (taker)
+        if entry_mode == EntryMode.Taker:
+            order_id = self.enter_trade_as_taker(side, trade_amount, stop_loss)
+        # Enter with limit order (maker)
+        elif entry_mode == EntryMode.Maker:
+            order_id = self.enter_trade_as_maker(side, trade_amount, tentative_entry_price, stop_loss)
 
-        return True
+        if side == OrderSide.Buy:
+            entry_price = self._position.long_position['entry_price']
+            size = self._position.long_position['size']
+        else:
+            entry_price = self._position.short_position['entry_price']
+            size = self._position.short_position['size']
+
+        entry_price = round(entry_price, 2)
+        now = dt.datetime.now().strftime(constants.DATETIME_FORMAT)
+        _side = 'Long' if side == OrderSide.Buy else 'Short'
+        self._logger.info(f'{now} Entered {_side} position, entry_price={entry_price} size={size}.')
+
+        # Step 2: Place a limit take_profit order based on the confirmed position entry_price
+        # side_tp = OrderSide.Buy if side == OrderSide.Sell else OrderSide.Sell
+        # Calculate take_profit based the on actual position entry price
+        take_profit = 0
+        if side == OrderSide.Buy:
+            take_profit = self.get_take_profit(side, entry_price)
+        if side == OrderSide.Sell:
+            take_profit = self.get_take_profit(side, entry_price)
+        take_profit = round(take_profit, 0)
+
+        tp_order = Order(side=side, symbol=self.pair, order_type=OrderType.Limit, qty=trade_amount,
+                         price=take_profit, reduce_only=True)
+        tp_order_id = self._orders.place_order(tp_order, 'TakeProfit')['order_id']
+
+        # Step 3: Update position stop_loss if market order's entry_price slipped
+        if tentative_entry_price != entry_price:
+            old_stop_loss = self._position.get_current_stop_loss(side)
+            new_stop_loss = self.get_stop_loss(side, entry_price)
+            if old_stop_loss != new_stop_loss:
+                # Update position stop_loss if required because of entry price slippage
+                self._position.set_trading_stop(side, stop_loss=new_stop_loss)
+                # Update original order with new stop_loss value
+                self._orders.update_db_order_stop_loss_by_id(order_id, new_stop_loss)
+
+        time.sleep(1)  # Sleep to let the order info be available by http or websocket
+
+    def enter_trade_as_taker(self, side, trade_amount, stop_loss):
+        order = Order(side=side, symbol=self.pair, order_type=OrderType.Market, qty=trade_amount,
+                      stop_loss=stop_loss)
+        order_id = self._orders.place_order(order, 'TradeEntry')['order_id']
+        # Wait until the position is open
+        while not self._position.currently_in_position(side):
+            time.sleep(0.5)
+        return order_id
+
+    def enter_trade_as_maker(self, side, tentative_entry_price, trade_amount, stop_loss):
+        msg = f'Config Error: trade_entry_mode=\'maker\' not yet implemented'
+        self._logger(msg)
+        raise Exception(msg)
+
+    def get_stop_loss(self, side, price):
+        stop_loss_pct = self._config['trading']['stop_loss']
+        stop_loss = price * stop_loss_pct
+        if side == OrderSide.Buy:
+            stop_loss = price - stop_loss
+        if side == OrderSide.Sell:
+            stop_loss = price + stop_loss
+        return round(stop_loss, 0)
+
+    def get_take_profit(self, side, price):
+        take_profit_pct = self._config['trading']['take_profit']
+        take_profit = price * take_profit_pct
+        if side == OrderSide.Buy:
+            take_profit = price + take_profit
+        if side == OrderSide.Sell:
+            take_profit = price - take_profit
+        return round(take_profit, 0)
 
     def run_forever(self):
         self._logger.info(f'Trading Settings:\n' + rapidjson.dumps(self._config['trading'], indent=2))
@@ -135,11 +177,14 @@ class Bot:
                 self.throttle(self.run, throttle_secs=self.throttle_secs)
                 print('\r', end='')
                 sys.stdout.flush()
+        except KeyboardInterrupt as e:
+            self._logger.info('\n')
+            self._position.sync_all_closed_pnl_records(self.pair)
+            self._logger.info("Application Terminated by User.")
         except Exception as e:
             self._logger.exception(e)
-            Bot.beep(3, 500, 1000)
+            Bot.beep(1, 500, 5000)
             raise e
-
 
     def run_forever2(self):
         self._logger.info(f"Initializing Main Loop.")
@@ -151,6 +196,8 @@ class Bot:
         order1 = Order(OrderSide.Buy, self.pair, OrderType.Limit, 0.1, 10000, take_profit=11000, stop_loss=9000)
         result = self._orders.place_order(order1, 'TakeProfit')
         print("Order Result:\n", rapidjson.dumps(result, indent=2))
+
+        self._orders.update_db_order_stop_loss_by_id(result['order_id'], 777)
 
         self._wallet.update_wallet()
         print(self._wallet.to_string() + "\n")

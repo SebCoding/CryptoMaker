@@ -6,7 +6,7 @@ import sys
 import os
 import constants
 from Bot import Bot
-from Logger import Logger
+from logging_.Logger import Logger
 
 Logger.init_root_logger()
 logger = Logger.get_module_logger(constants.APPLICATION_NAME)

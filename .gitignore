@@ -2,7 +2,7 @@
 api_keys.py
 log.txt
 trace.txt
-debug_log.txt
+logging_/debug_log.txt
 output.txt
 config.json
 

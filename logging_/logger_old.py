@@ -60,7 +60,7 @@ def logging_level_str_to_int(level_str):
             return logging.ERROR
         case 'critical':
             return logging.CRITICAL
-    msg = f"Invalid logging level [{level_str}]"
+    msg = f"Invalid logging_ level [{level_str}]"
     logging.error(msg)
     raise Exception(msg)
 
@@ -73,12 +73,12 @@ def logging_level_str_to_int(level_str):
 #   c = a / b
 # except Exception as e:
 #   """
-#       Using logging.exception() would show a log at the level of ERROR.
-#       If you don’t want that, you can call any of the other logging methods
+#       Using logging_.exception() would show a log at the level of ERROR.
+#       If you don’t want that, you can call any of the other logging_ methods
 #       from debug() to critical() and pass the exc_info parameter as True.
 #   """
-#   # logging.error("Une erreur est survenue", exc_info=True)
-#   logging.exception("Une erreur est survenue")
+#   # logging_.error("Une erreur est survenue", exc_info=True)
+#   logging_.exception("Une erreur est survenue")
 #
 # # Test custom logger
 # logger = get_module_logger()

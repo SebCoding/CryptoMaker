@@ -1,11 +1,9 @@
-import time
-
 import pandas as pd
 import arrow
 
 import constants
 from Configuration import Configuration
-from Logger import Logger
+from logging_.Logger import Logger
 from enums.BybitEnums import TimeInForce, OrderType
 
 
@@ -42,16 +40,16 @@ class Orders:
     def __init__(self, exchange, database):
         self._logger = Logger.get_module_logger(__name__)
         self._config = Configuration.get_config()
-        self._pair = self._config['exchange']['pair']
-        self._exchange = exchange
-        self._stake_currency = self._config['exchange']['stake_currency']
+        self.pair = self._config['exchange']['pair']
+        self.exchange = exchange
+        self.stake_currency = self._config['exchange']['stake_currency']
         self.db = database
         self.refresh_orders()
 
     # Order Statuses that can be used as filter:
     # Created, Rejected, New, PartiallyFilled, Filled, Cancelled, PendingCancel
     def refresh_orders(self, order_status=None):
-        data = self._exchange.get_orders(self._pair, order_status)
+        data = self.exchange.get_orders(self.pair, order_status)
         if data:
             self._orders = data
 
@@ -84,11 +82,15 @@ class Orders:
             stop_loss: (Stop loss price, only take effect upon opening the position)
     """
     def place_order(self, order, reason):
-        result = self._exchange.place_order(order)
+        result = self.exchange.place_order(order)
         if result:
             result['reason'] = reason
             result['take_profit'] = order.take_profit
             result['stop_loss'] = order.stop_loss
+
+            # No price for market orders
+            if order.order_type == OrderType.Market:
+                result['price'] = 0
 
             created_time = arrow.get(result['created_time']).to('local').datetime
             created_time = created_time.strftime(constants.DATETIME_FORMAT)
@@ -100,5 +102,27 @@ class Orders:
 
             self._logger.info(f"{created_time} Confirmed {reason} {order.order_type} Order: " + order.to_string())
             self.db.add_order_dict(result)
+        return result
+
+    def update_db_order_stop_loss_by_id(self, order_id, new_stop_loss):
+        self.db.update_db_order_stop_loss_by_id(order_id, new_stop_loss)
+        self._logger.info(f'DB Order: {order_id} has been updated with new stop_loss={new_stop_loss}.')
+
+    """
+        replace_active_order() can modify/amend your active orders.
+        Params:
+         - p_r_qty: New order quantity. Do not pass this field if you don't want modify it
+         - p_r_price: New order price. Do not pass this field if you don't want modify it
+         - take_profit: New take_profit price, also known as stop_px. Do not pass this field if you don't want modify it
+         - stop_loss: New stop_loss price, also known as stop_px. Do not pass this field if you don't want modify it
+     """
+    def replace_active_order_qt_pr_sl(self, order_id, new_qty, new_price, new_stop_loss):
+        result = self.exchange.session_auth.replace_active_order(
+            symbol=self.pair,
+            order_id=order_id,
+            p_r_qty=new_qty,
+            p_r_price=new_price,
+            stop_loss=new_stop_loss
+        )['order_id']
         return result
 

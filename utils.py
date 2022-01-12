@@ -1,6 +1,6 @@
 import constants
 import datetime as dt
-from Logger import Logger
+from logging_.Logger import Logger
 
 _logger = Logger.get_module_logger(__name__)
 

@@ -57,3 +57,10 @@ class ContractType:
     InversePerpetual = 'InversePerpetual'
     LinearPerpetual = 'LinearPerpetual'
     InverseFutures = 'InverseFutures'
+
+
+class ExecType:
+    Trade = 'Trade'
+    AdlTrade = 'AdlTrade'
+    Funding = 'Funding'
+    BustTrade = 'BustTrade'
