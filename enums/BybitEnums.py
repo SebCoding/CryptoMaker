@@ -4,7 +4,7 @@
 """
 
 
-class Side:
+class OrderSide:
     Buy = 'Buy'
     Sell = 'Sell'
 

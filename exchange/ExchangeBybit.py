@@ -246,18 +246,23 @@ class ExchangeBybit:
             data = self.session_auth.get_wallet_balance()
             if data:
                 return data['result'][self.stake_currency]
-            return None
+        return None
 
     # Get my position list.
     def get_position(self, pair):
         data = self.ws_private.fetch(self._position_topic_name)
-        if data and data[self.pair]:
-            return [data[self.pair]['Buy'], data[self.pair]['Sell']]  # Return list of dict
+        if data and self.pair in data.keys():
+            pos = []
+            if 'Buy' in data[self.pair].keys():
+                pos.append(data[self.pair]['Buy'])
+            if 'Sell' in data[self.pair].keys():
+                pos.append(data[self.pair]['Sell'])
+            return pos  # Return list of dict
         else:
             data = self.session_auth.my_position(symbol=pair)
             if data:
                 return data['result']  # Return list of dict
-            return None
+        return None
 
     """ 
         Order Statuses that can be used as filter: 
@@ -276,7 +281,7 @@ class ExchangeBybit:
             data = self.session_auth.get_active_order(symbol=pair, order_status=order_status)
             if data:
                 return data['result']['data']
-            return None
+        return None
 
     # Get active order by id
     def get_order_by_id(self, pair, order_id):
@@ -290,7 +295,7 @@ class ExchangeBybit:
             data = self.session_auth.get_active_order(pair=pair, order_id=order_id)
             if data and len(data['result']) > 0:
                 return data['result']['data'][0]
-            return None
+        return None
 
     # Query real-time active order information. If only order_id or order_link_id are passed,
     # a single order will be returned; otherwise, returns up to 500 unfilled orders.

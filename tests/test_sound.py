@@ -18,4 +18,4 @@ def beep(nb, frequency, duration):
 
 #beep(1, 500, 2000)
 
-beep(3, 500, 1000)
+#beep(3, 500, 1000)

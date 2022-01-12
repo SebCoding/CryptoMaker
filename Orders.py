@@ -1,7 +1,9 @@
 import time
 
 import pandas as pd
+import arrow
 
+import constants
 from Configuration import Configuration
 from Logger import Logger
 from enums.BybitEnums import TimeInForce, OrderType
@@ -82,10 +84,21 @@ class Orders:
             stop_loss: (Stop loss price, only take effect upon opening the position)
     """
     def place_order(self, order, reason):
-        self._logger.info(f"Placing {reason} {order.order_type} Order: " + order.to_string())
         result = self._exchange.place_order(order)
         if result:
             result['reason'] = reason
+            result['take_profit'] = order.take_profit
+            result['stop_loss'] = order.stop_loss
+
+            created_time = arrow.get(result['created_time']).to('local').datetime
+            created_time = created_time.strftime(constants.DATETIME_FORMAT)
+            result['created_time'] = created_time
+
+            updated_time = arrow.get(result['updated_time']).to('local').datetime
+            updated_time = updated_time.strftime(constants.DATETIME_FORMAT)
+            result['updated_time'] = updated_time
+
+            self._logger.info(f"{created_time} Confirmed {reason} {order.order_type} Order: " + order.to_string())
             self.db.add_order_dict(result)
         return result
 

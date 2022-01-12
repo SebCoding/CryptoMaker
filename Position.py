@@ -43,7 +43,7 @@ import rapidjson
 
 from Configuration import Configuration
 from Logger import Logger
-from enums.BybitEnums import Side
+from enums.BybitEnums import OrderSide
 
 
 class Position:
@@ -59,19 +59,31 @@ class Position:
         self._exchange = exchange
         self._stake_currency = self._config['exchange']['stake_currency']
         self.refresh_position()
+        self.set_leverage()
 
-        # Adjust leverage
+    # Assumes self.refresh_position() has been run prior to calling this method
+    def set_leverage(self):
         leverage_long = round(float(self._config['trading']['leverage_long']), 1)
         leverage_short = round(float(self._config['trading']['leverage_short']), 1)
 
+        # Is there anything to update
         if self._long_position['leverage'] != leverage_long or self._short_position['leverage'] != leverage_short:
-            result = self._exchange.session_auth.set_leverage(
-                symbol=self._pair,
-                buy_leverage=leverage_long,
-                sell_leverage=leverage_short
-            )
-            self.refresh_position()
-        self._logger.info(f"Adjusting Leverage: Long[{leverage_long}x] Short[{leverage_short}x].")
+            # We can only update when there is no position open
+            if self._long_position['size'] == 0 and self._short_position['size'] == 0:
+                # Adjust leverage
+                result = self._exchange.session_auth.set_leverage(
+                    symbol=self._pair,
+                    buy_leverage=leverage_long,
+                    sell_leverage=leverage_short
+                )
+                self.refresh_position()
+                leverage_long = int(leverage_long) if leverage_long.is_integer() else leverage_long
+                leverage_short = int(leverage_short) if leverage_short.is_integer() else leverage_short
+                self._logger.info(f"Adjusting Leverage: Long[{leverage_long}x] Short[{leverage_short}x].")
+            else:
+                self._logger.info(f" *** Cannot adjust leverage while a position is open. ***")
+                self._logger.info(f'Leverage will remain: Long[{self._long_position["leverage"]}x] '
+                                  f'Short[{self._short_position["leverage"]}x].')
 
     def refresh_position(self):
         # Data contains a list of 2 dictionaries.
@@ -127,9 +139,9 @@ class Position:
         self.refresh_position()
         if not side:
             return self._long_position['size'] > 0 or self._short_position['size'] > 0
-        if side == Side.Buy:
+        if side == OrderSide.Buy:
             return self._long_position['size'] > 0
-        if side == Side.Sell:
+        if side == OrderSide.Sell:
             return self._short_position['size'] > 0
 
 

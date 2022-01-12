@@ -13,7 +13,7 @@ from Orders import Orders, Order
 from Position import Position
 from database.Database import Database
 from enums import TradeSignals
-from enums.BybitEnums import Side, OrderType, OrderStatus
+from enums.BybitEnums import OrderSide, OrderType, OrderStatus
 from enums.TradeSignals import TradeSignals
 from typing import Any, Callable
 
@@ -73,8 +73,8 @@ class Bot:
         take_profit_pct = self._config['trading']['take_profit']
         stop_loss_pct = self._config['trading']['stop_loss']
         tradable_ratio = self._config['trading']['tradable_balance_ratio']
-        side = Side.Buy if signal == TradeSignals.EnterLong else Side.Sell
-        side_tp = Side.Buy if side == Side.Sell else Side.Sell  # TP is opposite side of the order
+        side = OrderSide.Buy if signal == TradeSignals.EnterLong else OrderSide.Sell
+        side_tp = OrderSide.Buy if side == OrderSide.Sell else OrderSide.Sell  # TP is opposite side of the order
         balance = self._wallet.free
         current_price = self._candle_handler.get_latest_price()
 
@@ -86,17 +86,23 @@ class Bot:
         stop_loss = current_price * stop_loss_pct
         take_profit = current_price * take_profit_pct
 
-        if side == Side.Buy:
+        if side == OrderSide.Buy:
             stop_loss = current_price - stop_loss
             take_profit = current_price + take_profit
             assert (stop_loss < current_price < take_profit)
-        if side == Side.Sell:
+        if side == OrderSide.Sell:
             stop_loss = current_price + stop_loss
             take_profit = current_price - take_profit
             assert (stop_loss > current_price > take_profit)
 
         stop_loss = round(stop_loss, 0)
         take_profit = round(take_profit, 0)
+
+        # This does not call refresh_position() internally, but we know it was just called
+        # to verify that there is no ongoing position prior to placing this trade.
+        # We to update the leverage in case it couldn't be set when the application started
+        # because a position was open.
+        self._position.set_leverage()
 
         # Place Market Order
         if entry_mode == 'taker':
@@ -142,14 +148,14 @@ class Bot:
         print('Position:\n' + self._position.get_positions_df().to_string() + "\n")
         print('Orders:\n' + self._orders.get_orders_df(order_status=OrderStatus.New).to_string() + '\n')
 
-        order1 = Order(Side.Buy, self.pair, OrderType.Limit, 0.1, 10000, take_profit=11000, stop_loss=9000)
+        order1 = Order(OrderSide.Buy, self.pair, OrderType.Limit, 0.1, 10000, take_profit=11000, stop_loss=9000)
         result = self._orders.place_order(order1, 'TakeProfit')
         print("Order Result:\n", rapidjson.dumps(result, indent=2))
 
-        # self._wallet.update_wallet()
-        # print(self._wallet.to_string() + "\n")
-        # print('Position:\n' + self._position.get_positions_df().to_string() + "\n")
-        # print('Orders:\n' + self._orders.get_orders_df(order_status=OrderStatus.New).to_string() + '\n')
+        self._wallet.update_wallet()
+        print(self._wallet.to_string() + "\n")
+        print('Position:\n' + self._position.get_positions_df().to_string() + "\n")
+        print('Orders:\n' + self._orders.get_orders_df(order_status=OrderStatus.New).to_string() + '\n')
         #
         # order2 = Order(Side.Sell, self.pair, OrderType.Market, 0.001, take_profit=35000, stop_loss=50000)
         # result = self._orders.place_order(order2)

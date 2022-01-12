@@ -37,7 +37,7 @@ class Logger:
     @classmethod
     def get_console_handler(cls, level=logging_level_str_to_int(_logging_level)):
         c_handler = logging.StreamHandler(sys.stdout)
-        c_format = logging.Formatter('[%(name)s] %(levelname)s:  %(message)s')
+        c_format = logging.Formatter('[%(name)s] %(message)s')
         c_handler.setFormatter(c_format)
         c_handler.setLevel(level)
         return c_handler
