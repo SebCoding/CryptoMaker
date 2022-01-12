@@ -77,7 +77,7 @@ class CandleHandler:
                     if self._candles_df is None:
                         self._candles_df = self.get_historic_candles(int(data['start']))
                         self._candles_df = self._candles_df.append(to_append, ignore_index=True)
-                        # print(self.confirmed_candles.tail(10).to_string()); exit(0)
+                        # print(self._candles_df.tail(10).to_string()); exit(0)
                     # DataFrame contains at least 1 row
                     else:
                         if data['confirm']:

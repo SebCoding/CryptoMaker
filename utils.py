@@ -16,13 +16,17 @@ def adjust_from_time_timestamp(from_time, interval, nb_candles, backward=True):
     if backward:
         nb_candles = nb_candles * -1
     if 'm' in interval:
-        from_time += (nb_candles * 60)
+        interval = int(interval.replace('m', ''))
+        from_time += (nb_candles * interval * 60)
     elif 'h' in interval:
-        from_time += (nb_candles * 3600)  # 60*60 = 3600
+        interval = int(interval.replace('h', ''))
+        from_time += (nb_candles * interval * 3600)  # 60*60 = 3600
     elif 'd' in interval:
-        from_time += (nb_candles * 86400)  # 24*60*60 = 86400
+        interval = int(interval.replace('d', ''))
+        from_time += (nb_candles * interval * 86400)  # 24*60*60 = 86400
     elif 'w' in interval:
-        from_time += (nb_candles * 604800)  # 7*24*60*60 = 604800
+        interval = int(interval.replace('w', ''))
+        from_time += (nb_candles * interval * 604800)  # 7*24*60*60 = 604800
     return from_time
 
 
