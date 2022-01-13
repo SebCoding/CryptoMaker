@@ -1,3 +1,5 @@
+import sys
+
 import pandas as pd
 import sqlalchemy as sa
 import arrow
@@ -21,21 +23,32 @@ class Database:
     ORDERS_TBL_NAME = 'Orders'
     CLOSED_PNL_TBL_NAME = 'ClosedPnL'
     USER_TRADES_TBL_NAME = 'UserTrades'
+    COND_ORDERS_TBL_NAME = 'CondOrders'
 
     def __init__(self, exchange):
         self._logger = Logger.get_module_logger(__name__)
         self._config = Configuration.get_config()
         self._exchange = exchange
         self.name = self._config['database']['db_name']
-        # Switch to test database if user forgot to change it
-        if self._config['exchange']['testnet'] and not self.name.endswith('Test'):
-            self.name = self.name + 'Test'
+        self.confirm_db_name()
         self.db_url = self.get_db_url()
         self.validate_db()
         self._logger.info(f"Connection to {self.name} database successful.")
         self.engine = sa.create_engine(self.db_url)
         self.metadata = sa.MetaData(self.engine)
         self.init_tables()
+
+    def confirm_db_name(self):
+        # Switch to test database if user forgot to change it
+        if self._config['exchange']['testnet'] and not self.name.endswith('Test'):
+            while True:
+                self._logger.info(f'You are running on Testnet. The db_name does not appear to be the test database.')
+                answer = input(f'Please confirm that you wish to continue with db_name={self.name} (y/n): ')
+                if answer in ['y', 'n']:
+                    break
+            if answer == 'n':
+                self._logger.error(f'Please update the config.json with the correct db_name.')
+                sys.exit(0)
 
     def get_db_url(self):
         url = self.URL_TEMPLATE.replace('<db_name>', self.name)
@@ -68,11 +81,13 @@ class Database:
         self.init_orders_table()
         self.init_closed_pnl_table()
         self.init_user_trades_table()
+        self.init_conditional_orders_table()
 
     def sync_all_tables(self, pair):
         self.sync_all_order_records(pair)
         self.sync_all_closed_pnl_records(pair)
         self.sync_all_user_trade_records(pair)
+        self.sync_all_conditional_order_records(pair)
 
     """
         -----------------------------------------------------------------------------
@@ -111,7 +126,6 @@ class Database:
            Orders
         -----------------------------------------------------------------------------
     """
-
     def init_orders_table(self):
         with self.engine.connect() as connection:
             if not self.engine.has_table(connection, self.ORDERS_TBL_NAME):
@@ -157,19 +171,12 @@ class Database:
     def sync_all_order_records(self, pair):
         self._logger.info(f'Syncing all Order records.')
         table = self.get_table(self.ORDERS_TBL_NAME)
-        dict_list = self._exchange.get_all_orders_records(pair)
+        dict_list = self._exchange.get_all_order_records(pair)
         records_df = pd.DataFrame(dict_list)
-        # records_df['reason'] = 'TradeEntry'
-        # records_df.loc[records_df['reduce_only'], 'reason'] = 'TakeProfit'
-        # records_df.loc[
-        #     (
-        #         (records_df['take_profit'] != 0) | (records_df['stop_loss'] != 0)
-        #     )
-        #     , 'reason'] = 'TradeEntry'
 
         with self.engine.connect() as connection:
             # Delete all rows in the table that do not have a status of Filled or Cancelled
-            # These deleted orders might have an updated version so we re-insert
+            # These orders might have an updated version so we re-insert
             connection.execute(table.delete().where(
                 table.c.order_status not in [OrderStatus.Filled, OrderStatus.Cancelled])
             )
@@ -301,3 +308,59 @@ class Database:
             if len(df) > 0:
                 connection.execute(table.insert(), df.to_dict('records'))
 
+    """
+        -----------------------------------------------------------------------------
+           Stop Orders (Conditionals)
+        -----------------------------------------------------------------------------
+    """
+    def init_conditional_orders_table(self):
+        with self.engine.connect() as connection:
+            if not self.engine.has_table(connection, self.COND_ORDERS_TBL_NAME):
+                # Create a table with the appropriate Columns
+                table = Table(self.COND_ORDERS_TBL_NAME, self.metadata,
+                              Column('stop_order_id', String, index=True, nullable=False, primary_key=True),
+                              Column('user_id', String, nullable=False),
+                              Column('symbol', String, nullable=False),
+                              Column('side', String, nullable=False),
+                              Column('order_type', String, nullable=False),
+                              Column('price', Float, nullable=False),
+                              Column('qty', Float, nullable=False),
+                              Column('time_in_force', String, nullable=False),
+                              Column('order_status', String, nullable=False),
+                              Column('trigger_price', Float, nullable=False),
+                              Column('order_link_id', String),
+                              Column('created_time', DateTime, index=True, nullable=False),
+                              Column('updated_time', DateTime, index=True, nullable=False),
+                              Column('take_profit', Float),
+                              Column('stop_loss', Float),
+                              Column('tp_trigger_by', String),
+                              Column('sl_trigger_by', String),
+                              Column('base_price', Float),
+                              Column('trigger_by', String),
+                              Column('reduce_only', String, nullable=False),
+                              Column('close_on_trigger', String, nullable=False),
+                              )
+                self.metadata.create_all()
+
+    def sync_all_conditional_order_records(self, pair):
+        self._logger.info(f'Syncing all Conditional Order records.')
+        table = self.get_table(self.COND_ORDERS_TBL_NAME)
+        dict_list = self._exchange.get_all_conditional_order_records(pair)
+        records_df = pd.DataFrame(dict_list)
+
+        with self.engine.connect() as connection:
+            # Delete all rows in the table that do not have a status of Filled or Cancelled
+            # These orders might have an updated version so we re-insert
+            connection.execute(table.delete().where(
+                table.c.order_status not in [OrderStatus.Filled, OrderStatus.Cancelled])
+            )
+
+            # Get list of PK (order_id) in the table to not insert already existing rows
+            query = f'SELECT "stop_order_id" FROM public."{self.COND_ORDERS_TBL_NAME}"'
+            existing_ids_list = pd.read_sql(query, connection)['stop_order_id'].tolist()
+
+            # Delete rows that already exist in the db
+            df = records_df[~records_df['stop_order_id'].isin(existing_ids_list)]
+
+            if len(df) > 0:
+                connection.execute(table.insert(), df.to_dict('records'))

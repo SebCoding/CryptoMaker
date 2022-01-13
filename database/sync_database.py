@@ -1,5 +1,12 @@
+import sys
+
 from database.Database import Database
 from exchange.ExchangeBybit import ExchangeBybit
+
+"""
+    For this code to run properly in PyCharm you need to set your 'Working Directory' 
+    to the main folder of CryptoMaker in your Run Configuration at the top right of the window.
+"""
 
 PAIR = 'BTCUSDT'
 
@@ -7,13 +14,9 @@ PAIR = 'BTCUSDT'
 def main():
     exchange = ExchangeBybit()
     db = Database(exchange)
-    db.sync_all_tables(PAIR)
+    pair = PAIR if len(sys.argv) <= 1 else sys.argv[1]
+    db.sync_all_tables(pair)
 
-
-"""
-    For this code to run properly in PyCharm you need to set your 'Working Directory' 
-    to the main folder of CryptoMaker in your Run Configuration at the top right of the window.
-"""
 
 if __name__ == '__main__':
     main()

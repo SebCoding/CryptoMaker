@@ -363,11 +363,37 @@ class ExchangeBybit:
         return None
 
     # Get all orders with all statuses for this pair stored on Bybit
-    def get_all_orders_records(self, pair):
+    def get_all_order_records(self, pair):
         list_records = []
         page = 1
         while True:
             result = self.session_auth.get_active_order(
+                symbol=pair,
+                order='asc',
+                page=page,
+                limit=50
+            )
+            if result and result['result']['data']:
+                list_records = list_records + result['result']['data']
+                page += 1
+            else:
+                break
+        # Convert created_at timestamp to datetime string
+        df = pd.DataFrame(list_records)
+        df['created_time'] = \
+            [arrow.get(x).to('local').datetime.strftime(constants.DATETIME_FMT) for x in df.created_time]
+        df['updated_time'] = \
+            [arrow.get(x).to('local').datetime.strftime(constants.DATETIME_FMT) for x in df.updated_time]
+        df.sort_values(by=['created_time'], ascending=True)
+        dict_list = df.to_dict('records')
+        return dict_list
+
+    # Get all conditional orders with all statuses for this pair stored on Bybit
+    def get_all_conditional_order_records(self, pair):
+        list_records = []
+        page = 1
+        while True:
+            result = self.session_auth.get_conditional_order(
                 symbol=pair,
                 order='asc',
                 page=page,
