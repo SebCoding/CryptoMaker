@@ -43,8 +43,8 @@ class Bot:
         self._last_throttle_start_time = 0.0
         self.throttle_secs = self._config['bot']['throttle_secs']
 
-        self.db = Database()
         self._exchange = ExchangeBybit()
+        self.db = Database(self._exchange)
         self.strategy = globals()[self._config['strategy']['name']](self.db)
         self._candle_handler = CandleHandler(self._exchange)
         self._wallet = WalletUSDT(self._exchange, self.stake_currency)
@@ -105,7 +105,7 @@ class Bot:
             size = self._position.short_position['size']
 
         entry_price = round(entry_price, 2)
-        now = dt.datetime.now().strftime(constants.DATETIME_FORMAT)
+        now = dt.datetime.now().strftime(constants.DATETIME_FMT)
         _side = 'Long' if side == OrderSide.Buy else 'Short'
         self._logger.info(f'{now} Entered {_side} position, entry_price={entry_price} size={size}.')
 
@@ -180,7 +180,7 @@ class Bot:
                 sys.stdout.flush()
         except KeyboardInterrupt as e:
             self._logger.info('\n')
-            self._position.sync_all_closed_pnl_records(self.pair)
+            self.db.sync_all_tables(self.pair)
             self._logger.info("Application Terminated by User.")
         except Exception as e:
             self._logger.exception(e)
@@ -190,20 +190,23 @@ class Bot:
     def run_forever2(self):
         self._logger.info(f"Initializing Main Loop.")
 
-        print(self._wallet.to_string() + "\n")
-        print('Position:\n' + self._position.get_positions_df().to_string() + "\n")
-        print('Orders:\n' + self._orders.get_orders_df(order_status=OrderStatus.New).to_string() + '\n')
+        self.db.sync_all_user_trade_records(self.pair)
+        exit(1)
 
-        order1 = Order(OrderSide.Buy, self.pair, OrderType.Limit, 0.1, 10000, take_profit=11000, stop_loss=9000)
-        result = self._orders.place_order(order1, 'TakeProfit')
-        print("Order Result:\n", rapidjson.dumps(result, indent=2))
-
-        self._orders.update_db_order_stop_loss_by_id(result['order_id'], 777)
-
-        self._wallet.update_wallet()
-        print(self._wallet.to_string() + "\n")
-        print('Position:\n' + self._position.get_positions_df().to_string() + "\n")
-        print('Orders:\n' + self._orders.get_orders_df(order_status=OrderStatus.New).to_string() + '\n')
+        # print(self._wallet.to_string() + "\n")
+        # print('Position:\n' + self._position.get_positions_df().to_string() + "\n")
+        # print('Orders:\n' + self._orders.get_orders_df(order_status=OrderStatus.New).to_string() + '\n')
+        #
+        # order1 = Order(OrderSide.Buy, self.pair, OrderType.Limit, 0.1, 10000, take_profit=11000, stop_loss=9000)
+        # result = self._orders.place_order(order1, 'TakeProfit')
+        # print("Order Result:\n", rapidjson.dumps(result, indent=2))
+        #
+        # self._orders.update_db_order_stop_loss_by_id(result['order_id'], 777)
+        #
+        # self._wallet.update_wallet()
+        # print(self._wallet.to_string() + "\n")
+        # print('Position:\n' + self._position.get_positions_df().to_string() + "\n")
+        # print('Orders:\n' + self._orders.get_orders_df(order_status=OrderStatus.New).to_string() + '\n')
         #
         # order2 = Order(Side.Sell, self.pair, OrderType.Market, 0.001, take_profit=35000, stop_loss=50000)
         # result = self._orders.place_order(order2)

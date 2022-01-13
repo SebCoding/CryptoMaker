@@ -54,6 +54,7 @@ executionReport
 ticketInfo
 
 """
+import arrow
 import pandas as pd
 import api_keys
 import constants
@@ -174,10 +175,83 @@ class ExchangeBybit:
             self._logger.error(msg)
             raise Exception(msg)
 
-    # ===============================================================================
-    #   HTTP Related Methods
-    # ===============================================================================
+    """
+        ----------------------------------------------------------------------------
+           Websockets Related Methods
+        ----------------------------------------------------------------------------
+    """
+    def subscribe_to_topics(self):
+        logger = Logger.get_module_logger('pybit')
+        # public subscriptions
+        self.ws_public = WebSocket(
+            self._ws_endpoint_public,
+            subscriptions=self.public_topics,
+            ping_interval=25,
+            ping_timeout=24,
+            logger=logger
+        )
 
+        # private subscriptions, connect with authentication
+        self.ws_private = WebSocket(
+            self._ws_endpoint_private,
+            subscriptions=self.private_topics,
+            api_key=self.api_key,
+            api_secret=self.api_secret,
+            ping_interval=25,
+            ping_timeout=24,
+            logger=logger
+        )
+
+    def build_public_topics_list(self):
+        topic_list = [
+            self.get_candle_topic(self.pair, self.interval),
+            self.get_orderbook25_topic(self.pair)
+        ]
+        return topic_list
+
+    def build_private_topics_list(self):
+        topic_list = ['position', 'execution', 'order', 'stop_order', 'wallet']
+        return topic_list
+
+    @staticmethod
+    def get_orderbook25_topic(pair):
+        sub = "orderBookL2_25.<pair>"
+        return sub.replace('<pair>', pair)
+
+    @staticmethod
+    def get_orderbook200_topic(pair):
+        sub = "orderBook_200.100ms.<pair>"
+        return sub.replace('<pair>', pair)
+
+    @staticmethod
+    def get_trade_topic(pair):
+        sub = "trade.<pair>"
+        return sub.replace('<pair>', pair)
+
+    @staticmethod
+    def get_instrument_info_topic(pair):
+        sub = "instrument_info.100ms.<pair>"
+        return sub.replace('<pair>', pair)
+
+    # Expecting the interval in this list constants.WS_VALID_CANDLE_INTERVALS
+    @classmethod
+    def get_candle_topic(cls, pair, interval):
+        assert (interval in constants.WS_VALID_CANDLE_INTERVALS)
+        sub = 'candle.<interval>.<pair>'
+        return sub.replace('<interval>', interval).replace('<pair>', pair)
+
+    @staticmethod
+    def get_liquidation_topic(pair):
+        sub = "liquidation.<pair>"
+        return sub.replace('<pair>', pair)
+
+        # from_time, to_time must be timestamps
+
+    """
+        ----------------------------------------------------------------------------
+           HTTP Related Methods
+        ----------------------------------------------------------------------------
+    """
     # from_time, to_time must be timestamps
     def get_candle_data(self, pair, from_time, to_time, interval, verbose=False):
         from_time_str = dt.datetime.fromtimestamp(from_time).strftime('%Y-%m-%d')
@@ -272,15 +346,47 @@ class ExchangeBybit:
     # this endpoint. You can get real-time order info with the Query Active Order
     # (real-time) endpoint.
     # Returns list of active orders for this 'pair'
-    def get_orders(self, pair, order_status=None):
+    def get_orders(self, pair, page=1, order_status=None):
         data = self.ws_private.fetch(self._order_topic_name)
         if data:
             return data  # Return list
         else:
-            data = self.session_auth.get_active_order(symbol=pair, order_status=order_status)
+            data = self.session_auth.get_active_order(
+                symbol=pair,
+                order='asc',
+                page=page,
+                limit=50,
+                order_status=order_status
+            )
             if data:
                 return data['result']['data']
         return None
+
+    # Get all orders with all statuses for this pair stored on Bybit
+    def get_all_orders_records(self, pair):
+        list_records = []
+        page = 1
+        while True:
+            result = self.session_auth.get_active_order(
+                symbol=pair,
+                order='asc',
+                page=page,
+                limit=50
+            )
+            if result and result['result']['data']:
+                list_records = list_records + result['result']['data']
+                page += 1
+            else:
+                break
+        # Convert created_at timestamp to datetime string
+        df = pd.DataFrame(list_records)
+        df['created_time'] = \
+            [arrow.get(x).to('local').datetime.strftime(constants.DATETIME_FMT) for x in df.created_time]
+        df['updated_time'] = \
+            [arrow.get(x).to('local').datetime.strftime(constants.DATETIME_FMT) for x in df.updated_time]
+        df.sort_values(by=['created_time'], ascending=True)
+        dict_list = df.to_dict('records')
+        return dict_list
 
     # Get active order by id
     def get_order_by_id(self, pair, order_id):
@@ -365,9 +471,16 @@ class ExchangeBybit:
             self._logger.error(msg, f" order failed. Error code: {data['ext_code']}.")
         return None
 
+    # Get the latest price and other information of the current pair
+    # TODO: not finished, never tested
+    def public_trading_records(self):
+        data = self.session_auth.public_trading_records(symbol=self.pair)
+        if data:
+            return data['result']
+
     # Get user's closed profit and loss records.
     # The results are ordered in descending order (the first item is the latest).
-    def get_closed_profit_and_loss(self, pair, start_time, end_time, page=1):
+    def _get_closed_profit_and_loss(self, pair, start_time, end_time, page=1):
         result = self.session_auth.closed_profit_and_loss(
             symbol=pair,
             start_time=start_time,  # Start timestamp point for result, in seconds
@@ -378,80 +491,52 @@ class ExchangeBybit:
         )
         return result['result']
 
-    # Get the latest price and other information of the current pair
-    # TODO: not finished, never tested
-    def public_trading_records(self):
-        data = self.session_auth.public_trading_records(symbol=self.pair)
-        if data:
-            return data['result']
+    # Return a dictionary with all Closed P&L records
+    def get_all_closed_pnl_records(self, pair):
+        start_time = dt.datetime(2000, 1, 1).timestamp()  # Make sure we pick up everything available
+        end_time = dt.datetime(2030, 1, 1).timestamp()  # Make sure we pick up everything available
+        list_records = []
+        page = 1
+        while True:
+            # Start timestamp point for result, in seconds
+            # End timestamp point for result, in seconds
+            result = self._get_closed_profit_and_loss(pair, start_time, end_time, page=page)
+            if result['data']:
+                list_records = list_records + result['data']
+                page += 1
+            else:
+                break
+        # Convert created_at timestamp to datetime string
+        df = pd.DataFrame(list_records)
+        df['created_at'] = [arrow.get(x).to('local').datetime.strftime(constants.DATETIME_FMT) for x in df.created_at]
+        df.sort_values(by=['id'])
+        dict_list = df.to_dict('records')
+        return dict_list
 
-    # ===============================================================================
-    #   Websockets Related Methods
-    # ===============================================================================
+    # Get all orders with all statuses for this pair stored on Bybit
+    def get_user_trades_records(self, pair):
+        start_time = dt.datetime(2000, 1, 1).timestamp()  # Make sure we pick up everything available
+        end_time = dt.datetime(2030, 1, 1).timestamp()  # Make sure we pick up everything available
+        list_records = []
+        page = 1
+        while True:
+            result = self.session_auth.user_trade_records(
+                symbol=pair,
+                start_time=start_time,
+                end_time=end_time,
+                page=page,
+                limit=50
+            )
+            if result and result['result']['data']:
+                list_records = list_records + result['result']['data']
+                page += 1
+            else:
+                break
+        # Convert created_at timestamp to datetime string
+        df = pd.DataFrame(list_records)
+        df['trade_time_ms'] = \
+            [arrow.get(x).to('local').datetime.strftime(constants.DATETIME_FMT_MS)[:-3] for x in df['trade_time_ms']]
+        df.sort_values(by=['trade_time_ms'], ascending=True)
+        dict_list = df.to_dict('records')
+        return dict_list
 
-    def subscribe_to_topics(self):
-        logger = Logger.get_module_logger('pybit')
-        # public subscriptions
-        self.ws_public = WebSocket(
-            self._ws_endpoint_public,
-            subscriptions=self.public_topics,
-            ping_interval=25,
-            ping_timeout=24,
-            logger=logger
-        )
-
-        # private subscriptions, connect with authentication
-        self.ws_private = WebSocket(
-            self._ws_endpoint_private,
-            subscriptions=self.private_topics,
-            api_key=self.api_key,
-            api_secret=self.api_secret,
-            ping_interval=25,
-            ping_timeout=24,
-            logger=logger
-        )
-
-    def build_public_topics_list(self):
-        topic_list = [
-            self.get_candle_topic(self.pair, self.interval),
-            self.get_orderbook25_topic(self.pair)
-        ]
-        return topic_list
-
-    def build_private_topics_list(self):
-        topic_list = ['position', 'execution', 'order', 'stop_order', 'wallet']
-        return topic_list
-
-    @staticmethod
-    def get_orderbook25_topic(pair):
-        sub = "orderBookL2_25.<pair>"
-        return sub.replace('<pair>', pair)
-
-    @staticmethod
-    def get_orderbook200_topic(pair):
-        sub = "orderBook_200.100ms.<pair>"
-        return sub.replace('<pair>', pair)
-
-    @staticmethod
-    def get_trade_topic(pair):
-        sub = "trade.<pair>"
-        return sub.replace('<pair>', pair)
-
-    @staticmethod
-    def get_instrument_info_topic(pair):
-        sub = "instrument_info.100ms.<pair>"
-        return sub.replace('<pair>', pair)
-
-    # Expecting the interval in this list constants.WS_VALID_CANDLE_INTERVALS
-    @classmethod
-    def get_candle_topic(cls, pair, interval):
-        assert (interval in constants.WS_VALID_CANDLE_INTERVALS)
-        sub = 'candle.<interval>.<pair>'
-        return sub.replace('<interval>', interval).replace('<pair>', pair)
-
-    @staticmethod
-    def get_liquidation_topic(pair):
-        sub = "liquidation.<pair>"
-        return sub.replace('<pair>', pair)
-
-        # from_time, to_time must be timestamps

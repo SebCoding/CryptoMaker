@@ -84,7 +84,7 @@ class Orders:
     def place_order(self, order, reason):
         result = self.exchange.place_order(order)
         if result:
-            result['reason'] = reason
+            # result['reason'] = reason
             result['take_profit'] = order.take_profit
             result['stop_loss'] = order.stop_loss
 
@@ -93,11 +93,11 @@ class Orders:
                 result['price'] = 0
 
             created_time = arrow.get(result['created_time']).to('local').datetime
-            created_time = created_time.strftime(constants.DATETIME_FORMAT)
+            created_time = created_time.strftime(constants.DATETIME_FMT)
             result['created_time'] = created_time
 
             updated_time = arrow.get(result['updated_time']).to('local').datetime
-            updated_time = updated_time.strftime(constants.DATETIME_FORMAT)
+            updated_time = updated_time.strftime(constants.DATETIME_FMT)
             result['updated_time'] = updated_time
 
             self._logger.info(f"{created_time} Confirmed {reason} {order.order_type} Order: " + order.to_string())

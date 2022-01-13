@@ -120,7 +120,7 @@ class ScalpEmaRsiAdx(BaseStrategy):
                 signal = {
                     'IdTimestamp': row.timestamp,
                     # 'DateTime': row.datetime.strftime(constants.DATETIME_FORMAT),
-                    'DateTime': dt.datetime.fromtimestamp(row.timestamp / 1000000).strftime(constants.DATETIME_FORMAT),
+                    'DateTime': dt.datetime.fromtimestamp(row.timestamp / 1000000).strftime(constants.DATETIME_FMT),
                     'Pair': row.pair,
                     'Interval': self.interval,
                     'Signal': TradeSignals.EnterLong,
@@ -140,7 +140,7 @@ class ScalpEmaRsiAdx(BaseStrategy):
                 signal = {
                     'IdTimestamp': row.timestamp,
                     # 'DateTime': row.datetime.strftime(constants.DATETIME_FORMAT),
-                    'DateTime': dt.datetime.fromtimestamp(row.timestamp / 1000000).strftime(constants.DATETIME_FORMAT),
+                    'DateTime': dt.datetime.fromtimestamp(row.timestamp / 1000000).strftime(constants.DATETIME_FMT),
                     'Pair': row.pair,
                     'Interval': self.interval,
                     'Signal': TradeSignals.EnterShort,

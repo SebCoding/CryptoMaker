@@ -20,7 +20,7 @@ def sync_closed_pnl(pair, start_time, end_time):
     list_records = []
     page = 1
     while True:
-        result = exchange.get_closed_profit_and_loss(pair, start_time, end_time, page=page)
+        result = exchange._get_closed_profit_and_loss(pair, start_time, end_time, page=page)
         if result['data']:
             list_records = list_records + result['data']
             page += 1
@@ -29,7 +29,7 @@ def sync_closed_pnl(pair, start_time, end_time):
 
     # Convert created_at timestamp to datetime string
     df = pd.DataFrame(list_records)
-    df['created_at'] = [dt.datetime.fromtimestamp(x).strftime(constants.DATETIME_FORMAT) for x in df.created_at]
+    df['created_at'] = [dt.datetime.fromtimestamp(x).strftime(constants.DATETIME_FMT) for x in df.created_at]
     df.sort_values(by=['id'])
     dict_list = df.to_dict('records')
 

@@ -8,7 +8,7 @@ from Configuration import Configuration
 class Logger:
     _config = Configuration.get_config()
     _logging_level = Configuration.get_config()['logging']['logging_level']
-    _datefmt = constants.DATETIME_FORMAT
+    _datefmt = constants.DATETIME_FMT
 
     # Shared global debug file handler for all modules
     # with level hardcoded to logging_.DEBUG

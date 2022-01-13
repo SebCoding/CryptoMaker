@@ -2,8 +2,11 @@ APPLICATION_NAME = 'CryptoMaker'
 SUPPORTED_EXCHANGES = ['Bybit']
 MARKET_TYPES = ['perpetual futures']
 LOGGING_LEVELS = ['debug', 'info', 'warning', 'error', 'critical']
-DATE_FORMAT = '%Y-%m-%d'
-DATETIME_FORMAT = '%Y-%m-%d %H:%M:%S'
+
+DATE_FMT = '%Y-%m-%d'
+DATETIME_FMT = '%Y-%m-%d %H:%M:%S'
+# Use some_date.strftime('%Y-%m-%d %H:%M:%S.%f')[:-3] to get only 3 digits for ms
+DATETIME_FMT_MS = '%Y-%m-%d %H:%M:%S.%f'
 
 TRADE_ENTRY_MODES = ['maker', 'taker']
 IMPLEMENTED_STRATEGIES = ['ScalpEmaRsiAdx']
