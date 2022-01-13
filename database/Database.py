@@ -155,6 +155,7 @@ class Database:
             connection.execute(update_statement)
 
     def sync_all_order_records(self, pair):
+        self._logger.info(f'Syncing all Order records.')
         table = self.get_table(self.ORDERS_TBL_NAME)
         dict_list = self._exchange.get_all_orders_records(pair)
         records_df = pd.DataFrame(dict_list)
@@ -182,7 +183,6 @@ class Database:
 
             if len(df) > 0:
                 connection.execute(table.insert(), df.to_dict('records'))
-            self._logger.info(f'Syncing all Order records.')
 
     """
         -----------------------------------------------------------------------------
@@ -225,6 +225,7 @@ class Database:
     # Insert Closed P&L contained in a list of dictionaries
     # Assuming the table exists, inserting only none existing entries
     def sync_all_closed_pnl_records(self, pair):
+        self._logger.info(f'Syncing all Closed P&L records.')
         table = self.get_table(self.CLOSED_PNL_TBL_NAME)
         dict_list = self._exchange.get_all_closed_pnl_records(pair)
         records_df = pd.DataFrame(dict_list)
@@ -243,7 +244,6 @@ class Database:
 
             if len(df) > 0:
                 connection.execute(table.insert(), df.to_dict('records'))
-        self._logger.info(f'Syncing all Closed P&L records.')
 
     """
         -----------------------------------------------------------------------------
@@ -281,6 +281,7 @@ class Database:
                 self.metadata.create_all()
 
     def sync_all_user_trade_records(self, pair):
+        self._logger.info(f'Syncing all User Trade records.')
         table = self.get_table(self.USER_TRADES_TBL_NAME)
         dict_list = self._exchange.get_user_trades_records(pair)
         records_df = pd.DataFrame(dict_list)
@@ -299,5 +300,4 @@ class Database:
 
             if len(df) > 0:
                 connection.execute(table.insert(), df.to_dict('records'))
-        self._logger.info(f'Syncing all User Trade records.')
 
