@@ -40,7 +40,7 @@ class Database:
 
     def confirm_db_name(self):
         # Switch to test database if user forgot to change it
-        if self._config['exchange']['testnet'] and not self.name.endswith('Test'):
+        if self._config['exchange']['testnet'] and 'test' not in self.name.lower():
             while True:
                 self._logger.info(f'You are running on Testnet. The db_name does not appear to be the test database.')
                 answer = input(f'Please confirm that you wish to continue with db_name={self.name} (y/n): ')
@@ -60,7 +60,8 @@ class Database:
 
     def validate_db(self):
         if not database_exists(self.db_url):
-            raise Exception(f'{self.db_url} database does not exists.')
+            msg = f'{self.db_url} database does not exists.'
+            raise Exception(msg)
 
     # Get table object by table name.
     def get_table(self, table_name):
