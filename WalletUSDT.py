@@ -11,11 +11,11 @@ from logging_.Logger import Logger
 class WalletUSDT:
     _wallet_topic_name = 'wallet'
 
-    def __init__(self, exchange, stake_currency):
+    def __init__(self, exchange):
         self.logger = Logger.get_module_logger(__name__)
         self._config = Configuration.get_config()
         self._exchange = exchange
-        self._stake_currency = stake_currency
+        self._stake_currency = self._config['exchange']['stake_currency']
         self._free = 0.0
         self._used = 0.0
         self._total = 0.0

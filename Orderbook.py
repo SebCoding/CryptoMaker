@@ -1,22 +1,8 @@
-"""
-    Class implementation of the orderbook.
-    It uses websockets to get the data.
 
-    topics:
-     - orderBookL2_25: Fetches the orderbook with a depth of 25 orders per side.
-        => Push frequency: 20ms
-
-     - orderBookL2_200: Fetches the orderbook with a depth of 200 orders per side.
-        => Push frequency: 100ms
-
-     After the subscription response, the first response will be the snapshot response.
-     This shows the entire orderbook. The data is ordered by price, starting with the
-     lowest buys and ending with the highest sells. Following this, all responses are
-     in the delta format, which represents updates to the orderbook relative to the
-     last response.
-"""
 import pandas as pd
+import rapidjson
 
+from enums.BybitEnums import OrderSide
 from exchange.ExchangeBybit import ExchangeBybit
 from logging_.Logger import Logger
 import time
@@ -25,6 +11,23 @@ from old.ExchangeWS import ExchangeWS
 
 
 class Orderbook:
+    """
+        Class implementation of the orderbook.
+        It uses websockets to get the data.
+
+        topics:
+         - orderBookL2_25: Fetches the orderbook with a depth of 25 orders per side.
+            => Push frequency: 20ms
+
+         - orderBookL2_200: Fetches the orderbook with a depth of 200 orders per side.
+            => Push frequency: 100ms
+
+         After the subscription response, the first response will be the snapshot response.
+         This shows the entire orderbook. The data is ordered by price, starting with the
+         lowest buys and ending with the highest sells. Following this, all responses are
+         in the delta format, which represents updates to the orderbook relative to the
+         last response.
+    """
 
     def __init__(self):
         self._logger = Logger.get_module_logger(__name__)
@@ -34,8 +37,25 @@ class Orderbook:
         self.ws = self.exchange.ws_public
         self.ob25_topic_name = self.exchange.get_orderbook25_topic(self.pair)
 
-    # Return the "top" entries on each side
-    def get_orderbook(self, top, side=None):
+    def get_entries(self, top):
+        """
+            Returns 2 values:
+              - the "top" entries on each side
+              - the spread
+            The data is ordered by price, starting with the lowest buys and ending with the highest sells.
+        """
+        data = self.ws.fetch(self.ob25_topic_name)
+        # print(pd.DataFrame(data).to_string())
+        if data:
+            return \
+                data[25 - top:25] + data[25:25 + top], \
+                abs(float(data[25]['price']) - float(data[24]['price']))
+        return None, None
+
+    def get_spread(self):
+        data = self.ws.fetch(self.ob25_topic_name)
+        if data:
+            return abs(float(data[25]['price']) - float(data[24]['price']))
 
     def print_orderbook(self, top, sleep=0.0):
         max_spread = 0
@@ -54,23 +74,26 @@ class Orderbook:
                 # For some reason the data does not arrive grouped and sorted properly
                 # Re-sort by side, price in descending order
                 df.sort_values(['side', 'price'], ascending=False, inplace=True)
-                df.reset_index(drop=True, inplace=True) # reset row numbers (index) after sort
+                df.reset_index(drop=True, inplace=True)  # reset row numbers (index) after sort
                 # print(df.to_string() + '\n')
 
                 # Print sellers at the top
-                sell_df = df[25-top:25]
+                sell_df = df[25 - top:25]
                 print(sell_df.to_string() + '\n')
 
                 # print buyers at the bottom
-                buy_df = df[25:25+top]
+                buy_df = df[25:25 + top]
                 print(buy_df.to_string() + '\n')
 
-                spread = abs(float(sell_df.iloc[-1]['price']) - float(buy_df.iloc[0]['price']))
+                spread = abs(sell_df.iloc[-1]['price'] - buy_df.iloc[0]['price'])
                 if spread > max_spread:
                     max_spread = spread
                 print(f"Spread: Sell[{sell_df.iloc[-1]['price']}] - Buy[{buy_df.iloc[0]['price']}] = {spread}")
                 print(f'Max Spread: {max_spread}' + '\n')
             time.sleep(sleep)  # Orderbook push rate 20ms
 
-# ob = Orderbook()
-# ob.print_orderbook(top=1, sleep=0.5)
+
+ob = Orderbook()
+# print(*ob.get_entries(2), sep='\n')
+# print(ob.get_spread())
+# ob.print_orderbook(top=5, sleep=1)

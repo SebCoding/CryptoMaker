@@ -1,59 +1,3 @@
-"""
-    Exchange class that implements operations done through the WebSocket API
-    This class is hardcoded for the Bybit exchange
-----------------------------------------------------------------------------
-To see which endpoints and topics are available, check the Bybit API
-documentation:
-    https://bybit-exchange.github.io/docs/inverse/#t-websocket
-    https://bybit-exchange.github.io/docs/linear/#t-websocket
-
-Inverse Perpetual endpoints:
-wss://stream-testnet.bybit.com/realtime
-wss://stream.bybit.com/realtime
-
-Perpetual endpoints:
-wss://stream-testnet.bybit.com/realtime_public
-wss://stream-testnet.bybit.com/realtime_private
-wss://stream.bybit.com/realtime_public or wss://stream.bytick.com/realtime_public
-wss://stream.bybit.com/realtime_private or wss://stream.bytick.com/realtime_private
-
-Spot endpoints:
-wss://stream-testnet.bybit.com/spot/quote/ws/v1
-wss://stream-testnet.bybit.com/spot/quote/ws/v2
-wss://stream-testnet.bybit.com/spot/ws
-wss://stream.bybit.com/spot/quote/ws/v1
-wss://stream.bybit.com/spot/quote/ws/v2
-wss://stream.bybit.com/spot/ws
-
-Futures Public Topics:
-orderBookL2_25
-orderBookL2-200
-trade
-insurance
-instrument_info
-klineV2
-
-Futures Private Topics:
-position
-execution
-order
-stop_order
-wallet
-
-Spot Topics:
-Subscribing to spot topics uses the JSON format to pass the topic name and
-filters, as opposed to futures WS where the topic and filters are pass in a
-single string. So, it's recommended to pass a JSON or python dict in your
-subscriptions, which also be used to fetch the topic's updates. Examples can
-be found in the code panel here: https://bybit-exchange.github.io/docs/spot/#t-publictopics
-
-However, as private spot topics do not require a subscription, the following
-strings can be used to fetch data:
-outboundAccountInfo
-executionReport
-ticketInfo
-
-"""
 import arrow
 import pandas as pd
 import api_keys
@@ -70,6 +14,62 @@ from pybit import HTTP, WebSocket
 
 
 class ExchangeBybit:
+    """
+        Exchange class that implements operations done through the WebSocket API
+        This class is hardcoded for the Bybit exchange
+    ----------------------------------------------------------------------------
+    To see which endpoints and topics are available, check the Bybit API
+    documentation:
+        https://bybit-exchange.github.io/docs/inverse/#t-websocket
+        https://bybit-exchange.github.io/docs/linear/#t-websocket
+
+    Inverse Perpetual endpoints:
+    wss://stream-testnet.bybit.com/realtime
+    wss://stream.bybit.com/realtime
+
+    Perpetual endpoints:
+    wss://stream-testnet.bybit.com/realtime_public
+    wss://stream-testnet.bybit.com/realtime_private
+    wss://stream.bybit.com/realtime_public or wss://stream.bytick.com/realtime_public
+    wss://stream.bybit.com/realtime_private or wss://stream.bytick.com/realtime_private
+
+    Spot endpoints:
+    wss://stream-testnet.bybit.com/spot/quote/ws/v1
+    wss://stream-testnet.bybit.com/spot/quote/ws/v2
+    wss://stream-testnet.bybit.com/spot/ws
+    wss://stream.bybit.com/spot/quote/ws/v1
+    wss://stream.bybit.com/spot/quote/ws/v2
+    wss://stream.bybit.com/spot/ws
+
+    Futures Public Topics:
+    orderBookL2_25
+    orderBookL2-200
+    trade
+    insurance
+    instrument_info
+    klineV2
+
+    Futures Private Topics:
+    position
+    execution
+    order
+    stop_order
+    wallet
+
+    Spot Topics:
+    Subscribing to spot topics uses the JSON format to pass the topic name and
+    filters, as opposed to futures WS where the topic and filters are pass in a
+    single string. So, it's recommended to pass a JSON or python dict in your
+    subscriptions, which also be used to fetch the topic's updates. Examples can
+    be found in the code panel here: https://bybit-exchange.github.io/docs/spot/#t-publictopics
+
+    However, as private spot topics do not require a subscription, the following
+    strings can be used to fetch data:
+    outboundAccountInfo
+    executionReport
+    ticketInfo
+
+    """
     name = None
     use_testnet = False
 
@@ -134,6 +134,7 @@ class ExchangeBybit:
         # HTTP Session
         self.create_http_session()
         self.reset_trading_settings(self.pair)
+        self.pair_details_dict = self.get_pair_details()
 
         # Connect websockets and subscribe to topics
         self._public_topics = self.build_public_topics_list()
@@ -152,6 +153,7 @@ class ExchangeBybit:
            Websockets Related Methods
         ----------------------------------------------------------------------------
     """
+
     def subscribe_to_topics(self):
         logger = Logger.get_module_logger('pybit')
         # public subscriptions
@@ -229,6 +231,7 @@ class ExchangeBybit:
            HTTP Related Methods
         ----------------------------------------------------------------------------
     """
+
     def create_http_session(self):
         force_retry = True
         max_retries = 4  # default is 3
@@ -263,10 +266,48 @@ class ExchangeBybit:
         #     logging_level=logging_level,
         #     spot=spot)
 
-    """
-        get_candle_data(): from_time, to_time must be timestamps
-    """
+    def get_pair_details(self):
+        """
+            A trade_pair_details dictionary
+            {
+                'name': 'ETHUSDT',
+                'alias': 'ETHUSDT',
+                'status': 'Trading',
+                'base_currency': 'ETH',
+                'quote_currency': 'USDT',
+                'price_scale': 2,
+                'taker_fee': '0.00075',
+                'maker_fee': '-0.00025',
+                'leverage_filter': {
+                    'min_leverage': 1,
+                    'max_leverage': 50,
+                    'leverage_step': '0.01'
+                },
+                'price_filter': {
+                    'min_price': '0.05',
+                    'max_price': '99999.9',
+                    'tick_size': '0.05'
+                },
+                'lot_size_filter': {
+                    'max_trading_qty': 200,
+                    'min_trading_qty': 0.01,
+                    'qty_step': 0.01
+                }
+            }
+        """
+        data = self.session_auth.query_symbol()
+        if data:
+            _list = data['result']
+            if _list:
+                for i in _list:
+                    if i['name'] == self.pair:
+                        return i
+        return None
+
     def get_candle_data(self, pair, from_time, to_time, interval, verbose=False):
+        """
+            get_candle_data(): from_time, to_time must be timestamps
+        """
         from_time_str = dt.datetime.fromtimestamp(from_time).strftime('%Y-%m-%d')
         to_time_str = dt.datetime.fromtimestamp(to_time).strftime('%Y-%m-%d')
 
@@ -350,16 +391,16 @@ class ExchangeBybit:
                 return data['result']  # Return list of dict
         return None
 
-    """ 
-        Order Statuses that can be used as filter: 
-        Created, Rejected, New, PartiallyFilled, Filled, Cancelled, PendingCancel
-    """
-
-    # Because order creation/cancellation is asynchronous, there can be a data delay in
-    # this endpoint. You can get real-time order info with the Query Active Order
-    # (real-time) endpoint.
-    # Returns list of active orders for this 'pair'
     def get_orders(self, pair, page=1, order_status=None):
+        """
+            Because order creation/cancellation is asynchronous, there can be a data delay in
+            this endpoint. You can get real-time order info with the Query Active Order
+            (real-time) endpoint.
+            Returns list of active orders for this 'pair'
+
+            Order Statuses that can be used as filter:
+            Created, Rejected, New, PartiallyFilled, Filled, Cancelled, PendingCancel
+        """
         data = self.ws_private.fetch(self.order_topic_name)
         if data:
             return data  # Return list
@@ -431,13 +472,13 @@ class ExchangeBybit:
     def get_order_by_id(self, pair, order_id):
         data = self.ws_private.fetch(self.order_topic_name)
         if data:
-            for order in data['data']:
+            for order in data:
                 if order['order_id'] == order_id:
                     return order
             return None
         else:
-            data = self.session_auth.get_active_order(pair=pair, order_id=order_id)
-            if data and len(data['result']) > 0:
+            data = self.session_auth.get_active_order(symbol=pair, order_id=order_id)
+            if data and data['result'] and data['result']['data']:
                 return data['result']['data'][0]
         return None
 
@@ -455,26 +496,25 @@ class ExchangeBybit:
             return data['result'][0]
         return None
 
-    """
-        Place an active order.
-        Params (* are mandatory):
-            *side: Buy, Sell
-            *symbol: BTCUSDT 
-            *order_type: Market, Limit
-            *qty: (Order quantity in BTC)
-            *price: (Order price. Required if you make limit price order)
-            *time_in_force: PostOnly, GoodTillCancel, ImmediateOrCancel, FillOrKill
-            *close_on_trigger: true, false
-            *reduce_only: true, false
-            order_link_id: (Unique user-set order ID. Maximum length of 36 characters)
-            take_profit: (Take profit price, only take effect upon opening the position)
-            stop_loss: (Stop loss price, only take effect upon opening the position)
-            tp_trigger_by: LastPrice, IndexPrice, MarkPrice
-            sl_trigger_by: LastPrice, IndexPrice, MarkPrice
-            position_idx: 0, 1, 2 (Modes: 0-One-Way Mode, 1-Buy side of both side mode, 2-Sell side of both side mode)
-    """
-
     def place_order(self, o: Order):
+        """
+            Place an active order.
+            Params (* are mandatory):
+                *side: Buy, Sell
+                *symbol: BTCUSDT
+                *order_type: Market, Limit
+                *qty: (Order quantity in BTC)
+                *price: (Order price. Required if you make limit price order)
+                *time_in_force: PostOnly, GoodTillCancel, ImmediateOrCancel, FillOrKill
+                *close_on_trigger: true, false
+                *reduce_only: true, false
+                order_link_id: (Unique user-set order ID. Maximum length of 36 characters)
+                take_profit: (Take profit price, only take effect upon opening the position)
+                stop_loss: (Stop loss price, only take effect upon opening the position)
+                tp_trigger_by: LastPrice, IndexPrice, MarkPrice
+                sl_trigger_by: LastPrice, IndexPrice, MarkPrice
+                position_idx: 0, 1, 2 (Modes: 0-One-Way Mode, 1-Buy side of both side mode, 2-Sell side of both side mode)
+        """
         data = None
         if o.order_type == OrderType.Market:
             data = self.session_auth.place_active_order(
@@ -511,9 +551,62 @@ class ExchangeBybit:
             self._logger.error(msg, f" order failed. Error code: {data['ext_code']}.")
         return None
 
-    # Get the latest price and other information of the current pair
-    # TODO: not finished, never tested
+    def replace_active_order_qt_pr_sl(self, order_id, new_qty, new_price, new_stop_loss):
+        """
+            replace_active_order() can modify/amend your active orders.
+            Params:
+             - p_r_qty: New order quantity. Do not pass this field if you don't want modify it
+             - p_r_price: New order price. Do not pass this field if you don't want modify it
+             - take_profit: New take_profit price, also known as stop_px. Do not pass this field if you don't want modify it
+             - stop_loss: New stop_loss price, also known as stop_px. Do not pass this field if you don't want modify it
+         """
+        try:
+            result = self.session_auth.replace_active_order(
+                symbol=self.pair,
+                order_id=order_id,
+                p_r_qty=new_qty,
+                p_r_price=new_price,
+                stop_loss=new_stop_loss
+            )
+            return result
+        except pybit.exceptions.InvalidRequestError as e:
+            if e.status_code not in [30076]:  # 30076 Order not modified
+                self._logger.exception(e)
+                raise e
+            result = {'ret_code': e.status_code, 'ret_msg': e.message}
+        return result
+
+    def replace_active_order_pr_sl(self, order_id, new_price, new_stop_loss):
+        """
+            replace_active_order() can modify/amend your active orders.
+            Params:
+             - p_r_price: New order price. Do not pass this field if you don't want modify it
+             - take_profit: New take_profit price, also known as stop_px. Do not pass this field if you don't want modify it
+             - stop_loss: New stop_loss price, also known as stop_px. Do not pass this field if you don't want modify it
+         """
+        try:
+            result = self.session_auth.replace_active_order(
+                symbol=self.pair,
+                order_id=order_id,
+                p_r_price=new_price,
+                stop_loss=new_stop_loss
+            )
+            return result
+        except pybit.exceptions.InvalidRequestError as e:
+            # 20001: Order not exists or too late to replace
+            # 30076 Order not modified
+            if e.status_code not in [20001, 30076]:
+                self._logger.exception(e)
+                raise e
+            result = {'ret_code': e.status_code, 'ret_msg': e.message}
+        return result
+
     def public_trading_records(self):
+        """
+            Get the latest price and other information of the current pair
+            TODO: not finished, never tested
+        :return:
+        """
         data = self.session_auth.public_trading_records(symbol=self.pair)
         if data:
             return data['result']
@@ -580,15 +673,15 @@ class ExchangeBybit:
         dict_list = df.to_dict('records')
         return dict_list
 
-    """
-        Initializes these settings on Bybit before we can start trading
-         - Position Mode Switch
-         - Set Auto Add Margin
-         - Cross/Isolated Margin Switch
-         - Leverage
-         - Full/Partial Position TP/SL Mode Switch
-    """
     def reset_trading_settings(self, pair):
+        """
+            Initializes these settings on Bybit before we can start trading
+             - Position Mode Switch
+             - Set Auto Add Margin
+             - Cross/Isolated Margin Switch
+             - Leverage
+             - Full/Partial Position TP/SL Mode Switch
+        """
         # 1. Position Mode Switch
         # If you are in One-Way Mode, you can only open one position on Buy or Sell side;
         # If you are in Hedge Mode, you can open both Buy and Sell side positions simultaneously.
@@ -671,4 +764,3 @@ class ExchangeBybit:
             if 'same tp sl mode' not in e.message:
                 self._logger.exception(e)
                 raise e
-

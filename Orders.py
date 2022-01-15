@@ -37,7 +37,7 @@ class Order:
 class Orders:
     _orders = None
 
-    def __init__(self, exchange, database):
+    def __init__(self, database, exchange):
         self._logger = Logger.get_module_logger(__name__)
         self._config = Configuration.get_config()
         self.pair = self._config['exchange']['pair']
@@ -100,7 +100,8 @@ class Orders:
             updated_time = updated_time.strftime(constants.DATETIME_FMT)
             result['updated_time'] = updated_time
 
-            self._logger.info(f"{created_time} Confirmed {reason} {order.order_type} Order: " + order.to_string())
+            # self._logger.info(f"{created_time} Confirmed {reason} {order.order_type} Order: " + order.to_string())
+            self._logger.info(f"Sent {order.order_type} Order: " + order.to_string())
             self.db.add_order_dict(result)
         return result
 
@@ -108,21 +109,6 @@ class Orders:
         self.db.update_order_stop_loss_by_id(order_id, new_stop_loss)
         self._logger.info(f'DB Order: {order_id} has been updated with new stop_loss={new_stop_loss}.')
 
-    """
-        replace_active_order() can modify/amend your active orders.
-        Params:
-         - p_r_qty: New order quantity. Do not pass this field if you don't want modify it
-         - p_r_price: New order price. Do not pass this field if you don't want modify it
-         - take_profit: New take_profit price, also known as stop_px. Do not pass this field if you don't want modify it
-         - stop_loss: New stop_loss price, also known as stop_px. Do not pass this field if you don't want modify it
-     """
-    def replace_active_order_qt_pr_sl(self, order_id, new_qty, new_price, new_stop_loss):
-        result = self.exchange.session_auth.replace_active_order(
-            symbol=self.pair,
-            order_id=order_id,
-            p_r_qty=new_qty,
-            p_r_price=new_price,
-            stop_loss=new_stop_loss
-        )['order_id']
-        return result
+
+
 
