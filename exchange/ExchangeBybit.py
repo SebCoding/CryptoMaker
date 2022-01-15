@@ -570,6 +570,14 @@ class ExchangeBybit:
         dict_list = df.to_dict('records')
         return dict_list
 
+    """
+        Initializes these settings on Bybit before we can start trading
+         - Position Mode Switch
+         - Set Auto Add Margin
+         - Cross/Isolated Margin Switch
+         - Leverage
+         - Full/Partial Position TP/SL Mode Switch
+    """
     def reset_trading_settings(self, pair):
         # 1. Position Mode Switch
         # If you are in One-Way Mode, you can only open one position on Buy or Sell side;
