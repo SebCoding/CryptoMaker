@@ -75,15 +75,20 @@ class ExchangeBybit:
 
     # HTTP: REST API
     _http_endpoint = None
+
     # session_unauth = None
     session_auth = None
 
-    # websockets
+    # websocket endpoints
     _ws_endpoint_public = None
     _ws_endpoint_private = None
-    _wallet_topic_name = 'wallet'
-    _position_topic_name = 'position'
-    _order_topic_name = 'order'
+
+    # Private Topics
+    wallet_topic_name = 'wallet'
+    position_topic_name = 'position'
+    order_topic_name = 'order'
+
+    # Websockets
     ws_public = None
     ws_private = None
 
@@ -131,44 +136,10 @@ class ExchangeBybit:
         self.reset_trading_settings(self.pair)
 
         # Connect websockets and subscribe to topics
-        self.public_topics = self.build_public_topics_list()
-        self.private_topics = self.build_private_topics_list()
+        self._public_topics = self.build_public_topics_list()
+        self._private_topics = self.build_private_topics_list()
 
         self.subscribe_to_topics()
-
-    def create_http_session(self):
-        force_retry = True
-        max_retries = 4  # default is 3
-        retry_delay = 3  # default is 3 seconds
-        request_timeout = self._config['exchange']['http']['timeout']  # default is 10 seconds
-        log_requests = True
-        logging_level = self._config['logging']['logging_level']  # default is logging_.INFO
-        spot = False  # spot or futures
-        logger = Logger.get_module_logger('pybit')
-
-        # Authenticated
-        self.session_auth = HTTP(
-            endpoint=self._http_endpoint,
-            api_key=self.api_key,
-            api_secret=self.api_secret,
-            request_timeout=request_timeout,
-            max_retries=max_retries,
-            retry_delay=retry_delay,
-            force_retry=force_retry,
-            log_requests=log_requests,
-            logging_level=logging_level,
-            logger=logger,
-            spot=spot)
-        # Unauthenticated
-        # self.session_unauthenticated = HTTP(
-        #     endpoint=self._http_endpoint,
-        #     request_timeout=request_timeout,
-        #     max_retries=max_retries,
-        #     retry_delay=retry_delay,
-        #     force_retry=force_retry,
-        #     log_requests=log_requests,
-        #     logging_level=logging_level,
-        #     spot=spot)
 
     def validate_pair(self):
         if 'USDT' not in self.pair:
@@ -181,13 +152,12 @@ class ExchangeBybit:
            Websockets Related Methods
         ----------------------------------------------------------------------------
     """
-
     def subscribe_to_topics(self):
         logger = Logger.get_module_logger('pybit')
         # public subscriptions
         self.ws_public = WebSocket(
             self._ws_endpoint_public,
-            subscriptions=self.public_topics,
+            subscriptions=self._public_topics,
             ping_interval=25,
             ping_timeout=24,
             logger=logger
@@ -196,7 +166,7 @@ class ExchangeBybit:
         # private subscriptions, connect with authentication
         self.ws_private = WebSocket(
             self._ws_endpoint_private,
-            subscriptions=self.private_topics,
+            subscriptions=self._private_topics,
             api_key=self.api_key,
             api_secret=self.api_secret,
             ping_interval=25,
@@ -212,7 +182,12 @@ class ExchangeBybit:
         return topic_list
 
     def build_private_topics_list(self):
-        topic_list = ['position', 'execution', 'order', 'stop_order', 'wallet']
+        # topic_list = ['position', 'execution', 'order', 'stop_order', 'wallet']
+        topic_list = [
+            self.wallet_topic_name,
+            self.position_topic_name,
+            self.order_topic_name,
+        ]
         return topic_list
 
     @staticmethod
@@ -254,8 +229,43 @@ class ExchangeBybit:
            HTTP Related Methods
         ----------------------------------------------------------------------------
     """
+    def create_http_session(self):
+        force_retry = True
+        max_retries = 4  # default is 3
+        retry_delay = 3  # default is 3 seconds
+        request_timeout = self._config['exchange']['http']['timeout']  # default is 10 seconds
+        log_requests = True
+        logging_level = self._config['logging']['logging_level']  # default is logging_.INFO
+        spot = False  # spot or futures
+        logger = Logger.get_module_logger('pybit')
 
-    # from_time, to_time must be timestamps
+        # Authenticated
+        self.session_auth = HTTP(
+            endpoint=self._http_endpoint,
+            api_key=self.api_key,
+            api_secret=self.api_secret,
+            request_timeout=request_timeout,
+            max_retries=max_retries,
+            retry_delay=retry_delay,
+            force_retry=force_retry,
+            log_requests=log_requests,
+            logging_level=logging_level,
+            logger=logger,
+            spot=spot)
+        # Unauthenticated
+        # self.session_unauthenticated = HTTP(
+        #     endpoint=self._http_endpoint,
+        #     request_timeout=request_timeout,
+        #     max_retries=max_retries,
+        #     retry_delay=retry_delay,
+        #     force_retry=force_retry,
+        #     log_requests=log_requests,
+        #     logging_level=logging_level,
+        #     spot=spot)
+
+    """
+        get_candle_data(): from_time, to_time must be timestamps
+    """
     def get_candle_data(self, pair, from_time, to_time, interval, verbose=False):
         from_time_str = dt.datetime.fromtimestamp(from_time).strftime('%Y-%m-%d')
         to_time_str = dt.datetime.fromtimestamp(to_time).strftime('%Y-%m-%d')
@@ -315,7 +325,7 @@ class ExchangeBybit:
     # Return a dictionary with balances for currencies.
     # Use 'USDT' as key to get USDT balances => data['result']['USDT']
     def get_balances(self):
-        data = self.ws_private.fetch(self._wallet_topic_name)
+        data = self.ws_private.fetch(self.wallet_topic_name)
         if data:
             return data
         else:
@@ -326,7 +336,7 @@ class ExchangeBybit:
 
     # Get my position list.
     def get_position(self, pair):
-        data = self.ws_private.fetch(self._position_topic_name)
+        data = self.ws_private.fetch(self.position_topic_name)
         if data and self.pair in data.keys():
             pos = []
             if 'Buy' in data[self.pair].keys():
@@ -350,7 +360,7 @@ class ExchangeBybit:
     # (real-time) endpoint.
     # Returns list of active orders for this 'pair'
     def get_orders(self, pair, page=1, order_status=None):
-        data = self.ws_private.fetch(self._order_topic_name)
+        data = self.ws_private.fetch(self.order_topic_name)
         if data:
             return data  # Return list
         else:
@@ -419,7 +429,7 @@ class ExchangeBybit:
 
     # Get active order by id
     def get_order_by_id(self, pair, order_id):
-        data = self.ws_private.fetch(self._order_topic_name)
+        data = self.ws_private.fetch(self.order_topic_name)
         if data:
             for order in data['data']:
                 if order['order_id'] == order_id:

@@ -6,6 +6,7 @@ import datetime as dt
 import rapidjson
 
 import constants
+from LimitEntry import LimitEntry
 from logging_.Logger import Logger
 from CandleHandler import CandleHandler
 from Configuration import Configuration
@@ -85,18 +86,26 @@ class Bot:
 
         side = OrderSide.Buy if signal == TradeSignals.EnterLong else OrderSide.Sell
         tentative_entry_price = self._candle_handler.get_latest_price()
-        trade_amount = round(tradable_balance / tentative_entry_price, 4)
         stop_loss = self.get_stop_loss(side, tentative_entry_price)
+
+        # Calculate trade size (qty) based on leverage
+        qty = tradable_balance / tentative_entry_price
+        if side == OrderSide.Buy:
+            lev = float(self._config['trading']['leverage_long'])
+        else:
+            lev = float(self._config['trading']['leverage_short'])
+        qty = round(qty * lev, 4)
 
         # Step 1: Place order and open position
 
         # Enter with market order (taker)
         if entry_mode == EntryMode.Taker:
-            order_id = self.enter_trade_as_taker(side, trade_amount, stop_loss)
+            order_id = self.enter_trade_as_taker(side, qty, stop_loss)
         # Enter with limit order (maker)
         elif entry_mode == EntryMode.Maker:
-            order_id = self.enter_trade_as_maker(side, trade_amount, tentative_entry_price, stop_loss)
+            order_id = LimitEntry.enter_trade(side, tentative_entry_price, qty, stop_loss)
 
+        # Assuming at this point that the position has been opened
         if side == OrderSide.Buy:
             entry_price = self._position.long_position['entry_price']
             size = self._position.long_position['size']
@@ -106,8 +115,13 @@ class Bot:
 
         entry_price = round(entry_price, 2)
         now = dt.datetime.now().strftime(constants.DATETIME_FMT)
-        _side = 'Long' if side == OrderSide.Buy else 'Short'
-        self._logger.info(f'{now} Entered {_side} position, entry_price={entry_price} size={size}.')
+        if side == OrderSide.Buy:
+            _side = 'Long'
+            _lev = f"{self._config['trading']['leverage_long']}x"
+        else:
+            _side = 'Short'
+            _lev = f"{self._config['trading']['leverage_short']}x"
+        self._logger.info(f'{now} Entered {_lev} {_side} position, entry_price={entry_price} size={size}.')
 
         # Step 2: Place a limit take_profit order based on the confirmed position entry_price
         # Calculate take_profit based the on actual position entry price
@@ -120,7 +134,7 @@ class Bot:
 
         # take_profit order side is opposite has trade entry
         side_tp = OrderSide.Buy if side == OrderSide.Sell else OrderSide.Sell
-        tp_order = Order(side=side_tp, symbol=self.pair, order_type=OrderType.Limit, qty=trade_amount,
+        tp_order = Order(side=side_tp, symbol=self.pair, order_type=OrderType.Limit, qty=qty,
                          price=take_profit, reduce_only=True)
         tp_order_id = self._orders.place_order(tp_order, 'TakeProfit')['order_id']
 
@@ -136,19 +150,14 @@ class Bot:
 
         time.sleep(1)  # Sleep to let the order info be available by http or websocket
 
-    def enter_trade_as_taker(self, side, trade_amount, stop_loss):
-        order = Order(side=side, symbol=self.pair, order_type=OrderType.Market, qty=trade_amount,
+    def enter_trade_as_taker(self, side, qty, stop_loss):
+        order = Order(side=side, symbol=self.pair, order_type=OrderType.Market, qty=qty,
                       stop_loss=stop_loss)
         order_id = self._orders.place_order(order, 'TradeEntry')['order_id']
         # Wait until the position is open
         while not self._position.currently_in_position(side):
             time.sleep(0.5)
         return order_id
-
-    def enter_trade_as_maker(self, side, tentative_entry_price, trade_amount, stop_loss):
-        msg = f'Config Error: trade_entry_mode=\'maker\' not yet implemented'
-        self._logger(msg)
-        raise Exception(msg)
 
     def get_stop_loss(self, side, price):
         stop_loss_pct = self._config['trading']['stop_loss']
