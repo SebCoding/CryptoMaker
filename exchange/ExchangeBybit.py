@@ -60,6 +60,7 @@ import api_keys
 import constants
 import datetime as dt
 
+import pybit
 import utils
 from logging_.Logger import Logger
 from Configuration import Configuration
@@ -85,7 +86,6 @@ class ExchangeBybit:
     _order_topic_name = 'order'
     ws_public = None
     ws_private = None
-
 
     # Bybit WS only support: ['1', '3', '5', '15', '30', '60', '120', '240', '360', 'D', 'W', 'M']
     interval_map = {
@@ -128,6 +128,7 @@ class ExchangeBybit:
 
         # HTTP Session
         self.create_http_session()
+        self.reset_trading_settings(self.pair)
 
         # Connect websockets and subscribe to topics
         self.public_topics = self.build_public_topics_list()
@@ -180,6 +181,7 @@ class ExchangeBybit:
            Websockets Related Methods
         ----------------------------------------------------------------------------
     """
+
     def subscribe_to_topics(self):
         logger = Logger.get_module_logger('pybit')
         # public subscriptions
@@ -252,6 +254,7 @@ class ExchangeBybit:
            HTTP Related Methods
         ----------------------------------------------------------------------------
     """
+
     # from_time, to_time must be timestamps
     def get_candle_data(self, pair, from_time, to_time, interval, verbose=False):
         from_time_str = dt.datetime.fromtimestamp(from_time).strftime('%Y-%m-%d')
@@ -460,6 +463,7 @@ class ExchangeBybit:
             sl_trigger_by: LastPrice, IndexPrice, MarkPrice
             position_idx: 0, 1, 2 (Modes: 0-One-Way Mode, 1-Buy side of both side mode, 2-Sell side of both side mode)
     """
+
     def place_order(self, o: Order):
         data = None
         if o.order_type == OrderType.Market:
@@ -469,7 +473,7 @@ class ExchangeBybit:
                 order_type=o.order_type,
                 qty=o.qty,
                 take_profit=o.take_profit,  # TODO: Check what happens when these are 0
-                stop_loss=o.stop_loss,      # TODO: Check what happens when these are 0
+                stop_loss=o.stop_loss,  # TODO: Check what happens when these are 0
                 time_in_force=o.time_in_force,
                 close_on_trigger=False,
                 reduce_only=o.reduce_only
@@ -510,7 +514,7 @@ class ExchangeBybit:
         result = self.session_auth.closed_profit_and_loss(
             symbol=pair,
             start_time=start_time,  # Start timestamp point for result, in seconds
-            end_time=end_time,      # End timestamp point for result, in seconds
+            end_time=end_time,  # End timestamp point for result, in seconds
             page=page,  # Page. By default, gets first page of data. Maximum of 50 pages
             limit=50  # Limit for data size per page, max size is 50.
             # Optional parameter exec_type: not used by us
@@ -565,4 +569,88 @@ class ExchangeBybit:
         df.sort_values(by=['trade_time_ms'], ascending=True)
         dict_list = df.to_dict('records')
         return dict_list
+
+    def reset_trading_settings(self, pair):
+        # 1. Position Mode Switch
+        # If you are in One-Way Mode, you can only open one position on Buy or Sell side;
+        # If you are in Hedge Mode, you can open both Buy and Sell side positions simultaneously.
+        try:
+            # MergedSingle: One-Way Mode; BothSide: Hedge Mode
+            mode = 'BothSide'
+            res = self.session_auth.position_mode_switch(
+                symbol=pair,
+                # Probable bug on Bybit 'MergedSingle' does not work here. Mode gets rejected an invalid character...
+                mode=mode
+            )
+            self._logger.info(f'[Position Mode] has been set to: {mode}')
+        except pybit.exceptions.InvalidRequestError as e:
+            if e.status_code not in [30083]:  # 30083 Position mode not modified
+                self._logger.exception(e)
+                raise e
+
+        # 2. Set Auto Add Margin
+        # Set auto add margin, or Auto-Margin Replenishment.
+        try:
+            auto_margin = False
+            res = self.session_auth.set_auto_add_margin(
+                symbol=pair,
+                side="Buy",
+                auto_add_margin=auto_margin
+            )
+            self._logger.info(f'[Set Auto Add Margin] for Long has been set to: {auto_margin}')
+        except pybit.exceptions.InvalidRequestError as e:
+            if e.status_code not in [130060]:  # 130060	autoAddMargin not changed
+                self._logger.exception(e)
+                raise e
+        try:
+            auto_margin = False
+            res = self.session_auth.set_auto_add_margin(
+                symbol=pair,
+                side="Sell",
+                auto_add_margin=auto_margin
+            )
+            self._logger.info(f'[Set Auto Add Margin] for Short has been set to: {auto_margin}')
+        except pybit.exceptions.InvalidRequestError as e:
+            if e.status_code not in [130060]:  # 130060	autoAddMargin not changed
+                self._logger.exception(e)
+                raise e
+
+        # 3. Cross/Isolated Margin Switch
+        # Switch Cross/Isolated; must set leverage value when switching from Cross to Isolated
+        try:
+            is_isolated = True
+            buy_l = 1
+            sell_l = 1
+            res = self.session_auth.cross_isolated_margin_switch(
+                symbol=pair,
+                is_isolated=is_isolated,
+                buy_leverage=buy_l,
+                sell_leverage=sell_l
+            )
+            self._logger.info(f'[Isolated Mode] has been set to: {is_isolated}')
+            self._logger.info(f'[Buy Leverage] has been set to: {buy_l}x')
+            self._logger.info(f'[Sell Leverage] has been set to: {sell_l}x')
+        except pybit.exceptions.InvalidRequestError as e:
+            if e.status_code not in [130056]:  # 130056	Isolated not modified
+                self._logger.exception(e)
+                raise e
+
+        # 4. Full/Partial Position TP/SL Mode Switch
+        """
+            When the tp_sl_mode is not changed because it is already at the value we want to set it too, 
+            Bybit returns "130150": "Please try again later." instead of "same tp sl mode" error code 
+            like in (1, 2, 3) above. In this case we look at the message instead of the error code.
+            * We also modified the pybit code to not do any retries when this happens. *
+        """
+        try:
+            tp_sl_mode = 'Full'
+            res = self.session_auth.full_partial_position_tp_sl_switch(
+                symbol=pair,
+                tp_sl_mode=tp_sl_mode  # Possible values: Full or Partial
+            )
+            self._logger.info(f'[Position TP/SL Mode] has been set to: {tp_sl_mode}')
+        except pybit.exceptions.InvalidRequestError as e:
+            if 'same tp sl mode' not in e.message:
+                self._logger.exception(e)
+                raise e
 

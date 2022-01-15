@@ -36,7 +36,7 @@ except ImportError:
     from json.decoder import JSONDecodeError
 
 # Versioning.
-VERSION = '1.3.4'
+VERSION = '1.3.5'
 
 
 class HTTP:
@@ -55,10 +55,10 @@ class HTTP:
         endpoints. Defaults to None.
     :type api_secret: str
 
-    :param logging_level: The logging_ level of the built-in logger. Defaults to
-        logging_.INFO. Options are CRITICAL (50), ERROR (40), WARNING (30),
+    :param logging_level: The logging level of the built-in logger. Defaults to
+        logging.INFO. Options are CRITICAL (50), ERROR (40), WARNING (30),
         INFO (20), DEBUG (10), or NOTSET (0).
-    :type logging_level: Union[int, logging_.level]
+    :type logging_level: Union[int, logging.level]
 
     :param log_requests: Whether or not pybit should log each HTTP request.
     :type log_requests: bool
@@ -1067,12 +1067,15 @@ class HTTP:
         simultaneously.
 
         :param kwargs: See
+            https://bybit-exchange.github.io/docs/linear/#t-switchpositionmode,
             https://bybit-exchange.github.io/docs/inverse_futures/#t-switchpositionmode.
         :returns: Request results as dictionary.
         """
 
         if kwargs.get('symbol', '')[-2:].isdigit():
             suffix = '/futures/private/position/switch-mode'
+        elif kwargs.get('symbol', '').endswith('USDT'):
+            suffix = '/private/linear/position/switch-mode'
         else:
             suffix = '/v2/private/position/switch-mode'
 
@@ -1851,7 +1854,10 @@ class HTTP:
                 err_delay = self.retry_delay
 
                 # Retry non-fatal whitelisted error requests.
-                if s_json['ret_code'] in self.retry_codes:
+                # SEB: full_partial_position_tp_sl_switch() returns invalid code 130150: (Please try again later.)
+                # when a 'same tp sl mode' code should be returned. This causes pybit
+                # to keep retrying to rerun the request when there is nothing to be updated on Bybit
+                if s_json['ret_code'] in self.retry_codes and 'same tp sl mode' not in error_msg:
 
                     # 10002, recv_window error; add 2.5 seconds and retry.
                     if s_json['ret_code'] == 10002:
@@ -1918,8 +1924,8 @@ class WebSocket:
         :param subscriptions: A list of desired topics to subscribe to. See API
             documentation for more information. Defaults to an empty list, which
             will raise an error.
-        :param logging_level: The logging_ level of the built-in logger. Defaults
-            to logging_.INFO. Options are CRITICAL (50), ERROR (40),
+        :param logging_level: The logging level of the built-in logger. Defaults
+            to logging.INFO. Options are CRITICAL (50), ERROR (40),
             WARNING (30), INFO (20), DEBUG (10), or NOTSET (0).
         :param max_data_length: The maximum number of rows for the stored
             dataset. A smaller number will prevent performance or memory issues.
@@ -1983,22 +1989,21 @@ class WebSocket:
                     raise Exception('Cannot subscribe to v1 topics with v2 '
                                     'endpoint, or vice versa.')
 
-        # set websocket name for logging_ purposes
+        # set websocket name for logging purposes
         self.wsName = 'Authenticated' if api_key else 'Non-Authenticated'
 
         # Setup logger.
         self.logger = logger
-        if not self.logger:
-            self.logger = logging.getLogger(__name__)
-            if len(logging.root.handlers) == 0:
-                # no handler on root logger set -> we add handler just for this logger to not mess with custom logic from outside
-                handler = logging.StreamHandler()
-                handler.setFormatter(logging.Formatter(fmt='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-                                                       datefmt='%Y-%m-%d %H:%M:%S'
-                                                       )
-                                     )
-                handler.setLevel(logging_level)
-                self.logger.addHandler(handler)
+
+        if len(logging.root.handlers) == 0:
+            # no handler on root logger set -> we add handler just for this logger to not mess with custom logic from outside
+            handler = logging.StreamHandler()
+            handler.setFormatter(logging.Formatter(fmt='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+                                                   datefmt='%Y-%m-%d %H:%M:%S'
+                                                   )
+                                 )
+            handler.setLevel(logging_level)
+            self.logger.addHandler(handler)
 
         self.logger.debug(f'Initializing {self.wsName} WebSocket.')
 
@@ -2053,8 +2058,7 @@ class WebSocket:
             topic = self.conform_topic(topic)
         # If the topic given isn't in the initial subscribed list.
         if topic not in self.subscriptions:
-            msg = f"You aren\'t subscribed to the {topic} topic."
-            raise Exception(msg)
+            raise Exception(f"You aren\'t subscribed to the {topic} topic.")
 
         # Pop all trade or execution data on each poll.
         # don't pop order or stop_order data as we will lose valuable state
