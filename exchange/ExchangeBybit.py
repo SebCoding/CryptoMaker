@@ -601,6 +601,22 @@ class ExchangeBybit:
             result = {'ret_code': e.status_code, 'ret_msg': e.message}
         return result
 
+    def cancel_active_order(self, order_id):
+        try:
+            result = self.session_auth.cancel_active_order(
+                symbol=self.pair,
+                order_id=order_id
+            )
+            return result
+        except pybit.exceptions.InvalidRequestError as e:
+            # 20001: Order not exists or too late to replace
+            # 30076 Order not modified
+            if e.status_code not in [20001, 30076]:
+                self._logger.exception(e)
+                raise e
+            result = {'ret_code': e.status_code, 'ret_msg': e.message}
+        return result
+
     def public_trading_records(self):
         """
             Get the latest price and other information of the current pair

@@ -5,6 +5,27 @@ from logging_.Logger import Logger
 _logger = Logger.get_module_logger(__name__)
 
 
+def convert_interval_to_sec(interval):
+    if interval not in constants.VALID_INTERVALS:
+        msg = f'Invalid interval value: {interval}'
+        _logger.error(msg)
+        raise Exception(msg)
+    nb_secs = 0
+    if 'm' in interval:
+        interval = int(interval.replace('m', ''))
+        nb_secs = (interval * 60)
+    elif 'h' in interval:
+        interval = int(interval.replace('h', ''))
+        nb_secs = (interval * 3600)  # 60*60 = 3600
+    elif 'd' in interval:
+        interval = int(interval.replace('d', ''))
+        nb_secs = (interval * 86400)  # 24*60*60 = 86400
+    elif 'w' in interval:
+        interval = int(interval.replace('w', ''))
+        nb_secs = (interval * 604800)  # 7*24*60*60 = 604800
+    return nb_secs
+
+
 # Offsets the 'from_time' backwards from 'nb_candles' in the specified timeframe (interval).
 # The offset can backward or forward in time
 # Assumes 'from_time' is in seconds
@@ -51,3 +72,20 @@ def adjust_from_time_datetime(from_time, interval, include_prior):
         from_time = from_time - dt.timedelta(weeks=delta)
     return from_time
 
+
+def format_execution_time(seconds):
+    # Remove days and keep remainder in seconds
+    seconds = seconds % (24 * 3600)
+    hours = seconds // 3600
+    seconds %= 3600
+    minutes = seconds // 60
+    seconds %= 60
+    output = f"{int(hours)}h {int(minutes)}m {int(seconds)}s"
+    for c in output:
+        if c in ['0', ':', 'h', 'm', 's', ' ']:
+            output = output.replace(c, '')
+        else:
+            break
+    if len(output) == 0:
+        output = 'less than 1s'
+    return output.replace('m', 'm ').replace('h', 'h')

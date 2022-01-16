@@ -76,7 +76,7 @@ CONFIG_SCHEMA = {
                 'interval': {'type': 'string', 'enum': VALID_INTERVALS},
                 'minimum_candles_to_start': {'type': 'integer', 'minimum': 0}
             },
-            'required': ['name', 'interval', 'minimum_candles_to_start', ]
+            'required': ['name', 'interval', 'minimum_candles_to_start']
         },
         'trading': {
             'type': 'object',
@@ -92,6 +92,14 @@ CONFIG_SCHEMA = {
             'required': ['leverage_long', 'leverage_short', 'take_profit', 'stop_loss',
                          'tradable_balance_ratio', 'trade_on_closed_candles_only',
                          'trade_entry_mode']
+        },
+        'limit_entry': {
+            'type': 'object',
+            'properties': {
+                'abort_price_pct': {'type': 'number', 'minimum': 0, 'maximum': 10},
+                'abort_time_ratio': {'type': 'number', 'minimum': 0, 'maximum': 10}
+            },
+            'required': ['abort_price_pct', 'abort_time_ratio']
         },
         'database': {
             'type': 'object',

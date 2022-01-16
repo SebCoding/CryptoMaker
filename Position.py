@@ -114,6 +114,12 @@ class Position:
         self.refresh_position()
         return [self._long_position, self._short_position]
 
+    def get_position(self, side):
+        if side == OrderSide.Buy:
+            return self.long_position
+        else:
+            return self.short_position
+
     long_position = property(get_long_position)
     short_position = property(get_short_position)
     positions = property(get_positions)
@@ -129,7 +135,8 @@ class Position:
         if 'unrealised_pnl' in df.columns:
             df = df.loc[:,
                  ['symbol', 'leverage', 'side', 'size', 'position_value', 'entry_price', 'liq_price',
-                  'isolated', 'position_margin', 'unrealised_pnl', 'realised_pnl', 'stop_loss', 'take_profit', 'trailing_stop']]
+                  'isolated', 'position_margin', 'unrealised_pnl', 'realised_pnl', 'stop_loss', 'take_profit',
+                  'trailing_stop']]
         else:
             df = df.loc[:,
                  ['symbol', 'leverage', 'side', 'size', 'position_value', 'entry_price', 'liq_price',
@@ -169,9 +176,3 @@ class Position:
         if trailing_stop != 0:
             self._logger.info(f'Updated {_side} position with new trailing_stop={trailing_stop}.')
         self.refresh_position()
-
-
-
-
-
-

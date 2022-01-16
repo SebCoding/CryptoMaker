@@ -4,7 +4,7 @@ import arrow
 import constants
 from Configuration import Configuration
 from logging_.Logger import Logger
-from enums.BybitEnums import TimeInForce, OrderType
+from enums.BybitEnums import TimeInForce, OrderType, OrderSide
 
 
 class Order:
@@ -101,7 +101,9 @@ class Orders:
             result['updated_time'] = updated_time
 
             # self._logger.info(f"{created_time} Confirmed {reason} {order.order_type} Order: " + order.to_string())
-            self._logger.info(f"Sent {order.order_type} Order: " + order.to_string())
+
+            side = 'Long' if order.side == OrderSide.Buy else 'Short'
+            self._logger.info(f"Created {side} {order.order_type} Order{order.to_string()}.")
             self.db.add_order_dict(result)
         return result
 

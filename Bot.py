@@ -1,4 +1,3 @@
-import math
 import os
 import sys
 import time
@@ -7,7 +6,7 @@ import datetime as dt
 import rapidjson
 
 import constants
-from LimitEntry import LimitEntry
+from trade_entry.LimitEntry import LimitEntry
 from logging_.Logger import Logger
 from CandleHandler import CandleHandler
 from Configuration import Configuration
@@ -15,13 +14,12 @@ from Orders import Orders, Order
 from Position import Position
 from database.Database import Database
 from enums import TradeSignals
-from enums.BybitEnums import OrderSide, OrderType, OrderStatus
+from enums.BybitEnums import OrderSide, OrderType
 from enums.EntryMode import EntryMode
 from enums.TradeSignals import TradeSignals
 from typing import Any, Callable
 
 from exchange.ExchangeBybit import ExchangeBybit
-from strategies.ScalpEmaRsiAdx import ScalpEmaRsiAdx
 
 from WalletUSDT import WalletUSDT
 
