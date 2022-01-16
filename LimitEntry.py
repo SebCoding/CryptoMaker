@@ -29,7 +29,7 @@ class LimitEntry(TradeEntry):
     # When we place an order the price = orderbook_top + "price_delta"
     # Price delta must be an even multiple of: exchange.pair_details_dict['price_filter']['min_price']
     # For example: BTCUSDT: 0.50, ETHUSDT: 0.05, ...
-    PRICE_DELTA = 1.5
+    PRICE_DELTA = 0.50
 
     def __init__(self, database, exchange, wallet, orders, position):
         super().__init__(database, exchange, wallet, orders, position)
@@ -37,25 +37,21 @@ class LimitEntry(TradeEntry):
 
     def get_current_ob_price(self, side):
         if side == OrderSide.Buy:
-            # Get top 1 entries of OB and then access 2nd element in list for sellers
-            ob, spread = self._orderbook.get_entries(1)
+            ob, spread = self._orderbook.get_top1()
             return float(ob[1]['price'])
         else:
-            # Get top 1 entries of OB and then access 2nd element in list for buyers
-            ob, spread = self._orderbook.get_entries(1)
+            ob, spread = self._orderbook.get_top1()
             return float(ob[0]['price'])
 
     def get_entry_price(self, side):
         spread = 100000
         while spread > self.SPREAD_TOLERANCE:
             if side == OrderSide.Buy:
-                # Get top 1 entries of OB and then access 2nd element in list for sellers
-                ob, spread = self._orderbook.get_entries(1)
+                ob, spread = self._orderbook.get_top1()
                 price = float(ob[1]['price']) - self.PRICE_DELTA
                 # print(f"Orderbook spread={spread} sellers top [{ob[1]['price']}]. Tentative Price: {price}")
             else:
-                # Get top 1 entries of OB and then access 2nd element in list for buyers
-                ob, spread = self._orderbook.get_entries(1)
+                ob, spread = self._orderbook.get_top1()
                 price = float(ob[0]['price']) - self.PRICE_DELTA
                 # print(f"Orderbook spread={spread}, buyers top [{ob[0]['price']}]. Tentative Price: {price}")
         return float(price)
@@ -84,6 +80,7 @@ class LimitEntry(TradeEntry):
         qty, order_id = self.place_limit_entry(side)
         time.sleep(1)
         while True:
+            # print(f'Orderbook {self.get_current_ob_price(side)}')
             # Wait for the order to appear on websocket or http session
             while True:
                 order = self._exchange.get_order_by_id(self.pair, order_id)
@@ -91,27 +88,29 @@ class LimitEntry(TradeEntry):
                     break
             match order['order_status']:
                 case OrderStatus.Created | OrderStatus.New | OrderStatus.PartiallyFilled:
-                    ob_price = self.get_entry_price(side)
-                    if order['price'] != ob_price:
-                        created_time = arrow.get(order['create_time']).to('local').datetime
-                        created_time = created_time.strftime(constants.DATETIME_FMT)
-                        orderbook = self.get_current_ob_price(side)
-                        self._logger.info(f"Order [{order['order_status']}] orderbook={orderbook}, order_price={order['price']}")
+                    new_entry_price = self.get_entry_price(side)
+                    if (side == OrderSide.Buy and new_entry_price > order['price']) \
+                            or (side == OrderSide.Sell and new_entry_price < order['price']):
+                        self._logger.info(
+                            f"Order [{order['order_status']}] orderbook={self.get_current_ob_price(side)}, "
+                            f"order_price={order['price']}")
                         self.update_order(side, order_id)
-                        time.sleep(1)
+                    time.sleep(1)
                     continue
                 case OrderStatus.Filled:
                     created_time = arrow.get(order['create_time']).to('local').datetime
                     created_time = created_time.strftime(constants.DATETIME_FMT)
-                    self._logger.info(f"Order [{order['order_status']}] Order has been filled. order_price={order['price']}")
+                    self._logger.info(
+                        f"Order [{order['order_status']}] Order has been filled. order_price={order['price']}")
                     return order['order_id']
                 case _:
                     ob_price = self.get_current_ob_price(side)
-                    self._logger.info(f"Order [{order['order_status']}]: orderbook={ob_price} order_price={order['price']}. Retrying ...")
+                    self._logger.info(
+                        f"Order [{order['order_status']}]: orderbook={ob_price} order_price={order['price']}. "
+                        f"Retrying ...")
                     qty, order_id = self.place_limit_entry(side)
                     time.sleep(1)
                     continue
-
 
     def place_limit_entry(self, side):
         balance = self._wallet.free
@@ -138,7 +137,6 @@ class LimitEntry(TradeEntry):
         )
         order_id = self._orders.place_order(order, 'TradeEntry')['order_id']
         return qty, order_id
-
 
 
 """

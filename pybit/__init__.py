@@ -2283,22 +2283,38 @@ class WebSocket:
 
                     # Delete.
                     for entry in msg_json['data']['delete']:
-                        index = self._find_index(self.data[topic], entry, 'id')
-                        self.data[topic].pop(index)
+                        index = self._find_index(self.data[topic]['order_book'], entry, 'id')
+                        self.data[topic]['order_book'].pop(index)
 
                     # Update.
                     for entry in msg_json['data']['update']:
-                        index = self._find_index(self.data[topic], entry, 'id')
-                        self.data[topic][index] = entry
+                        index = self._find_index(self.data[topic]['order_book'], entry, 'id')
+                        self.data[topic]['order_book'][index] = entry
 
                     # Insert.
                     for entry in msg_json['data']['insert']:
-                        self.data[topic].append(entry)
+                        self.data[topic]['order_book'].append(entry)
+
+                    # SEB: Re-sort the orderbook properly
+                    self.data[topic]['order_book'] = sorted(self.data[topic]['order_book'], key=lambda d: (d['side'], d['price']))
+
+                    # SEB: We need the timestamp of the last update
+                    # We changed the structure to:
+                    # { 'order_book': [{}, {}, ...], 'timestamp_e6': 1642294585087832 }
+                    self.data[topic]['timestamp_e6'] = int(msg_json['timestamp_e6'])
+
 
                 # Record the initial snapshot.
                 elif 'snapshot' in msg_json['type']:
                     if 'order_book' in msg_json['data']:
-                        self.data[topic] = msg_json['data']['order_book'] if self.trim else msg_json
+                        if self.trim:
+                            # SEB: We need the timestamp of the last update
+                            # We changed the structure to:
+                            # { 'order_book': [{}, {}, ...], 'timestamp_e6': 1642294585087832 }
+                            self.data[topic] = msg_json['data']
+                            self.data[topic]['timestamp_e6'] = int(msg_json['timestamp_e6'])
+                        else:
+                            self.data[topic] = msg_json
                     else:
                         self.data[topic] = msg_json['data'] if self.trim else msg_json
                     #self.data[topic] = msg_json['data']

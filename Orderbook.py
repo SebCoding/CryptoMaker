@@ -1,4 +1,3 @@
-
 import pandas as pd
 import rapidjson
 
@@ -36,6 +35,26 @@ class Orderbook:
         self.exchange = ExchangeBybit()
         self.ws = self.exchange.ws_public
         self.ob25_topic_name = self.exchange.get_orderbook25_topic(self.pair)
+        self.last_timestamp = 0
+
+    def get_top1(self):
+        """
+            This method will loop until new data can be provided from the websocket
+            Returns 2 values:
+              - A list of containing the top1 entry for buyers, followed by the top1 entry for sellers
+              - the spread
+        """
+        timeout = 60  # timeout after 60s
+        start_time = time.time()
+        running = 0
+        while running < timeout:
+            data = self.ws.fetch(self.ob25_topic_name)
+            if data and data['timestamp_e6'] > self.last_timestamp:
+                spread = abs(float(data['order_book'][25]['price']) - float(data['order_book'][24]['price']))
+                return [data['order_book'][24], data['order_book'][25]], spread
+            running = time.time() - start_time
+        self._logger.error("Orderbook timed out trying to read new data from orderbook websocket.")
+        return None, None
 
     def get_entries(self, top):
         """
@@ -44,12 +63,16 @@ class Orderbook:
               - the spread
             The data is ordered by price, starting with the lowest buys and ending with the highest sells.
         """
-        data = self.ws.fetch(self.ob25_topic_name)
-        # print(pd.DataFrame(data).to_string())
-        if data:
-            return \
-                data[25 - top:25] + data[25:25 + top], \
-                abs(float(data[25]['price']) - float(data[24]['price']))
+        timeout = 60  # timeout after 60s
+        start_time = time.time()
+        running = 0
+        while running < timeout:
+            data = self.ws.fetch(self.ob25_topic_name)
+            if data and data['timestamp_e6'] > self.last_timestamp:
+                spread = abs(float(data['order_book'][25]['price']) - float(data['order_book'][24]['price']))
+                return [data['order_book'][25 - top:25], data['order_book'][25:25 + top]], spread
+            running = time.time() - start_time
+        self._logger.error("Orderbook timed out trying to read new data from orderbook websocket.")
         return None, None
 
     def get_spread(self):
@@ -92,8 +115,10 @@ class Orderbook:
                 print(f'Max Spread: {max_spread}' + '\n')
             time.sleep(sleep)  # Orderbook push rate 20ms
 
-
-ob = Orderbook()
-# print(*ob.get_entries(2), sep='\n')
+# ob = Orderbook()
+# while True:
+#     print(*ob.get_top1(1), sep='\n')
+#     print('\n')
+#     time.sleep(1)
 # print(ob.get_spread())
-# ob.print_orderbook(top=5, sleep=1)
+# ob.print_orderbook(top=1, sleep=0.5)
