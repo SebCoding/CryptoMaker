@@ -10,6 +10,10 @@ class CandleHandler:
     _candles_df = None
     _last_candle_timestamp = 0
 
+    # Everytime we reach this value of additional rows to the original count,
+    # we delete this amount of the oldest rows
+    DROP_OLD_ROWS_THRESHOLD = 500
+
     def __init__(self, exchange):
         self._logger = Logger.get_module_logger(__name__)
         self._config = Configuration.get_config()
@@ -117,6 +121,12 @@ class CandleHandler:
 
                     self._last_candle_timestamp = data['timestamp']
                     data_changed = True
+
+                    # Every DROP_OLD_ROWS_LIMIT new rows,
+                    # drop the oldest DROP_OLD_ROWS_LIMIT rows
+                    if len(self._candles_df) > self.minimum_candles_to_start + self.DROP_OLD_ROWS_THRESHOLD:
+                        self._logger.info(f'Dropping oldest {self.DROP_OLD_ROWS_THRESHOLD} of candles dataframe.')
+                        self._candles_df = self._candles_df.tail(self.minimum_candles_to_start+1).copy()
         return self._candles_df, data_changed
 
     def get_latest_price(self):

@@ -81,7 +81,7 @@ class Orders:
             take_profit: (Take profit price, only take effect upon opening the position)
             stop_loss: (Stop loss price, only take effect upon opening the position)
     """
-    def place_order(self, order, reason):
+    def place_order(self, order, reason=''):
         result = self.exchange.place_order(order)
         if result:
             # result['reason'] = reason
@@ -103,8 +103,8 @@ class Orders:
             # self._logger.info(f"{created_time} Confirmed {reason} {order.order_type} Order: " + order.to_string())
 
             side = 'Long' if order.side == OrderSide.Buy else 'Short'
-            self._logger.info(f"Created {side} {order.order_type} Order{order.to_string()}.")
-            self.db.add_order_dict(result)
+            self._logger.info(f"Created {side} {reason} {order.order_type} Order{order.to_string()}.")
+            #self.db.add_order_dict(result)
         return result
 
     def update_db_order_stop_loss_by_id(self, order_id, new_stop_loss):

@@ -97,9 +97,9 @@ CONFIG_SCHEMA = {
             'type': 'object',
             'properties': {
                 'abort_price_pct': {'type': 'number', 'minimum': 0, 'maximum': 10},
-                'abort_time_ratio': {'type': 'number', 'minimum': 0, 'maximum': 10}
+                'abort_time_candle_ratio': {'type': 'number', 'minimum': 0, 'maximum': 10}
             },
-            'required': ['abort_price_pct', 'abort_time_ratio']
+            'required': ['abort_price_pct', 'abort_time_candle_ratio']
         },
         'database': {
             'type': 'object',

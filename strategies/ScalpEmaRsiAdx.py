@@ -19,8 +19,8 @@ class ScalpEmaRsiAdx(BaseStrategy):
     RSI_MAX_SIGNAL_THRESHOLD = 80
 
     # Trade entry RSI thresholds (by default equal to RSI min/max thresholds)
-    RSI_MIN_ENTRY_THRESHOLD = 30
-    RSI_MAX_ENTRY_THRESHOLD = 70
+    RSI_MIN_ENTRY_THRESHOLD = 20
+    RSI_MAX_ENTRY_THRESHOLD = 80
 
     # Volatility indicator: ADX - Average Directional Index
     ADX_PERIODS = 3
@@ -65,22 +65,23 @@ class ScalpEmaRsiAdx(BaseStrategy):
         # Populate long signals
         df.loc[
             (
-                    (df['close'] > df['EMA']) &  # price > EMA
-                    (df['RSI'] < self.RSI_MIN_SIGNAL_THRESHOLD) &  # RSI < RSI_MIN_THRESHOLD
-                    (df['ADX'] > self.ADX_THRESHOLD)  # ADX > ADX_THRESHOLD
+                (df['close'] > df['EMA']) &  # price > EMA
+                (df['RSI'] < self.RSI_MIN_SIGNAL_THRESHOLD) &  # RSI < RSI_MIN_THRESHOLD
+                (df['ADX'] > self.ADX_THRESHOLD)  # ADX > ADX_THRESHOLD
             ),
             'signal'] = 1
 
         # Populate short signals
         df.loc[
             (
-                    (df['close'] < df['EMA']) &  # price < EMA-50
-                    (df['RSI'] > self.RSI_MAX_SIGNAL_THRESHOLD) &  # RSI > RSI_MAX_THRESHOLD
-                    (df['ADX'] > self.ADX_THRESHOLD)  # ADX > ADX_THRESHOLD
+                (df['close'] < df['EMA']) &  # price < EMA-50
+                (df['RSI'] > self.RSI_MAX_SIGNAL_THRESHOLD) &  # RSI > RSI_MAX_THRESHOLD
+                (df['ADX'] > self.ADX_THRESHOLD)  # ADX > ADX_THRESHOLD
             ),
             'signal'] = -1
 
         self.data = df
+        # print('\n\n'+self.data.tail(10).to_string())
 
     # Return 2 values:
     #   - DataFrame with indicators

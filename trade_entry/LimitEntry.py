@@ -1,6 +1,7 @@
 import time
 
 import arrow
+import rapidjson
 
 import constants
 import utils
@@ -21,6 +22,7 @@ class LimitEntry(TradeEntry):
 
     def __init__(self, database, exchange, wallet, orders, position):
         super().__init__(database, exchange, wallet, orders, position)
+        self._logger.info(f'Limit Entry Settings:\n' + rapidjson.dumps(self._config['limit_entry'], indent=2))
         self._orderbook = Orderbook()
         self.interval_secs = utils.convert_interval_to_sec(self._config['strategy']['interval'])
 
@@ -35,7 +37,7 @@ class LimitEntry(TradeEntry):
         # threshold in seconds that will cause the entry to abort
         # We use a % of the length of the trading interval.
         # For example: 0.25 * '5m' = 75s
-        self.abort_seconds = self.interval_secs * float(self._config['limit_entry']['abort_time_ratio'])
+        self.abort_seconds = self.interval_secs * float(self._config['limit_entry']['abort_time_candle_ratio'])
 
         # The trade entry will abort after slippage becomes greater than this % of the current price
         self.abort_price_pct = float(self._config['limit_entry']['abort_price_pct'])
@@ -59,7 +61,7 @@ class LimitEntry(TradeEntry):
                 ob, spread = self._orderbook.get_top1()
                 price = float(ob[0]['price']) + self.price_delta
                 # print(f"Orderbook spread={spread}, buyers top [{ob[0]['price']}]. Tentative Price: {price}")
-        return float(price)
+        return round(price, 10)  # We need to round to avoid: 3323.05 - 0.05 = 3323.0499999999997
 
     def update_order(self, side, order_id):
         side_l_s = 'Long' if side == OrderSide.Buy else 'Short'
@@ -120,7 +122,7 @@ class LimitEntry(TradeEntry):
                         new_entry_price = self.get_entry_price(side)
                         if (side == OrderSide.Buy and new_entry_price > order['price']) \
                                 or (side == OrderSide.Sell and new_entry_price < order['price']):
-                            filled = round(start_qty - order['leaves_qty'], 16)
+                            filled = round(start_qty - order['leaves_qty'], 10)
                             self._logger.info(f"{order['order_status']} {side_l_s} Order {filled}/{start_qty} "
                                               f"price={self.f_dec(order['price'])}")
                             self.update_order(side, order_id)
@@ -128,7 +130,7 @@ class LimitEntry(TradeEntry):
                         continue
                     case OrderStatus.Filled:
                         self._logger.info(
-                            f"Filled {side_l_s} Limit Order. last_exec_price={self.f_dec(['price'])}.")
+                            f"Filled {side_l_s} Limit Order. last_exec_price={self.f_dec(order['price'])}.")
                         break
                     case _:
                         ob_price = self.get_current_ob_price(side)
@@ -179,14 +181,14 @@ class LimitEntry(TradeEntry):
 """
     Testing Limit Order Trade Entries
 """
-ex = ExchangeBybit()
-db = Database(ex)
-Wal = WalletUSDT(ex)
-Ord = Orders(db, ex)
-Pos = Position(db, ex)
-
-limit_entry = LimitEntry(db, ex, Wal, Ord, Pos)
-limit_entry.enter_trade(OrderSide.Buy)
+# ex = ExchangeBybit()
+# db = Database(ex)
+# Wal = WalletUSDT(ex)
+# Ord = Orders(db, ex)
+# Pos = Position(db, ex)
+#
+# limit_entry = LimitEntry(db, ex, Wal, Ord, Pos)
+# limit_entry.enter_trade(OrderSide.Sell)
 
 # order_id = 'dfbe36f9-5717-47c6-89bc-9565c999c7be'
 # result = ex.cancel_active_order(order_id)

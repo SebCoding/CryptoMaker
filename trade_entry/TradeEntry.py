@@ -48,12 +48,12 @@ class TradeEntry(ABC):
             Adjust the qty to an even number of qty steps,
             otherwise the remainder gets truncated by the exchange.
 
-            Rounding at 16 decimals to remove the extra decimals that appear
+            Rounding at 10 decimals to remove the extra decimals that appear
             like this: 43 * 0.001 = 0.043000000000000003
         """
         min_trade_qty = self._exchange.pair_details_dict['lot_size_filter']['qty_step']
         qty = int(qty / min_trade_qty) * min_trade_qty
-        return round(qty, 16)
+        return round(qty, 10)
 
     def get_stop_loss(self, side, price):
         stop_loss_pct = self._config['trading']['stop_loss']
