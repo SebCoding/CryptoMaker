@@ -83,6 +83,7 @@ class LimitEntry(TradeEntry):
             Order Statuses: Created, Rejected, New, PartiallyFilled, Filled, Cancelled, PendingCancel
         """
         side_l_s = 'Long' if side == OrderSide.Buy else 'Short'
+        prev_line = ''
         start_time = time.time()
         start_price = self.get_current_ob_price(side)
         abort_price_diff = self.abort_price_pct * start_price
@@ -120,11 +121,13 @@ class LimitEntry(TradeEntry):
                 match order['order_status']:
                     case OrderStatus.Created | OrderStatus.New | OrderStatus.PartiallyFilled:
                         new_entry_price = self.get_entry_price(side)
+                        filled = round(start_qty - order['leaves_qty'], 10)
+                        line = f"{order['order_status']} {side_l_s} Order {filled}/{start_qty} price={self.f_dec(order['price'])}"
+                        if line != prev_line:
+                            self._logger.info(line)
+                            prev_line = line
                         if (side == OrderSide.Buy and new_entry_price > order['price']) \
                                 or (side == OrderSide.Sell and new_entry_price < order['price']):
-                            filled = round(start_qty - order['leaves_qty'], 10)
-                            self._logger.info(f"{order['order_status']} {side_l_s} Order {filled}/{start_qty} "
-                                              f"price={self.f_dec(order['price'])}")
                             self.update_order(side, order_id)
                         time.sleep(self.PAUSE_TIME)
                         continue
@@ -188,7 +191,7 @@ class LimitEntry(TradeEntry):
 # Pos = Position(db, ex)
 #
 # limit_entry = LimitEntry(db, ex, Wal, Ord, Pos)
-# limit_entry.enter_trade(OrderSide.Sell)
+# limit_entry.enter_trade(OrderSide.Buy)
 
 # order_id = 'dfbe36f9-5717-47c6-89bc-9565c999c7be'
 # result = ex.cancel_active_order(order_id)
