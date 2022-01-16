@@ -118,6 +118,10 @@ class Bot:
         entry_price = position['entry_price'] if position else 0
         qty = position['size'] if position else 0
 
+        # Trade entry failed we exit
+        if qty == 0:
+            return
+
         entry_price = round(entry_price, 2)
         now = dt.datetime.now().strftime(constants.DATETIME_FMT)
         if side == OrderSide.Buy:
