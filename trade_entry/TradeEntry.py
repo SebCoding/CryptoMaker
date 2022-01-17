@@ -14,6 +14,8 @@ class TradeEntry(ABC):
     # maximum ratio of the available balance of the wallet that is tradable
     MAX_TRADABLE_RATIO = 0.99
 
+    MIN_TRADE_AMOUNT = 20
+
     def __init__(self, db, exchange, wallet, orders, position):
         self._logger = Logger.get_module_logger(__name__)
         self._config = Configuration.get_config()
@@ -34,14 +36,14 @@ class TradeEntry(ABC):
     def enter_trade(self, side):
         pass
 
-    @classmethod
-    def f_dec(cls, x):
-        """
-        Format decimal, global rounding and displaying setting for this class.
-        :param x: Number to round
-        :return: Number formatted as specified
-        """
-        return f'{x:.2f}'
+    # @classmethod
+    # def f_dec(cls, x):
+    #     """
+    #     Format decimal, global rounding and displaying setting for this class.
+    #     :param x: Number to round
+    #     :return: Number formatted as specified
+    #     """
+    #     return f'{x:.2f}'
 
     def round_trade_qty(self, qty):
         """

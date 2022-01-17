@@ -2393,18 +2393,19 @@ class WebSocket:
             # SEB: Do not overwrite confirmed candles that have not been fetched
             elif 'candle' in topic:
                 to_insert = msg_json['data'][0] if self.trim else msg_json
-                if self.data[topic] and self.data[topic][-1]['confirm']: # Append
+                # Append
+                if self.data[topic] and self.data[topic][-1]['confirm']:
                     # print('append')
                     self.data[topic].append(to_insert)
-                    # print(pd.DataFrame(self.data[topic]).to_string())
-                elif self.data[topic] and len(self.data[topic]) > 1 and not self.data[topic][-1]['confirm']: # Overwrite last row
+                # Overwrite last row
+                elif self.data[topic] and len(self.data[topic]) > 1 and not self.data[topic][-1]['confirm']:
                     # print('overwrite last row')
                     self.data[topic][-1] = to_insert
-                    # print(pd.DataFrame(self.data[topic]).to_string())
-                else: # Insert a new list
+                # Insert a new list
+                else:
                     # print('reset list')
                     self.data[topic] = [to_insert]
-                    # print(pd.DataFrame(self.data[topic]).to_string())
+                # print(pd.DataFrame(self.data[topic]).to_string())
 
             # If incoming data is in a topic which only pushes messages in
             # the snapshot format

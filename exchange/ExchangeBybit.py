@@ -87,6 +87,7 @@ class ExchangeBybit:
     wallet_topic_name = 'wallet'
     position_topic_name = 'position'
     order_topic_name = 'order'
+    execution_topic_name = 'execution'
 
     # Websockets
     ws_public = None
@@ -162,6 +163,7 @@ class ExchangeBybit:
             subscriptions=self._public_topics,
             ping_interval=25,
             ping_timeout=24,
+            max_data_length=500,
             logger=logger
         )
 
@@ -173,6 +175,7 @@ class ExchangeBybit:
             api_secret=self.api_secret,
             ping_interval=25,
             ping_timeout=24,
+            max_data_length=500,
             logger=logger
         )
 
@@ -189,6 +192,7 @@ class ExchangeBybit:
             self.wallet_topic_name,
             self.position_topic_name,
             self.order_topic_name,
+            self.execution_topic_name
         ]
         return topic_list
 
@@ -409,7 +413,7 @@ class ExchangeBybit:
                 symbol=pair,
                 order='asc',
                 page=page,
-                limit=50,
+                limit=50,  # Limit for data size per page, max size is 50
                 order_status=order_status
             )
             if data:
@@ -425,7 +429,7 @@ class ExchangeBybit:
                 symbol=pair,
                 order='asc',
                 page=page,
-                limit=50
+                limit=50  # Limit for data size per page, max size is 50
             )
             if result and result['result']['data']:
                 list_records = list_records + result['result']['data']
@@ -451,7 +455,7 @@ class ExchangeBybit:
                 symbol=pair,
                 order='asc',
                 page=page,
-                limit=50
+                limit=50  # Limit for data size per page, max size is 50
             )
             if result and result['result']['data']:
                 list_records = list_records + result['result']['data']
@@ -516,40 +520,38 @@ class ExchangeBybit:
                 position_idx: 0, 1, 2 (Modes: 0-One-Way Mode, 1-Buy side of both side mode, 2-Sell side of both side mode)
         """
         data = None
-        if o.order_type == OrderType.Market:
-            data = self.session_auth.place_active_order(
-                side=o.side,
-                symbol=o.symbol,
-                order_type=o.order_type,
-                qty=o.qty,
-                take_profit=o.take_profit,  # TODO: Check what happens when these are 0
-                stop_loss=o.stop_loss,  # TODO: Check what happens when these are 0
-                time_in_force=o.time_in_force,
-                close_on_trigger=False,
-                reduce_only=o.reduce_only
-            )
-        elif o.order_type == OrderType.Limit:
-            data = self.session_auth.place_active_order(
-                side=o.side,
-                symbol=self.pair,
-                order_type=o.order_type,
-                qty=o.qty,
-                price=o.price,
-                take_profit=o.take_profit,
-                stop_loss=o.stop_loss,
-                time_in_force=o.time_in_force,
-                close_on_trigger=False,
-                reduce_only=o.reduce_only
-            )
-        if data and data['ret_code'] == 0 and data['ret_msg'] == 'OK':
-            return data['result']
-        else:
-            if o.order_type == 'Market':
-                msg = f"Placing {o.order_type}(side={o.side}, qty={o.qty}, tp={o.take_profit}, sl={o.stop_loss})"
-            else:
-                msg = f"Placing {o.order_type}(side={o.side}, qty={o.qty}, price={o.price}, tp={o.take_profit}, sl={o.stop_loss})"
-            self._logger.error(msg, f" order failed. Error code: {data['ext_code']}.")
-        return None
+        try:
+            if o.order_type == OrderType.Market:
+                data = self.session_auth.place_active_order(
+                    side=o.side,
+                    symbol=o.symbol,
+                    order_type=o.order_type,
+                    qty=o.qty,
+                    take_profit=o.take_profit,  # TODO: Check what happens when these are 0
+                    stop_loss=o.stop_loss,  # TODO: Check what happens when these are 0
+                    time_in_force=o.time_in_force,
+                    close_on_trigger=False,
+                    reduce_only=o.reduce_only
+                )
+            elif o.order_type == OrderType.Limit:
+                data = self.session_auth.place_active_order(
+                    side=o.side,
+                    symbol=o.symbol,
+                    order_type=o.order_type,
+                    qty=o.qty,
+                    price=o.price,
+                    take_profit=o.take_profit,
+                    stop_loss=o.stop_loss,
+                    time_in_force=o.time_in_force,
+                    close_on_trigger=False,
+                    reduce_only=o.reduce_only
+                )
+        except pybit.exceptions.InvalidRequestError as e:
+            # 130125: Current position is zero, cannot fix reduce-only order qty
+            if e.status_code not in [130125]:
+                self._logger.exception(e)
+                raise e
+        return data['result'] if data else None
 
     def replace_active_order_qt_pr_sl(self, order_id, new_qty, new_price, new_stop_loss):
         """
@@ -674,7 +676,9 @@ class ExchangeBybit:
                 start_time=start_time,
                 end_time=end_time,
                 page=page,
-                limit=50
+                # Limit for data size per page, max size is 200.
+                # Default as showing 50 pieces of data per page.
+                limit=200
             )
             if result and result['result']['data']:
                 list_records = list_records + result['result']['data']

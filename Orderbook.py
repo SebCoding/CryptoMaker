@@ -28,11 +28,11 @@ class Orderbook:
          last response.
     """
 
-    def __init__(self):
+    def __init__(self, exchange):
         self._logger = Logger.get_module_logger(__name__)
         self._config = Configuration.get_config()
         self.pair = self._config['exchange']['pair']
-        self.exchange = ExchangeBybit()
+        self.exchange = exchange
         self.ws = self.exchange.ws_public
         self.ob25_topic_name = self.exchange.get_orderbook25_topic(self.pair)
         self.last_timestamp = 0
@@ -44,7 +44,7 @@ class Orderbook:
               - A list of containing the top1 entry for buyers, followed by the top1 entry for sellers
               - the spread
         """
-        timeout = 60  # timeout after 60s
+        timeout = 120  # timeout after 120s
         start_time = time.time()
         running = 0
         while running < timeout:
