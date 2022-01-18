@@ -1,24 +1,31 @@
 import time
 
-from Orders import Order
+from CandleHandler import CandleHandler
+from Orders import Order, Orders
+from Position import Position
+from WalletUSDT import WalletUSDT
+from database.Database import Database
 from enums.BybitEnums import OrderSide, OrderType
-from trade_entry.TradeEntry import TradeEntry
+from enums.TradeSignals import TradeSignals
+from exchange.ExchangeBybit import ExchangeBybit
+from trade_entry.LimitEntry import LimitEntry
+from trade_entry.BaseTradeEntry import BaseTradeEntry
 
 
-class MarketEntry(TradeEntry):
+class MarketEntry(BaseTradeEntry):
 
-    def __init__(self, database, exchange, wallet, orders, position, candle_handler):
+    def __init__(self, database, exchange, wallet, orders, position):
         super().__init__(database, exchange, wallet, orders, position)
-        self._candle_handler = candle_handler
 
-    def enter_trade(self, side):
+    def enter_trade(self, signal):
+        side = OrderSide.Buy if signal['Signal'] == TradeSignals.EnterLong else OrderSide.Sell
         tradable_ratio = self._config['trading']['tradable_balance_ratio']
         balance = self._wallet.free
         tradable_balance = balance * tradable_ratio
         if tradable_balance < self.MIN_TRADE_AMOUNT:
             return None
 
-        tentative_entry_price = self._candle_handler.get_latest_price()
+        tentative_entry_price = signal['EntryPrice']
         stop_loss = self.get_stop_loss(side, tentative_entry_price)
 
         # Calculate trade size (qty) based on leverage
@@ -35,6 +42,9 @@ class MarketEntry(TradeEntry):
 
         # Step 1: Place order and open position
         order_id = self.place_market_order(side, qty, stop_loss)
+
+        # Created the tp order(s)
+        self.create_tp_on_executions(side, tentative_entry_price, order_id)
 
         # Assuming at this point that the position has been opened and available on websockets
         position = self._position.get_position(side)
@@ -53,22 +63,8 @@ class MarketEntry(TradeEntry):
         else:
             _side = 'Short'
             _lev = f"{self._config['trading']['leverage_short']}x"
-        self._logger.info(f'Entered {_lev} {_side} position, entry_price={entry_price} size={qty}.')
-
-        # Step 2: Place a limit take_profit order based on the confirmed position entry_price
-        # Calculate take_profit based the on actual position entry price
-        take_profit = 0
-        if side == OrderSide.Buy:
-            take_profit = self.get_take_profit(side, entry_price)
-        if side == OrderSide.Sell:
-            take_profit = self.get_take_profit(side, entry_price)
-        take_profit = round(take_profit, 0)
-
-        # take_profit order side is opposite has trade entry
-        side_tp = OrderSide.Buy if side == OrderSide.Sell else OrderSide.Sell
-        tp_order = Order(side=side_tp, symbol=self.pair, order_type=OrderType.Limit, qty=qty,
-                         price=take_profit, reduce_only=True)
-        tp_order_id = self._orders.place_order(tp_order, 'TakeProfit')['order_id']
+        self._logger.info(f'Entered {_lev} {_side} position, avg_entry_price={entry_price:.2f}, qty={qty}, '
+                          f'slippage={(tentative_entry_price-entry_price):.2f}.')
 
         # Step 3: Update position stop_loss based on actual average entry price
         if tentative_entry_price != entry_price:
@@ -88,6 +84,24 @@ class MarketEntry(TradeEntry):
                       stop_loss=stop_loss)
         order_id = self._orders.place_order(order, 'TradeEntry')['order_id']
         # Wait until the position is open
-        while not self._position.currently_in_position(side):
+        while not self._position.get_position(side) and self._position.get_position(side)['size'] != qty:
             time.sleep(0.1)
         return order_id
+
+
+"""
+    Testing Market Order Trade Entries
+"""
+# ex = ExchangeBybit()
+# db = Database(ex)
+# Wal = WalletUSDT(ex)
+# Ord = Orders(db, ex)
+# Pos = Position(db, ex)
+# CH = CandleHandler(ex)
+# market_entry = MarketEntry(db, ex, Wal, Ord, Pos)
+#
+# price = CH.get_latest_price()
+
+#market_entry.enter_trade({'Signal': TradeSignals.EnterLong, 'EntryPrice': price})
+#
+# market_entry.enter_trade({'Signal': TradeSignals.EnterShort, 'EntryPrice': price})

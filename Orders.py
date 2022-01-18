@@ -9,9 +9,11 @@ from enums.BybitEnums import TimeInForce, OrderType, OrderSide
 
 class Order:
     def __init__(self, side, symbol, order_type, qty, price=0, take_profit=0, stop_loss=0, reduce_only=False):
+        self.order_id = None
         self.side = side
         self.symbol = symbol
         self.order_type = order_type
+        self.order_status = None
         self.qty = qty
         self.price = price
         self.take_profit = take_profit
@@ -19,18 +21,24 @@ class Order:
         self.time_in_force = TimeInForce.GTC if order_type == OrderType.Market else TimeInForce.PostOnly
         self.close_on_trigger = False
         self.reduce_only = reduce_only
+        self.leaves_qty = 0
 
     def to_string(self):
-        order_str = f'[symbol={self.symbol} type={self.order_type} side={self.side} qty={self.qty}'
+        if self.order_id:
+            order_str = f'[{self.order_id[-8:]}: type={self.order_type}, side={self.side}, qty={self.qty}'
+        else:
+            order_str = f'[{self.symbol}, type={self.order_type}, side={self.side}, qty={self.qty}'
+        if self.leaves_qty != 0:
+            order_str += f', leaves_qty={self.leaves_qty:.2f}'
         if self.order_type == 'Limit':
-            order_str += f' price={self.price}'
+            order_str += f', price={self.price:.2f}'
         if self.take_profit > 0:
-            order_str += f' tp={self.take_profit}'
+            order_str += f', tp={self.take_profit:.2f}'
         if self.stop_loss > 0:
-            order_str += f' sl={self.stop_loss}'
+            order_str += f', sl={self.stop_loss:.2f}'
         if self.reduce_only:
-            order_str += f' reduce_only={self.reduce_only}'
-        order_str += f' time_in_force={self.time_in_force}]'
+            order_str += f', reduce_only' if self.reduce_only else ''
+        order_str += f', {self.time_in_force}]' if self.time_in_force else ''
         return order_str
 
 
@@ -84,6 +92,7 @@ class Orders:
     def place_order(self, order, reason=''):
         result = self.exchange.place_order(order)
         if result:
+            order.order_id = result['order_id']
             # result['reason'] = reason
             result['take_profit'] = order.take_profit
             result['stop_loss'] = order.stop_loss
@@ -102,14 +111,17 @@ class Orders:
 
             # self._logger.info(f"{created_time} Confirmed {reason} {order.order_type} Order: " + order.to_string())
 
-            side = 'Long' if order.side == OrderSide.Buy else 'Short'
+            if reason != 'TakeProfit':
+                side = 'Long' if order.side == OrderSide.Buy else 'Short'
+            else:
+                side = order.side
             self._logger.info(f"Created {side} {reason} {order.order_type} Order{order.to_string()}.")
             #self.db.add_order_dict(result)
         return result
 
     def update_db_order_stop_loss_by_id(self, order_id, new_stop_loss):
         self.db.update_order_stop_loss_by_id(order_id, new_stop_loss)
-        self._logger.info(f'DB Order: {order_id} has been updated with new stop_loss={new_stop_loss}.')
+        self._logger.info(f'DB Order: {order_id} has been updated with new stop_loss={new_stop_loss:.2f}.')
 
 
 

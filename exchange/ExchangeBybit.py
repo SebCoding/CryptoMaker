@@ -603,6 +603,28 @@ class ExchangeBybit:
             result = {'ret_code': e.status_code, 'ret_msg': e.message}
         return result
 
+    def replace_active_order_qty(self, order_id, new_qty):
+        """
+            replace_active_order() can modify/amend your active orders.
+            Params:
+              - p_r_qty: New order quantity. Do not pass this field if you don't want modify it
+         """
+        try:
+            result = self.session_auth.replace_active_order(
+                symbol=self.pair,
+                order_id=order_id,
+                p_r_qty=new_qty
+            )
+            return result
+        except pybit.exceptions.InvalidRequestError as e:
+            # 20001: Order not exists or too late to replace
+            # 30076 Order not modified
+            if e.status_code not in [20001, 30076]:
+                self._logger.exception(e)
+                raise e
+            result = {'ret_code': e.status_code, 'ret_msg': e.message}
+        return result
+
     def cancel_active_order(self, order_id):
         try:
             result = self.session_auth.cancel_active_order(

@@ -10,7 +10,7 @@ from database.Database import Database
 from enums.BybitEnums import OrderSide
 from exchange.ExchangeBybit import ExchangeBybit
 from logging_.Logger import Logger
-from trade_entry.LimitEntry import LimitEntry
+from trade_entry.LimitEntry import LimitEntryBase
 
 
 class Executions:

@@ -81,7 +81,7 @@ class ScalpEmaRsiAdx(BaseStrategy):
             'signal'] = -1
 
         self.data = df
-        # print('\n\n'+self.data.tail(10).to_string())
+        #print('\n\n'+self.data.tail(10).to_string())
 
     # Return 2 values:
     #   - DataFrame with indicators

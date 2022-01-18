@@ -52,8 +52,7 @@ class Bot:
         self._position = Position(self.db, self._exchange)
         self._orders = Orders(self.db, self._exchange)
         self._LimitEntry = LimitEntry(self.db, self._exchange, self._wallet, self._orders, self._position)
-        self._MarketEntry = MarketEntry(self.db, self._exchange, self._wallet, self._orders, self._position,
-                                        self._candle_handler)
+        self._MarketEntry = MarketEntry(self.db, self._exchange, self._wallet, self._orders, self._position)
 
     # Heart of the Bot. Work done at each iteration.
     def run(self):
@@ -62,23 +61,22 @@ class Bot:
 
         # Step 2: Calculate Indicators, Signals and Find Entries
         if data_changed:
-            df, result = self.strategy.find_entry(self._candles_df)
+            df, signal = self.strategy.find_entry(self._candles_df)
 
             # Step 3: Check if we received an entry signal and we are not in an open position
-            if result['Signal'] in [TradeSignals.EnterLong, TradeSignals.EnterShort] \
+            if signal['Signal'] in [TradeSignals.EnterLong, TradeSignals.EnterShort] \
                     and not self._position.currently_in_position():
                 Bot.beep(5, 2500, 100)
                 self._logger.info(f'\n{df.tail(10).to_string()} \n')
-                self._logger.info(f"{result['Signal']}: {rapidjson.dumps(result, indent=2)}")
-                self.enter_trade(result['Signal'])
+                self._logger.info(f"{signal['Signal']}: {rapidjson.dumps(signal, indent=2)}")
+                self.enter_trade(signal)
 
     def enter_trade(self, signal):
         entry_mode = self._config['trading']['trade_entry_mode']
-        side = OrderSide.Buy if signal == TradeSignals.EnterLong else OrderSide.Sell
         if entry_mode == EntryMode.Taker:
-            order_id = self._MarketEntry.enter_trade(side)
+            order_id = self._MarketEntry.enter_trade(signal)
         elif entry_mode == EntryMode.Maker:
-            order_id = self._LimitEntry.enter_trade(side)
+            order_id = self._LimitEntry.enter_trade(signal)
 
     def run_forever(self):
         self._logger.info(f"Starting Main Loop with throttling = {self.throttle_secs} sec.")

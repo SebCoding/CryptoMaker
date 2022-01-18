@@ -88,10 +88,11 @@ CONFIG_SCHEMA = {
                 'tradable_balance_ratio': {'type': 'number', 'minimum': 0.01, 'maximum': 1.0},
                 'trade_on_closed_candles_only': {'type': 'boolean', 'default': False},
                 'trade_entry_mode':  {'type': 'string', 'enum': TRADE_ENTRY_MODES},
+                'constant_take_profit': {'type': 'boolean'},
             },
             'required': ['leverage_long', 'leverage_short', 'take_profit', 'stop_loss',
                          'tradable_balance_ratio', 'trade_on_closed_candles_only',
-                         'trade_entry_mode']
+                         'trade_entry_mode', 'constant_take_profit']
         },
         'limit_entry': {
             'type': 'object',

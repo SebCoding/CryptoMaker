@@ -72,7 +72,8 @@ class Logger:
     # and a debug level file handler to the debug_log file
     @classmethod
     def get_module_logger(cls, module_name, level=logging_level_str_to_int(_logging_level)):
-        logger = logging.getLogger(module_name)
+        name = module_name.split('.')[-1]
+        logger = logging.getLogger(name)
 
         # Always keep logger level set to logging_.DEBUG,
         # but limit the level in handlers as desired
