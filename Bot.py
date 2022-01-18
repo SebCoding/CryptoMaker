@@ -82,11 +82,13 @@ class Bot:
         self._logger.info(f"Starting Main Loop with throttling = {self.throttle_secs} sec.")
         try:
             while True:
-                sys.stdout.write(next(self.status_bar))
-                sys.stdout.flush()
+                if bool(self._config['bot']['progress_bar']):
+                    sys.stdout.write(next(self.status_bar))
+                    sys.stdout.flush()
                 self.throttle(self.run, throttle_secs=self.throttle_secs)
-                print('\r', end='')
-                sys.stdout.flush()
+                if bool(self._config['bot']['progress_bar']):
+                    print('\r', end='')
+                    sys.stdout.flush()
         except KeyboardInterrupt as e:
             self._logger.info('\n')
             self.db.sync_all_tables(self.pair)

@@ -263,7 +263,7 @@ class Database:
             if not self.engine.has_table(connection, self.USER_TRADES_TBL_NAME):
                 # Create a table with the appropriate Columns
                 table = Table(self.USER_TRADES_TBL_NAME, self.metadata,
-                              Column('exec_id', String, nullable=False, primary_key=True),
+                              Column('exec_id', String, nullable=False, index=True),
                               Column('order_id', String, index=True, nullable=False),
                               # Column('order_link_id', String),
                               Column('side', String, nullable=False),

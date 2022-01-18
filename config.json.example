@@ -1,6 +1,7 @@
  {
     "bot": {
-        "throttle_secs": 1
+        "throttle_secs": 1,
+        "progress_bar": true
     },
     "exchange": {
         "name": "Bybit",
@@ -35,19 +36,19 @@
          "stop_loss": 0.0005,
          "tradable_balance_ratio": 0.9,
          "trade_on_closed_candles_only": false,
-         "trade_entry_mode": "maker"
+         "trade_entry_mode": "taker",
+         "constant_take_profit": true
      },
      "limit_entry": {
          "abort_price_pct": 0.005,
-         "abort_time_candle_ratio": 10.0,
-         "fixed_tp_throughout_trade": true
+         "abort_time_candle_ratio": 0.8
      },
      "database": {
          "db_name": "CryptoMakerTest",
          "address": "localhost",
          "port": 5432,
          "username": "CryptoMakerUser",
-         "password": "db_password"
+         "password": "XF4BruF,fxnWUcs"
      },
     "logging": {
         "logging_level": "info",

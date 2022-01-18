@@ -33,9 +33,10 @@ CONFIG_SCHEMA = {
         'bot': {
             'type': 'object',
             'properties': {
-                'throttle_secs': {'type': 'integer', 'minimum': 0}
+                'throttle_secs': {'type': 'integer', 'minimum': 0},
+                'progress_bar': {'type': 'boolean', 'default': True},
             },
-            'required': ['throttle_secs']
+            'required': ['throttle_secs', 'progress_bar']
         },
         'exchange': {
             'type': 'object',
