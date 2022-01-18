@@ -140,15 +140,22 @@ class LimitEntry(BaseTradeEntry):
 
             # Crossed time threshold, abort.
             if elapsed_time > self.abort_seconds:
+                # Take a 2 sec pause to make sure we are not missing the last executions
+                # prior to aborting the remainder of the trade
+                time.sleep(2)
+                self.create_tp_on_executions(side, start_price, order_id)
+
                 self._logger.info(f'{side_l_s} Limit Entry Aborting. '
                                   f'elapsed_time={round(elapsed_time, 3)}s > abort_threshold={self.abort_seconds}s')
-                time.sleep(1)
-                self.create_tp_on_executions(side, start_price, order_id)
                 self.cancel_order(side, order_id)
                 break
 
             # Crossed price threshold, abort.
             if price_diff > abort_price_diff:
+                # Take a 2 sec pause to make sure we are not missing the last executions
+                # prior to aborting the remainder of the trade
+                time.sleep(2)
+                self.create_tp_on_executions(side, start_price, order_id)
                 if side == OrderSide.Buy:
                     abort_price = start_price + abort_price_diff
                     self._logger.info(f'{side_l_s} Limit Entry Aborting. current_price={current_price} > '
@@ -157,8 +164,6 @@ class LimitEntry(BaseTradeEntry):
                     abort_price = start_price - abort_price_diff
                     self._logger.info(f'{side_l_s} Limit Entry Aborting. current_price={current_price} < '
                                       f'abort_price_difference={abort_price}s')
-                time.sleep(1)
-                self.create_tp_on_executions(side, start_price, order_id)
                 self.cancel_order(side, order_id)
                 break
 
