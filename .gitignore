@@ -2,8 +2,8 @@
 api_keys.py
 log.txt
 trace.txt
-logging_/debug_log.txt
-output.txt
+logging_/*.txt
+output_log.txt
 config.json
 
 

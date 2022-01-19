@@ -37,7 +37,7 @@ class BaseStrategy(ABC):
         super().__init__()
         self.name = self.__class__.__name__
         self.config = Configuration.get_config()
-        self.interval = self.config['strategy']['interval']
+        self.interval = self.config['trading']['interval']
         # self.takeprofit = self.config['trading']['takeprofit']
         # self.stoploss = self.config['trading']['stoploss']
         # self.tradable_balance_ratio = self.config['trading']['tradable_balance_ratio']

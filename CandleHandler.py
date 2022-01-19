@@ -18,7 +18,7 @@ class CandleHandler:
         self._logger = Logger.get_module_logger(__name__)
         self._config = Configuration.get_config()
         self.pair = self._config['exchange']['pair']
-        self.interval = self._config['strategy']['interval']
+        self.interval = self._config['trading']['interval']
         self.minimum_candles_to_start = int(self._config['strategy']['minimum_candles_to_start'])
         self._exchange = exchange
         self._candle_topic_name = \

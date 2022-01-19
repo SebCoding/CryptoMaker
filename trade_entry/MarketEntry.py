@@ -44,15 +44,16 @@ class MarketEntry(BaseTradeEntry):
         qty = round(int(qty / min_trade_qty) * min_trade_qty, 10)
 
         # Step 1: Place order and open position
-        order_id = self.place_market_order(side, qty, stop_loss)
+        order_id = self.place_market_order(side, qty, tentative_entry_price, stop_loss)
 
         # Wait until the position is open
         while not self._position.get_position(side) and self._position.get_position(side)['size'] != qty:
             time.sleep(0.5)
 
         # Created the tp order(s)
-        time.sleep(1)  # Websocket slow to get data
-        self.create_tp_on_executions(side, tentative_entry_price, order_id)
+        # Wait for tp orders to match the open position
+        while self.take_profit_qty < qty:
+            self.create_tp_on_executions(side, tentative_entry_price, order_id)
 
         # Assuming at this point that the position has been opened and available on websockets
         position = self._position.get_position(side)
@@ -87,9 +88,9 @@ class MarketEntry(BaseTradeEntry):
 
         time.sleep(1)  # Sleep to let the order info be available by http or websocket
 
-    def place_market_order(self, side, qty, stop_loss):
+    def place_market_order(self, side, qty, price, stop_loss):
         order = Order(side=side, symbol=self.pair, order_type=OrderType.Market, qty=qty,
-                      stop_loss=stop_loss)
+                      price=price, stop_loss=stop_loss)
         order_id = self._orders.place_order(order, 'TradeEntry')['order_id']
         return order_id
 

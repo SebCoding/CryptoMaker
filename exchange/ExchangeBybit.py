@@ -103,7 +103,7 @@ class ExchangeBybit:
     def __init__(self):
         self._logger = Logger.get_module_logger(__name__)
         self._config = Configuration.get_config()
-        self.interval = self.interval_map[self._config['strategy']['interval']]
+        self.interval = self.interval_map[self._config['trading']['interval']]
         self.name = str(self._config['exchange']['name']).capitalize()
         self.pair = self._config['exchange']['pair']
         self.stake_currency = self._config['exchange']['stake_currency']

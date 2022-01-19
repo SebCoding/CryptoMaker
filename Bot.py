@@ -35,7 +35,7 @@ class Bot:
         self._config = Configuration.get_config()
         self.pair = self._config['exchange']['pair']
         net = '** Testnet **' if self._config['exchange']['testnet'] else 'Mainnet'
-        self.interval = self._config['strategy']['interval']
+        self.interval = self._config['trading']['interval']
         self._logger.info(f"Initializing Bot to trade [{self.pair}][{self.interval}] on "
                           f"{self._config['exchange']['name']} {net}.")
         self.status_bar = self.moving_status_bar(self.STATUS_BAR_CHAR, self.STATUS_BAR_LENGTH)

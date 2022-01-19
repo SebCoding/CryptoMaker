@@ -25,7 +25,7 @@ class LimitEntry(BaseTradeEntry):
         super().__init__(database, exchange, wallet, orders, position)
         self._logger.info(f'Limit Entry Settings:\n' + rapidjson.dumps(self._config['limit_entry'], indent=2))
         self._orderbook = Orderbook(exchange)
-        self.interval_secs = utils.convert_interval_to_sec(self._config['strategy']['interval'])
+        self.interval_secs = utils.convert_interval_to_sec(self._config['trading']['interval'])
 
         # When we place an order the price = orderbook_top + "price_delta"
         # Price delta must be an even multiple of: exchange.pair_details_dict['price_filter']['min_price']
@@ -116,7 +116,6 @@ class LimitEntry(BaseTradeEntry):
         self.take_profit_order_id = None
         self.take_profit_qty = 0
         prev_line = ''
-        last_filled = 0
 
         start_time = time.time()
         order_obj = self.place_limit_order(side)
@@ -133,6 +132,7 @@ class LimitEntry(BaseTradeEntry):
                     break
             order_id = order_dict['order_id']
             order_status = order_dict['order_status']
+            order_qty = order_dict['qty']
             order_price = order_dict['price']
             leaves_qty = order_dict['leaves_qty']
 
@@ -142,9 +142,9 @@ class LimitEntry(BaseTradeEntry):
 
             # Crossed time threshold, abort.
             if elapsed_time > self.abort_seconds:
-                # Take a 2 sec pause to make sure we are not missing the last executions
-                # prior to aborting the remainder of the trade
-                time.sleep(2)
+                # Wait for tp orders to match possibly partially opened position
+                while self.take_profit_qty < (order_qty - leaves_qty):
+                    self.create_tp_on_executions(side, start_price, order_id)
                 self.create_tp_on_executions(side, start_price, order_id)
 
                 self._logger.info(f'{side_l_s} Limit Entry Aborting. '
@@ -154,10 +154,9 @@ class LimitEntry(BaseTradeEntry):
 
             # Crossed price threshold, abort.
             if price_diff > abort_price_diff:
-                # Take a 2 sec pause to make sure we are not missing the last executions
-                # prior to aborting the remainder of the trade
-                time.sleep(2)
-                self.create_tp_on_executions(side, start_price, order_id)
+                # Wait for tp orders to match possibly partially opened position
+                while self.take_profit_qty < (order_qty - leaves_qty):
+                    self.create_tp_on_executions(side, start_price, order_id)
                 if side == OrderSide.Buy:
                     abort_price = start_price + abort_price_diff
                     self._logger.info(f'{side_l_s} Limit Entry Aborting. current_price={current_price} > '
@@ -191,10 +190,10 @@ class LimitEntry(BaseTradeEntry):
                     self.create_tp_on_executions(side, start_price, order_id)
                     continue
                 case OrderStatus.Filled:
-                    time.sleep(2)  # Wait for final executions to arrive on the websocket
-                    self.create_tp_on_executions(side, start_price, order_id)
+                    while self.take_profit_qty < order_qty:
+                        self.create_tp_on_executions(side, start_price, order_id)
                     self._logger.info(
-                        f"Filled {side_l_s} Limit Order[{order_id[-8:]}: last_exec_price={order_price:.2f}]")
+                        f"Filled {side_l_s} Limit Order[{order_id[-8:]}: qty={order_qty} last_exec_price={order_price:.2f}]")
                     break
                 # Rejected, PendingCancel, Cancelled
                 case _:
