@@ -15,12 +15,12 @@ class ScalpEmaRsiAdx(BaseStrategy):
 
     # Momentum indicator: RSI - Relative Strength Index
     RSI_PERIODS = 2
-    RSI_MIN_SIGNAL_THRESHOLD = 20
-    RSI_MAX_SIGNAL_THRESHOLD = 80
+    RSI_MIN_SIGNAL_THRESHOLD = 31
+    RSI_MAX_SIGNAL_THRESHOLD = 69
 
     # Trade entry RSI thresholds (by default equal to RSI min/max thresholds)
-    RSI_MIN_ENTRY_THRESHOLD = 20
-    RSI_MAX_ENTRY_THRESHOLD = 80
+    RSI_MIN_ENTRY_THRESHOLD = 50
+    RSI_MAX_ENTRY_THRESHOLD = 50
 
     # Volatility indicator: ADX - Average Directional Index
     ADX_PERIODS = 3

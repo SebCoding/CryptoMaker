@@ -14,6 +14,9 @@ class Logger:
     # with level hardcoded to logging_.DEBUG
     _debug_file_handler = None
 
+    # Copy of the console logging output to the output file
+    _output_file_handler = None
+
     @staticmethod
     def logging_level_str_to_int(level_str):
         level_str = level_str.lower()
@@ -42,6 +45,17 @@ class Logger:
         c_handler.setFormatter(c_format)
         c_handler.setLevel(level)
         return c_handler
+
+    @classmethod
+    def get_output_file_handler(cls, level=logging_level_str_to_int(_logging_level),
+                                filename=Configuration.get_config()['logging']['output_file_path']):
+        if not cls._debug_file_handler:
+            f_handler = logging.FileHandler(filename, mode='w')
+            f_format = logging.Formatter('[%(asctime)s] %(message)s', datefmt=cls._datefmt)
+            f_handler.setFormatter(f_format)
+            f_handler.setLevel(level)
+            cls._output_file_handler = f_handler
+        return cls._output_file_handler
 
     # Logging level defaults to config file, but can overwritten
     # We prefer to always log everything at debug level, in debug file
@@ -80,6 +94,7 @@ class Logger:
         logger.setLevel(logging.DEBUG)
         if not logger.handlers:
             logger.addHandler(cls.get_console_handler(level))
+            logger.addHandler(cls.get_output_file_handler(level))
             logger.addHandler(cls.get_debug_file_handler())
         logger.propagate = False
         return logger

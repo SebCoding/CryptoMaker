@@ -19,6 +19,9 @@ class MarketEntry(BaseTradeEntry):
 
     def enter_trade(self, signal):
         side = OrderSide.Buy if signal['Signal'] == TradeSignals.EnterLong else OrderSide.Sell
+        self.take_profit_order_id = None
+        self.take_profit_qty = 0
+
         tradable_ratio = self._config['trading']['tradable_balance_ratio']
         balance = self._wallet.free
         tradable_balance = balance * tradable_ratio
@@ -43,7 +46,12 @@ class MarketEntry(BaseTradeEntry):
         # Step 1: Place order and open position
         order_id = self.place_market_order(side, qty, stop_loss)
 
+        # Wait until the position is open
+        while not self._position.get_position(side) and self._position.get_position(side)['size'] != qty:
+            time.sleep(0.5)
+
         # Created the tp order(s)
+        time.sleep(1)  # Websocket slow to get data
         self.create_tp_on_executions(side, tentative_entry_price, order_id)
 
         # Assuming at this point that the position has been opened and available on websockets
@@ -83,9 +91,6 @@ class MarketEntry(BaseTradeEntry):
         order = Order(side=side, symbol=self.pair, order_type=OrderType.Market, qty=qty,
                       stop_loss=stop_loss)
         order_id = self._orders.place_order(order, 'TradeEntry')['order_id']
-        # Wait until the position is open
-        while not self._position.get_position(side) and self._position.get_position(side)['size'] != qty:
-            time.sleep(0.1)
         return order_id
 
 
@@ -101,7 +106,7 @@ class MarketEntry(BaseTradeEntry):
 # market_entry = MarketEntry(db, ex, Wal, Ord, Pos)
 #
 # price = CH.get_latest_price()
-
-#market_entry.enter_trade({'Signal': TradeSignals.EnterLong, 'EntryPrice': price})
+#
+# market_entry.enter_trade({'Signal': TradeSignals.EnterLong, 'EntryPrice': price})
 #
 # market_entry.enter_trade({'Signal': TradeSignals.EnterShort, 'EntryPrice': price})

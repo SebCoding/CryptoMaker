@@ -19,16 +19,13 @@ def main():
 
     file_in = sys.argv[1]
     file_out = get_new_filename(file_in)
-    with open(file_in, 'rw') as f_in, open(file_out, 'w') as f_out:
-        x = f_in.read().replace('\r', '')
-        lines = (line.rstrip() for line in f_in)  # All lines including the blank ones
-        lines = (line for line in lines if line)  # Non-blank lines
-        for line in lines:
-            # print(line, end='')
-            if 'Bot Running:' in line:
-                # print(line)
-                continue
-            f_out.writelines(line+'\n')
+    with open(file_in, 'r') as f_in, open(file_out, 'w') as f_out:
+
+        line = f_in.readline()
+        while line:
+            if 'pybit' not in line and 'urllib3' not in line:
+                f_out.writelines(line)
+            line = f_in.readline()
 
 
 if __name__ == '__main__':

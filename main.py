@@ -26,7 +26,7 @@ def main():
         my_bot.run_forever()
     except websocket._exceptions.WebSocketTimeoutException as e:
         logger.exception(f'WebSocketTimeoutException: Last resort, restarting the whole application')
-        restart(10)
+        # restart(10)
     except KeyboardInterrupt as e:
         logger.info("Application Terminated by User.")
 

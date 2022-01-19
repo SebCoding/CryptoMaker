@@ -113,6 +113,8 @@ class LimitEntry(BaseTradeEntry):
     def enter_trade(self, signal):
         side = OrderSide.Buy if signal['Signal'] == TradeSignals.EnterLong else OrderSide.Sell
         side_l_s = 'Long' if side == OrderSide.Buy else 'Short'
+        self.take_profit_order_id = None
+        self.take_profit_qty = 0
         prev_line = ''
         last_filled = 0
 
@@ -192,7 +194,7 @@ class LimitEntry(BaseTradeEntry):
                     time.sleep(2)  # Wait for final executions to arrive on the websocket
                     self.create_tp_on_executions(side, start_price, order_id)
                     self._logger.info(
-                        f"Filled {side_l_s} Limit Order[{order_id[-8:]}: last_exec_price={order_price:.2f}].")
+                        f"Filled {side_l_s} Limit Order[{order_id[-8:]}: last_exec_price={order_price:.2f}]")
                     break
                 # Rejected, PendingCancel, Cancelled
                 case _:
@@ -215,7 +217,7 @@ class LimitEntry(BaseTradeEntry):
         self._logger.info(f'{side_l_s} limit entry trade executed in {utils.format_execution_time(exec_time)}, '
                           f'qty[{qty}/{start_qty}], '
                           f'avg_entry_price[{avg_price:.2f}], '
-                          f'slippage[{(avg_price - start_price):.2f}].')
+                          f'slippage[{(avg_price - start_price):.2f}]')
         return qty, avg_price
 
 

@@ -1,0 +1,21 @@
+[2022-01-19 11:46:23] Initializing Bot to trade [BTCUSDT][1m] on Bybit ** Testnet **.
+[2022-01-19 11:46:30] Connection to CryptoMakerTest database successful.
+[2022-01-19 11:46:30] Initializing strategy [ScalpEmaRsiAdx] EMA(40), RSI(2), ADX(3) RSI_SIGNAL(31, 69), RSI_ENTRY(50, 50), ADX_THRESHOLD(30)
+[2022-01-19 11:46:30] Trading Settings:
+{
+  "leverage_long": 1,
+  "leverage_short": 1,
+  "take_profit": 0.005,
+  "stop_loss": 0.004,
+  "tradable_balance_ratio": 0.3,
+  "trade_on_closed_candles_only": false,
+  "trade_entry_mode": "taker",
+  "constant_take_profit": true
+}
+[2022-01-19 11:46:30] Limit Entry Settings:
+{
+  "abort_price_pct": 0.0049,
+  "abort_time_candle_ratio": 0.8
+}
+[2022-01-19 11:46:30] Starting Main Loop with throttling = 1 sec.
+[2022-01-19 11:46:30] Fetching 3000 historical candles.
