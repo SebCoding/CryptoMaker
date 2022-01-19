@@ -5,6 +5,7 @@ from abc import ABC, abstractmethod
 
 import pandas as pd
 import rapidjson
+import arrow
 
 import utils
 from Configuration import Configuration
@@ -20,9 +21,15 @@ class BaseTradeEntry(ABC):
 
     MIN_TRADE_AMOUNT = 20
 
-    # For fixed_tp_throughout_trade=True these are the global tp order details
+    # current active last update_time
+    # order_last_update_time = arrow.now()
+
+    # tp order details for the current trade entry
     take_profit_order_id = None
     take_profit_qty = 0
+
+    # Part of the order that has been filled, incremented on each execution
+    filled_by_execution = 0
 
     def __init__(self, db, exchange, wallet, orders, position):
         self._logger = Logger.get_module_logger(__name__)
@@ -180,4 +187,6 @@ class BaseTradeEntry(ABC):
                 take_profit = self.get_take_profit(trade_side, float(e['price']))
                 self.place_tp_order(trade_side, qty, take_profit)
                 self.take_profit_qty = round(self.take_profit_qty + qty, 10)
+
+        self.filled_by_execution = self.take_profit_qty
 

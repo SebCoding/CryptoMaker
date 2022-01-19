@@ -486,6 +486,15 @@ class ExchangeBybit:
                 return data['result']['data'][0]
         return None
 
+    # Get active order by id
+    def get_order_by_id_ws_only(self, pair, order_id):
+        data = self.ws_private.fetch(self.order_topic_name)
+        if data:
+            for order in data:
+                if order['order_id'] == order_id:
+                    return order
+        return None
+
     # Query real-time active order information. If only order_id or order_link_id are passed,
     # a single order will be returned; otherwise, returns up to 500 unfilled orders.
     def query_orders_rt(self, pair, order_status=None):
@@ -572,7 +581,9 @@ class ExchangeBybit:
             )
             return result
         except pybit.exceptions.InvalidRequestError as e:
-            if e.status_code not in [30076]:  # 30076 Order not modified
+            # 20001: Order not exists or too late to replace
+            # 30076 Order not modified
+            if e.status_code not in [20001, 30076]:
                 self._logger.exception(e)
                 raise e
             result = {'ret_code': e.status_code, 'ret_msg': e.message}
@@ -592,6 +603,30 @@ class ExchangeBybit:
                 order_id=order_id,
                 p_r_price=new_price,
                 stop_loss=new_stop_loss
+            )
+            return result
+        except pybit.exceptions.InvalidRequestError as e:
+            # 20001: Order not exists or too late to replace
+            # 30076 Order not modified
+            if e.status_code not in [20001, 30076]:
+                self._logger.exception(e)
+                raise e
+            result = {'ret_code': e.status_code, 'ret_msg': e.message}
+        return result
+
+    def replace_active_order_pr(self, order_id, new_price):
+        """
+            replace_active_order() can modify/amend your active orders.
+            Params:
+             - p_r_price: New order price. Do not pass this field if you don't want modify it
+             - take_profit: New take_profit price, also known as stop_px. Do not pass this field if you don't want modify it
+             - stop_loss: New stop_loss price, also known as stop_px. Do not pass this field if you don't want modify it
+         """
+        try:
+            result = self.session_auth.replace_active_order(
+                symbol=self.pair,
+                order_id=order_id,
+                p_r_price=new_price
             )
             return result
         except pybit.exceptions.InvalidRequestError as e:
@@ -630,6 +665,21 @@ class ExchangeBybit:
             result = self.session_auth.cancel_active_order(
                 symbol=self.pair,
                 order_id=order_id
+            )
+            return result
+        except pybit.exceptions.InvalidRequestError as e:
+            # 20001: Order not exists or too late to replace
+            # 30076 Order not modified
+            if e.status_code not in [20001, 30076]:
+                self._logger.exception(e)
+                raise e
+            result = {'ret_code': e.status_code, 'ret_msg': e.message}
+        return result
+
+    def cancel_all_active_orders(self):
+        try:
+            result = self.session_auth.cancel_all_active_orders(
+                symbol=self.pair
             )
             return result
         except pybit.exceptions.InvalidRequestError as e:

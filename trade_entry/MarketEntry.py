@@ -76,12 +76,12 @@ class MarketEntry(BaseTradeEntry):
                           f'slippage={(tentative_entry_price-entry_price):.2f}.')
 
         # Step 3: Update position stop_loss based on actual average entry price
-        if tentative_entry_price != entry_price:
-            old_stop_loss = self._position.get_current_stop_loss(side)
-            new_stop_loss = self.get_stop_loss(side, entry_price)
-            if old_stop_loss != new_stop_loss:
-                # Update position stop_loss if required because of entry price slippage
-                self._position.set_trading_stop(side, stop_loss=new_stop_loss)
+        # if tentative_entry_price != entry_price:
+        #     old_stop_loss = self._position.get_current_stop_loss(side)
+        #     new_stop_loss = self.get_stop_loss(side, entry_price)
+        #     if old_stop_loss != new_stop_loss:
+        #         # Update position stop_loss if required because of entry price slippage
+        #         self._position.set_trading_stop(side, stop_loss=new_stop_loss)
 
                 # Update original order with new stop_loss value
                 # self._orders.update_db_order_stop_loss_by_id(order_id, new_stop_loss)

@@ -20,7 +20,6 @@ class LimitEntry(BaseTradeEntry):
     # Wait time in seconds after creating/updating orders
     PAUSE_TIME = 0.3
 
-
     def __init__(self, database, exchange, wallet, orders, position):
         super().__init__(database, exchange, wallet, orders, position)
         self._logger.info(f'Limit Entry Settings:\n' + rapidjson.dumps(self._config['limit_entry'], indent=2))
@@ -98,12 +97,24 @@ class LimitEntry(BaseTradeEntry):
         # Re-validate that the update is really required
         if (side == OrderSide.Buy and new_entry_price > cur_order_price) \
                 or (side == OrderSide.Sell and new_entry_price < cur_order_price):
-            stop_loss = self.get_stop_loss(side, new_entry_price)
-            result = self._exchange.replace_active_order_pr_sl(order_id, new_entry_price, stop_loss)
             side_l_s = 'Long' if side == OrderSide.Buy else 'Short'
-            self._logger.info(f"Updated {side_l_s} Limit Order[{order_id[-8:]}: price={new_entry_price:.2f}, "
-                              f"stop_loss={stop_loss:.2f}].")
-            time.sleep(self.PAUSE_TIME)
+
+            # print(f'cur_order_price={cur_order_price}, new_entry_price={new_entry_price}')
+
+            # Old version where we also update stop_loss
+            # stop_loss = self.get_stop_loss(side, new_entry_price)
+            # result = self._exchange.replace_active_order_pr_sl(order_id, new_entry_price, stop_loss)
+            # self._logger.info(f"Updated {side_l_s} Limit Order[{order_id[-8:]}: price={new_entry_price:.2f}, "
+            #                   f"stop_loss={stop_loss:.2f}].")
+
+            result = self._exchange.replace_active_order_pr(order_id, new_entry_price)
+            self._logger.info(f"Updated {side_l_s} Limit Order[{order_id[-8:]}: price={new_entry_price:.2f}]")
+
+            # Wait until update appears on websocket
+            while True:
+                order_dict = self._exchange.get_order_by_id_ws_only(self.pair, order_id)
+                if order_dict and order_dict['price'] == new_entry_price:
+                    break
 
     def cancel_order(self, side, order_id):
         result = self._exchange.cancel_active_order(order_id)
@@ -115,56 +126,56 @@ class LimitEntry(BaseTradeEntry):
         side_l_s = 'Long' if side == OrderSide.Buy else 'Short'
         self.take_profit_order_id = None
         self.take_profit_qty = 0
+        self.filled_by_execution = 0
         prev_line = ''
 
         start_time = time.time()
         order_obj = self.place_limit_order(side)
         start_qty = order_obj.qty
         start_price = order_obj.price
-        abort_price_diff = self.abort_price_pct * start_price
+        abort_price_diff = round(self.abort_price_pct * start_price, 2)
 
         time.sleep(self.PAUSE_TIME)
         while True:
-            # Wait for the order to appear on websocket or http session
+            # Wait for the order to appear on websocket
             while True:
-                order_dict = self._exchange.get_order_by_id(self.pair, order_obj.order_id)
+                order_dict = self._exchange.get_order_by_id_ws_only(self.pair, order_obj.order_id)
                 if order_dict:
                     break
             order_id = order_dict['order_id']
             order_status = order_dict['order_status']
             order_qty = order_dict['qty']
             order_price = order_dict['price']
-            leaves_qty = order_dict['leaves_qty']
+            leaves_qty = order_dict['leaves_qty']  # if 'leaves_qty' in order_dict.keys() else 0
 
             elapsed_time = time.time() - start_time
             current_price = self.get_current_ob_price(side)
-            price_diff = abs(current_price - start_price)
+            price_diff = abs(round(current_price - start_price, 2))
 
             # Crossed time threshold, abort.
-            if elapsed_time > self.abort_seconds:
+            if round(elapsed_time, 1) > self.abort_seconds:
                 # Wait for tp orders to match possibly partially opened position
-                while self.take_profit_qty < (order_qty - leaves_qty):
+                while self.take_profit_qty < round(order_qty - leaves_qty, 10):
                     self.create_tp_on_executions(side, start_price, order_id)
-                self.create_tp_on_executions(side, start_price, order_id)
 
                 self._logger.info(f'{side_l_s} Limit Entry Aborting. '
-                                  f'elapsed_time={round(elapsed_time, 3)}s > abort_threshold={self.abort_seconds}s')
+                                  f'elapsed_time={round(elapsed_time, 1)}s > abort_threshold={self.abort_seconds}s')
                 self.cancel_order(side, order_id)
                 break
 
             # Crossed price threshold, abort.
             if price_diff > abort_price_diff:
                 # Wait for tp orders to match possibly partially opened position
-                while self.take_profit_qty < (order_qty - leaves_qty):
+                while self.take_profit_qty < round(order_qty - leaves_qty, 10):
                     self.create_tp_on_executions(side, start_price, order_id)
                 if side == OrderSide.Buy:
-                    abort_price = start_price + abort_price_diff
+                    abort_price = round(start_price + abort_price_diff, 2)
                     self._logger.info(f'{side_l_s} Limit Entry Aborting. current_price={current_price} > '
-                                      f'abort_price_difference={abort_price}s')
+                                      f'abort_price={abort_price}')
                 else:
                     abort_price = start_price - abort_price_diff
                     self._logger.info(f'{side_l_s} Limit Entry Aborting. current_price={current_price} < '
-                                      f'abort_price_difference={abort_price}s')
+                                      f'abort_price={abort_price}')
                 self.cancel_order(side, order_id)
                 break
 
@@ -211,13 +222,14 @@ class LimitEntry(BaseTradeEntry):
 
         # Get position summary
         position = self._position.get_position(side)
-        qty = position['size'] if position else 0
+        # qty = position['size'] if position else 0
         avg_price = position['entry_price'] if position else 0
         self._logger.info(f'{side_l_s} limit entry trade executed in {utils.format_execution_time(exec_time)}, '
-                          f'qty[{qty}/{start_qty}], '
+                          f'qty[{self.filled_by_execution}/{start_qty}], '
                           f'avg_entry_price[{avg_price:.2f}], '
-                          f'slippage[{(avg_price - start_price):.2f}]')
-        return qty, avg_price
+                          f'slippage[{(avg_price - start_price if avg_price > 0 else 0):.2f}]')
+
+        return self.filled_by_execution, avg_price
 
 
 """
@@ -230,9 +242,15 @@ class LimitEntry(BaseTradeEntry):
 # Pos = Position(db, ex)
 # limit_entry = LimitEntry(db, ex, Wal, Ord, Pos)
 #
-#
-# #limit_entry.enter_trade({'Signal': TradeSignals.EnterLong})
-#
+# limit_entry.enter_trade({'Signal': TradeSignals.EnterShort})
+# print('sleeping'); time.sleep(10)
 # limit_entry.enter_trade({'Signal': TradeSignals.EnterLong})
-
-
+# print('sleeping'); time.sleep(10)
+# ex.cancel_all_active_orders()
+# limit_entry.enter_trade({'Signal': TradeSignals.EnterShort})
+# print('sleeping'); time.sleep(10)
+# ex.cancel_all_active_orders()
+# limit_entry.enter_trade({'Signal': TradeSignals.EnterLong})
+# print('sleeping'); time.sleep(10)
+# ex.cancel_all_active_orders()
+# limit_entry.enter_trade({'Signal': TradeSignals.EnterShort})
