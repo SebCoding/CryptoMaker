@@ -161,7 +161,7 @@ class BaseTradeEntry(ABC):
                 self.take_profit_qty = round(self.take_profit_qty + qty, 10)
                 self._exchange.replace_active_order_qty(self.take_profit_order_id, self.take_profit_qty)
                 self._logger.info(f"Updated {tp_side} TakeProfit Limit Order[{self.take_profit_order_id[-8:]}: "
-                                  f"qty={self.take_profit_qty}, tp_price={start_price:.2f}]")
+                                  f"qty={self.take_profit_qty}, tp_price={take_profit:.2f}]")
             else:
                 self.take_profit_qty = round(qty, 10)
                 self.take_profit_order_id = self.place_tp_order(trade_side, self.take_profit_qty, take_profit)

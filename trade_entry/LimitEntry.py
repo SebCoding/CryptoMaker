@@ -113,7 +113,9 @@ class LimitEntry(BaseTradeEntry):
             # Wait until update appears on websocket
             while True:
                 order_dict = self._exchange.get_order_by_id_ws_only(self.pair, order_id)
-                if order_dict and order_dict['price'] == new_entry_price:
+                if (order_dict and order_dict['price'] == new_entry_price) or \
+                        (order_dict and order_dict['order_status'] in
+                         [OrderStatus.Filled, OrderStatus.Rejected, OrderStatus.PendingCancel, OrderStatus.Cancelled]):
                     break
 
     def cancel_order(self, side, order_id):
@@ -235,14 +237,14 @@ class LimitEntry(BaseTradeEntry):
 """
     Testing Limit Order Trade Entries
 """
-# ex = ExchangeBybit()
-# db = Database(ex)
-# Wal = WalletUSDT(ex)
-# Ord = Orders(db, ex)
-# Pos = Position(db, ex)
-# limit_entry = LimitEntry(db, ex, Wal, Ord, Pos)
-#
-# limit_entry.enter_trade({'Signal': TradeSignals.EnterShort})
+ex = ExchangeBybit()
+db = Database(ex)
+Wal = WalletUSDT(ex)
+Ord = Orders(db, ex)
+Pos = Position(db, ex)
+limit_entry = LimitEntry(db, ex, Wal, Ord, Pos)
+
+limit_entry.enter_trade({'Signal': TradeSignals.EnterShort})
 # print('sleeping'); time.sleep(10)
 # limit_entry.enter_trade({'Signal': TradeSignals.EnterLong})
 # print('sleeping'); time.sleep(10)
