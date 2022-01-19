@@ -1,3 +1,4 @@
+import sys
 import time
 
 import arrow
@@ -19,6 +20,8 @@ from exchange.ExchangeBybit import ExchangeBybit
 class LimitEntry(BaseTradeEntry):
     # Wait time in seconds after creating/updating orders
     PAUSE_TIME = 0.3
+
+    LOOP_TIMEOUT = 2*60  # 2 minutes
 
     def __init__(self, database, exchange, wallet, orders, position):
         super().__init__(database, exchange, wallet, orders, position)
@@ -111,12 +114,16 @@ class LimitEntry(BaseTradeEntry):
             self._logger.info(f"Updated {side_l_s} Limit Order[{order_id[-8:]}: price={new_entry_price:.2f}]")
 
             # Wait until update appears on websocket
+            timeout = time.time() + self.LOOP_TIMEOUT
             while True:
                 order_dict = self._exchange.get_order_by_id_ws_only(self.pair, order_id)
                 if (order_dict and order_dict['price'] == new_entry_price) or \
                         (order_dict and order_dict['order_status'] in
                          [OrderStatus.Filled, OrderStatus.Rejected, OrderStatus.PendingCancel, OrderStatus.Cancelled]):
                     break
+                if time.time() > timeout:
+                    self._logger.exception(f'Possible infinite loop in update_order_price()')
+                    sys.exit(1)
 
     def cancel_order(self, side, order_id):
         result = self._exchange.cancel_active_order(order_id)
@@ -139,11 +146,17 @@ class LimitEntry(BaseTradeEntry):
 
         time.sleep(self.PAUSE_TIME)
         while True:
+
             # Wait for the order to appear on websocket
+            timeout = time.time() + self.LOOP_TIMEOUT
             while True:
                 order_dict = self._exchange.get_order_by_id_ws_only(self.pair, order_obj.order_id)
                 if order_dict:
                     break
+                if time.time() > timeout:
+                    self._logger.exception(f'Possible infinite loop: get_order_by_id_ws_only()')
+                    sys.exit(1)
+
             order_id = order_dict['order_id']
             order_status = order_dict['order_status']
             order_qty = order_dict['qty']
@@ -157,8 +170,12 @@ class LimitEntry(BaseTradeEntry):
             # Crossed time threshold, abort.
             if round(elapsed_time, 1) > self.abort_seconds:
                 # Wait for tp orders to match possibly partially opened position
+                timeout = time.time() + self.LOOP_TIMEOUT
                 while self.take_profit_qty < round(order_qty - leaves_qty, 10):
                     self.create_tp_on_executions(side, start_price, order_id)
+                    if time.time() > timeout:
+                        self._logger.exception(f'Possible infinite loop: Crossed time threshold, abort')
+                        sys.exit(1)
 
                 self._logger.info(f'{side_l_s} Limit Entry Aborting. '
                                   f'elapsed_time={round(elapsed_time, 1)}s > abort_threshold={self.abort_seconds}s')
@@ -168,8 +185,13 @@ class LimitEntry(BaseTradeEntry):
             # Crossed price threshold, abort.
             if price_diff > abort_price_diff:
                 # Wait for tp orders to match possibly partially opened position
+                timeout = time.time() + self.LOOP_TIMEOUT
                 while self.take_profit_qty < round(order_qty - leaves_qty, 10):
                     self.create_tp_on_executions(side, start_price, order_id)
+                    if time.time() > timeout:
+                        self._logger.exception(f'Possible infinite loop: Crossed price threshold, abort')
+                        sys.exit(1)
+
                 if side == OrderSide.Buy:
                     abort_price = round(start_price + abort_price_diff, 2)
                     self._logger.info(f'{side_l_s} Limit Entry Aborting. current_price={current_price} > '
@@ -203,8 +225,12 @@ class LimitEntry(BaseTradeEntry):
                     self.create_tp_on_executions(side, start_price, order_id)
                     continue
                 case OrderStatus.Filled:
+                    timeout = time.time() + self.LOOP_TIMEOUT
                     while self.take_profit_qty < order_qty:
                         self.create_tp_on_executions(side, start_price, order_id)
+                        if time.time() > timeout:
+                            self._logger.exception(f'Possible infinite loop: case OrderStatus.Filled')
+                            sys.exit(1)
                     self._logger.info(
                         f"Filled {side_l_s} Limit Order[{order_id[-8:]}: qty={order_qty} last_exec_price={order_price:.2f}]")
                     break
