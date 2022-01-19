@@ -237,14 +237,14 @@ class LimitEntry(BaseTradeEntry):
 """
     Testing Limit Order Trade Entries
 """
-ex = ExchangeBybit()
-db = Database(ex)
-Wal = WalletUSDT(ex)
-Ord = Orders(db, ex)
-Pos = Position(db, ex)
-limit_entry = LimitEntry(db, ex, Wal, Ord, Pos)
-
-limit_entry.enter_trade({'Signal': TradeSignals.EnterShort})
+# ex = ExchangeBybit()
+# db = Database(ex)
+# Wal = WalletUSDT(ex)
+# Ord = Orders(db, ex)
+# Pos = Position(db, ex)
+# limit_entry = LimitEntry(db, ex, Wal, Ord, Pos)
+#
+# limit_entry.enter_trade({'Signal': TradeSignals.EnterShort})
 # print('sleeping'); time.sleep(10)
 # limit_entry.enter_trade({'Signal': TradeSignals.EnterLong})
 # print('sleeping'); time.sleep(10)
