@@ -6,6 +6,7 @@ import datetime as dt
 
 import pybit
 import utils
+from enums.SignalMode import SignalMode
 from logging_.Logger import Logger
 from Configuration import Configuration
 from Orders import Order
@@ -184,6 +185,8 @@ class ExchangeBybit:
             self.get_candle_topic(self.pair, self.interval),
             self.get_orderbook25_topic(self.pair)
         ]
+        if self.interval != '1' and self._config['strategy']['signal_mode'] == SignalMode.Minute:
+            topic_list.append(self.get_candle_topic(self.pair, '1'))
         return topic_list
 
     def build_private_topics_list(self):

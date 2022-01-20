@@ -10,6 +10,7 @@ DATETIME_FMT_MS = '%Y-%m-%d %H:%M:%S.%f'
 
 TRADE_ENTRY_MODES = ['maker', 'taker']
 IMPLEMENTED_STRATEGIES = ['ScalpEmaRsiAdx']
+SIGNAL_MODES = ['interval', 'minute', 'realtime']
 
 # Valid Intervals. Some intervals are not supported by Bybit Websockets
 VALID_INTERVALS = ['1m', '3m', '5m', '15m', '30m', '1h', '2h', '4h', '1d', '1w']
@@ -74,9 +75,10 @@ CONFIG_SCHEMA = {
             'type': 'object',
             'properties': {
                 'name': {'type': 'string', 'enum': IMPLEMENTED_STRATEGIES},
+                'signal_mode': {'type': 'string', 'enum': SIGNAL_MODES},
                 'minimum_candles_to_start': {'type': 'integer', 'minimum': 0}
             },
-            'required': ['name', 'minimum_candles_to_start']
+            'required': ['name', 'signal_mode', 'minimum_candles_to_start']
         },
         'trading': {
             'type': 'object',
@@ -87,13 +89,11 @@ CONFIG_SCHEMA = {
                 'take_profit': {'type': 'number'},
                 'stop_loss': {'type': 'number'},
                 'tradable_balance_ratio': {'type': 'number', 'minimum': 0.01, 'maximum': 1.0},
-                'trade_on_closed_candles_only': {'type': 'boolean', 'default': False},
                 'trade_entry_mode':  {'type': 'string', 'enum': TRADE_ENTRY_MODES},
                 'constant_take_profit': {'type': 'boolean'},
             },
             'required': ['interval', 'leverage_long', 'leverage_short', 'take_profit', 'stop_loss',
-                         'tradable_balance_ratio', 'trade_on_closed_candles_only', 'trade_entry_mode',
-                         'constant_take_profit']
+                         'tradable_balance_ratio', 'trade_entry_mode', 'constant_take_profit']
         },
         'limit_entry': {
             'type': 'object',

@@ -19,12 +19,12 @@ class ScalpEmaRsiAdx(BaseStrategy):
     RSI_MAX_SIGNAL_THRESHOLD = 69
 
     # Trade entry RSI thresholds (by default equal to RSI min/max thresholds)
-    RSI_MIN_ENTRY_THRESHOLD = 50
-    RSI_MAX_ENTRY_THRESHOLD = 50
+    RSI_MIN_ENTRY_THRESHOLD = 33
+    RSI_MAX_ENTRY_THRESHOLD = 68
 
     # Volatility indicator: ADX - Average Directional Index
     ADX_PERIODS = 3
-    ADX_THRESHOLD = 30
+    ADX_THRESHOLD = 20
 
     def __init__(self, database):
         super().__init__()

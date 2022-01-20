@@ -81,11 +81,14 @@ def format_execution_time(seconds):
     minutes = seconds // 60
     seconds %= 60
     output = f"{int(hours)}h {int(minutes)}m {int(seconds)}s"
+    print(output)
     for c in output:
         if c in ['0', ':', 'h', 'm', 's', ' ']:
-            output = output.replace(c, '')
+            output = output.replace(c, '', 1)
         else:
             break
     if len(output) == 0:
         output = 'less than 1s'
-    return output.replace('m', 'm ').replace('h', 'h')
+    return output
+
+

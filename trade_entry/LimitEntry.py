@@ -21,7 +21,7 @@ class LimitEntry(BaseTradeEntry):
     # Wait time in seconds after creating/updating orders
     PAUSE_TIME = 0.3
 
-    LOOP_TIMEOUT = 2*60  # 2 minutes
+    LOOP_TIMEOUT = 5*60  # 2 minutes
 
     def __init__(self, database, exchange, wallet, orders, position):
         super().__init__(database, exchange, wallet, orders, position)
@@ -131,7 +131,7 @@ class LimitEntry(BaseTradeEntry):
                          [OrderStatus.Filled, OrderStatus.Rejected, OrderStatus.PendingCancel, OrderStatus.Cancelled]):
                     break
                 if time.time() > timeout:
-                    self._logger.exception(f'Possible infinite loop in update_order_price()')
+                    self._logger.error(f'Possible infinite loop in update_order_price()')
                     sys.exit(1)
 
     def cancel_order(self, side, order_id):
@@ -163,7 +163,7 @@ class LimitEntry(BaseTradeEntry):
                 if order_dict:
                     break
                 if time.time() > timeout:
-                    self._logger.exception(f'Possible infinite loop: get_order_by_id_ws_only()')
+                    self._logger.error(f'Possible infinite loop: get_order_by_id_ws_only()')
                     sys.exit(1)
 
             order_id = order_dict['order_id']
@@ -183,7 +183,7 @@ class LimitEntry(BaseTradeEntry):
                 while self.take_profit_qty < round(order_qty - leaves_qty, 10):
                     self.create_tp_on_executions(side, trade_start_price, order_id)
                     if time.time() > timeout:
-                        self._logger.exception(f'Possible infinite loop: Crossed time threshold, abort')
+                        self._logger.error(f'Possible infinite loop: Crossed time threshold, abort')
                         sys.exit(1)
 
                 self._logger.info(f'{side_l_s} Limit Entry Aborting. '
@@ -198,7 +198,7 @@ class LimitEntry(BaseTradeEntry):
                 while self.take_profit_qty < round(order_qty - leaves_qty, 10):
                     self.create_tp_on_executions(side, trade_start_price, order_id)
                     if time.time() > timeout:
-                        self._logger.exception(f'Possible infinite loop: Crossed price threshold, abort')
+                        self._logger.error(f'Possible infinite loop: Crossed price threshold, abort')
                         sys.exit(1)
 
                 if side == OrderSide.Buy:
@@ -238,7 +238,7 @@ class LimitEntry(BaseTradeEntry):
                     while self.take_profit_qty < order_qty:
                         self.create_tp_on_executions(side, trade_start_price, order_id)
                         if time.time() > timeout:
-                            self._logger.exception(f'Possible infinite loop: case OrderStatus.Filled')
+                            self._logger.error(f'Possible infinite loop: case OrderStatus.Filled')
                             sys.exit(1)
                     self._logger.info(
                         f"Filled {side_l_s} Limit Order[{order_id[-8:]}: qty={order_qty} last_exec_price={order_price:.2f}]")
