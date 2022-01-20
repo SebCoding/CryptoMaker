@@ -84,7 +84,6 @@ class ScalpEmaRsiAdx(BaseStrategy):
 
         self.data = df
         df_print = df.drop(columns=['start', 'end'], axis=1)
-        print('\r', end='')
         print('\n\n'+df_print.tail(10).to_string())
 
     # Return 2 values:
