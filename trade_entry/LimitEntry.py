@@ -21,7 +21,7 @@ class LimitEntry(BaseTradeEntry):
     # Wait time in seconds after creating/updating orders
     PAUSE_TIME = 0.3
 
-    LOOP_TIMEOUT = 5*60  # 2 minutes
+    LOOP_TIMEOUT = 2 * 60  # 2 minutes
 
     def __init__(self, database, exchange, wallet, orders, position):
         super().__init__(database, exchange, wallet, orders, position)
@@ -136,8 +136,17 @@ class LimitEntry(BaseTradeEntry):
 
     def cancel_order(self, side, order_id):
         result = self._exchange.cancel_active_order(order_id)
+        order_dict = self._exchange.get_order_by_id_ws_only(self.pair, order_id)
+        while not order_dict or order_dict['order_status'] not in [OrderStatus.Cancelled, OrderStatus.Filled]:
+            time.sleep(self.PAUSE_TIME)
+            order_dict = self._exchange.get_order_by_id_ws_only(self.pair, order_id)
+
         side_l_s = 'Long' if side == OrderSide.Buy else 'Short'
-        self._logger.info(f"Cancelled {side_l_s} Limit Order {order_id[-8:]}.")
+        if order_dict['order_status'] == OrderStatus.Cancelled:
+            self._logger.info(f"Cancelled {side_l_s} Limit Order {order_id[-8:]}.")
+        elif order_dict['order_status'] == OrderStatus.Filled:
+            self._logger.info(f"While trying to cancel {side_l_s} Limit Order {order_id[-8:]} has been filled.")
+        return order_dict['order_status']
 
     def enter_trade(self, signal):
         side = OrderSide.Buy if signal['Signal'] == TradeSignals.EnterLong else OrderSide.Sell
@@ -178,72 +187,97 @@ class LimitEntry(BaseTradeEntry):
 
             # Crossed time threshold, abort.
             if round(elapsed_time, 1) > self.abort_seconds:
-                self._logger.info(f'{side_l_s} Limit Entry Aborting. '
-                                  f'elapsed_time={round(elapsed_time, 1)}s > abort_threshold={self.abort_seconds}s')
-
-                # Wait for tp orders to match possibly partially opened position
-                timeout = time.time() + self.LOOP_TIMEOUT
-                while self.take_profit_qty < round(order_qty - leaves_qty, 10):
+                status = self.cancel_order(side, order_id)
+                if status == OrderStatus.Cancelled:
+                    time.sleep(2)
                     self.create_tp_on_executions(side, trade_start_price, order_id)
-                    if time.time() > timeout:
-                        self._logger.error(f'Possible infinite loop: Crossed time threshold, abort')
-                        sys.exit(1)
+                    # order_dict = self._exchange.get_order_by_id_ws_only(self.pair, order_id)
+                    # order_qty = order_dict['qty']
+                    # leaves_qty = order_dict['leaves_qty']
+                    self._logger.info(f'{side_l_s} Limit Entry Aborting. '
+                                      f'elapsed_time={round(elapsed_time, 1)}s > abort_threshold={self.abort_seconds}s')
 
-                self.cancel_order(side, order_id)
-                break
+                    # Wait for tp orders to match possibly partially opened position
+
+                    # timeout = time.time() + self.LOOP_TIMEOUT
+                    # while self.take_profit_qty < round(order_qty - leaves_qty, 10):
+                    #     self.create_tp_on_executions(side, trade_start_price, order_id)
+                    #     if time.time() > timeout:
+                    #         self._logger.error(f'Possible infinite loop: Crossed time threshold, abort')
+                    #         sys.exit(1)
+                    break
 
             # Crossed price threshold, abort.
             if price_diff > abort_price_diff:
-                if side == OrderSide.Buy:
-                    abort_price = round(trade_start_price + abort_price_diff, 2)
-                    self._logger.info(f'{side_l_s} Limit Entry Aborting. current_price={current_price} > '
-                                      f'abort_price={abort_price}')
-                else:
-                    abort_price = trade_start_price - abort_price_diff
-                    self._logger.info(f'{side_l_s} Limit Entry Aborting. current_price={current_price} < '
-                                      f'abort_price={abort_price}')
-
-                # Wait for tp orders to match possibly partially opened position
-                timeout = time.time() + self.LOOP_TIMEOUT
-                while self.take_profit_qty < round(order_qty - leaves_qty, 10):
+                status = self.cancel_order(side, order_id)
+                if status == OrderStatus.Cancelled:
+                    time.sleep(2)
                     self.create_tp_on_executions(side, trade_start_price, order_id)
-                    if time.time() > timeout:
-                        self._logger.error(f'Possible infinite loop: Crossed price threshold, abort')
-                        sys.exit(1)
+                    # order_dict = self._exchange.get_order_by_id_ws_only(self.pair, order_id)
+                    # order_qty = order_dict['qty']
+                    # leaves_qty = order_dict['leaves_qty']
+                    if side == OrderSide.Buy:
+                        abort_price = round(trade_start_price + abort_price_diff, 2)
+                        self._logger.info(f'{side_l_s} Limit Entry Aborting. current_price={current_price} > '
+                                          f'abort_price={abort_price}')
+                    else:
+                        abort_price = trade_start_price - abort_price_diff
+                        self._logger.info(f'{side_l_s} Limit Entry Aborting. current_price={current_price} < '
+                                          f'abort_price={abort_price}')
 
-                self.cancel_order(side, order_id)
-                break
+                    # Wait for tp orders to match possibly partially opened position
+                    # timeout = time.time() + self.LOOP_TIMEOUT
+                    # while self.take_profit_qty < round(order_qty - leaves_qty, 10):
+                    #     self.create_tp_on_executions(side, trade_start_price, order_id)
+                    #     if time.time() > timeout:
+                    #         self._logger.error(f'Possible infinite loop: Crossed price threshold, abort')
+                    #         sys.exit(1)
+                    break
 
             # Check order status and take action
             # Order Statuses: Created, New, PartiallyFilled, Filled, Rejected, PendingCancel, Cancelled
             match order_status:
                 case OrderStatus.Created | OrderStatus.New:
-                    filled = round(trade_start_qty - leaves_qty, 10)
-                    line = f"{order_status} {side_l_s} Order[{order_id[-8:]}: {filled}/{trade_start_qty} price={order_price:.2f}]"
-                    if line != prev_line:
-                        self._logger.info(line)
-                        prev_line = line
+                    # filled = round(trade_start_qty - leaves_qty, 10)
+                    # line = f"{order_status} {side_l_s} Order[{order_id[-8:]}: {filled}/{trade_start_qty} price={order_price:.2f}]"
+                    # if line != prev_line:
+                    #     self._logger.info(line)
+                    #     prev_line = line
                     self.update_order_price(side, order_id, order_price)
                     self.create_tp_on_executions(side, trade_start_price, order_id)
                     continue
                 case OrderStatus.PartiallyFilled:
-                    filled = round(trade_start_qty - leaves_qty, 10)
-                    line = f"{order_status} {side_l_s} Order[{order_id[-8:]}: {filled}/{trade_start_qty} price={order_price:.2f}]"
-                    if line != prev_line:
-                        self._logger.info(line)
-                        prev_line = line
+                    # filled = round(trade_start_qty - leaves_qty, 10)
+                    # line = f"{order_status} {side_l_s} Order[{order_id[-8:]}: {filled}/{trade_start_qty} price={order_price:.2f}]"
+                    # if line != prev_line:
+                    #     self._logger.info(line)
+                    #     prev_line = line
                     self.update_order_price(side, order_id, order_price)
                     self.create_tp_on_executions(side, trade_start_price, order_id)
                     continue
                 case OrderStatus.Filled:
+                    self.create_tp_on_executions(side, trade_start_price, order_id)
+
+                    # Some executions never make it to the websocket. Fix tp order discrepancy
+                    if self.take_profit_qty < order_qty:
+                        self._logger.info(f'Fixing tp order discrepancy.')
+                        if self.take_profit_order_id:
+                            self._exchange.replace_active_order_qty(self.take_profit_order_id, order_qty)
+                        else:
+                            tp_side = OrderSide.Buy if side == OrderSide.Sell else OrderSide.Sell
+                            take_profit = self.get_take_profit(side, trade_start_price)
+                            self.take_profit_order_id = self.place_tp_order(side, order_qty, take_profit)
+                        self.take_profit_qty = order_qty
+
                     self._logger.info(
                         f"Filled {side_l_s} Limit Order[{order_id[-8:]}: qty={order_qty} last_exec_price={order_price:.2f}]")
-                    timeout = time.time() + self.LOOP_TIMEOUT
-                    while self.take_profit_qty < order_qty:
-                        self.create_tp_on_executions(side, trade_start_price, order_id)
-                        if time.time() > timeout:
-                            self._logger.error(f'Possible infinite loop: case OrderStatus.Filled')
-                            sys.exit(1)
+
+                    # timeout = time.time() + self.LOOP_TIMEOUT
+                    # while self.take_profit_qty < order_qty:
+                    #     self.create_tp_on_executions(side, trade_start_price, order_id)
+                    #     if time.time() > timeout:
+                    #         self._logger.error(f'Possible infinite loop: case OrderStatus.Filled')
+                    #         sys.exit(1)
                     break
                 # Rejected, PendingCancel, Cancelled
                 case _:
