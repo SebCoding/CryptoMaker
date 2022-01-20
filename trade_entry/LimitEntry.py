@@ -153,7 +153,6 @@ class LimitEntry(BaseTradeEntry):
         side_l_s = 'Long' if side == OrderSide.Buy else 'Short'
         self.take_profit_order_id = None
         self.take_profit_qty = 0
-        self.filled_by_execution = 0
         prev_line = ''
 
         start_time = time.time()
@@ -260,7 +259,7 @@ class LimitEntry(BaseTradeEntry):
 
                     # Some executions never make it to the websocket. Fix tp order discrepancy
                     if self.take_profit_qty < order_qty:
-                        self._logger.info(f'Fixing tp order discrepancy.')
+                        self._logger.info(f'Fixing take_profit order discrepancy (missing executions).')
                         if self.take_profit_order_id:
                             self._exchange.replace_active_order_qty(self.take_profit_order_id, order_qty)
                         else:
@@ -293,16 +292,17 @@ class LimitEntry(BaseTradeEntry):
 
         exec_time = time.time() - start_time
 
-        # Get position summary
+        # Get position summary.
+        # NOTE: The qty and avg_price are only valid if the position was zero prior to this trade entry.
         position = self._position.get_position(side)
-        # qty = position['size'] if position else 0
+        qty = position['size'] if position else 0
         avg_price = position['entry_price'] if position else 0
         self._logger.info(f'{side_l_s} limit entry trade executed in {utils.seconds_to_human_readable(exec_time)}, '
-                          f'qty[{self.filled_by_execution}/{trade_start_qty}], '
+                          f'qty[{qty}/{trade_start_qty}], '
                           f'avg_entry_price[{avg_price:.2f}], '
                           f'slippage[{(avg_price - trade_start_price if avg_price > 0 else 0):.2f}]')
 
-        return self.filled_by_execution, avg_price
+        return qty, avg_price
 
 
 """

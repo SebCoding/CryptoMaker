@@ -12,7 +12,7 @@ class ScalpEmaRsiAdx(BaseStrategy):
     # Values for interval, takeprofit and stoploss come from the config.json file
 
     # Trend indicator: EMA - Exponential Moving Average
-    EMA_PERIODS = 20
+    EMA_PERIODS = 60
 
     # Momentum indicator: RSI - Relative Strength Index
     RSI_PERIODS = 2

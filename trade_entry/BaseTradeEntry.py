@@ -188,5 +188,4 @@ class BaseTradeEntry(ABC):
                 self.place_tp_order(trade_side, qty, take_profit)
                 self.take_profit_qty = round(self.take_profit_qty + qty, 10)
 
-        self.filled_by_execution = self.take_profit_qty
 
