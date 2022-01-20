@@ -1,9 +1,28 @@
  {
     "bot": {
         "throttle_secs": 1,
-        "progress_bar": true
+        "progress_bar": false
     },
-    "exchange": {
+     "strategy": {
+         "name": "ScalpEmaRsiAdx",
+         "signal_mode": "minute",
+         "minimum_candles_to_start": 3000
+     },
+     "trading": {
+         "interval": "5m",
+         "leverage_long": 1,
+         "leverage_short": 1,
+         "take_profit": 0.005,
+         "stop_loss": 0.004,
+         "tradable_balance_ratio": 0.5,
+         "trade_entry_mode": "maker",
+         "constant_take_profit": true
+     },
+     "limit_entry": {
+         "abort_price_pct": 0.0049,
+         "abort_time_candle_ratio": 3
+     },
+      "exchange": {
         "name": "Bybit",
         "testnet": true,
         "market_type": "perpetual futures",
@@ -24,26 +43,6 @@
             "ws_linear_private_mainnet2": "wss://stream.bytick.com/realtime_private"
         }
     },
-     "strategy": {
-         "name": "ScalpEmaRsiAdx",
-         "trade_on_closed_interval_candles_only": false,
-         "trade_on_closed_minute_candles_only": false,
-         "minimum_candles_to_start": 3000
-     },
-     "trading": {
-         "interval": "1m",
-         "leverage_long": 1,
-         "leverage_short": 1,
-         "take_profit": 0.005,
-         "stop_loss": 0.004,
-         "tradable_balance_ratio": 0.5,
-         "trade_entry_mode": "maker",
-         "constant_take_profit": true
-     },
-     "limit_entry": {
-         "abort_price_pct": 0.0049,
-         "abort_time_candle_ratio": 3
-     },
      "database": {
          "db_name": "CryptoMakerTest",
          "address": "localhost",
@@ -57,6 +56,6 @@
         "output_file_path": "output_log.txt"
     }
 }
- 
+
 
 

@@ -73,7 +73,7 @@ def adjust_from_time_datetime(from_time, interval, include_prior):
     return from_time
 
 
-def format_execution_time(seconds):
+def seconds_to_human_readable(seconds):
     # Remove days and keep remainder in seconds
     seconds = seconds % (24 * 3600)
     hours = seconds // 3600
@@ -81,7 +81,6 @@ def format_execution_time(seconds):
     minutes = seconds // 60
     seconds %= 60
     output = f"{int(hours)}h {int(minutes)}m {int(seconds)}s"
-    print(output)
     for c in output:
         if c in ['0', ':', 'h', 'm', 's', ' ']:
             output = output.replace(c, '', 1)

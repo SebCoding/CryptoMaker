@@ -1,3 +1,4 @@
+import rapidjson
 import talib
 import datetime as dt
 import constants
@@ -28,8 +29,9 @@ class ScalpEmaRsiAdx(BaseStrategy):
 
     def __init__(self, database):
         super().__init__()
-        self.logger = Logger.get_module_logger(__name__)
-        self.logger.info(f'Initializing strategy [{self.name}] ' + self.get_strategy_text_details())
+        self._logger = Logger.get_module_logger(__name__)
+        self._logger.info(f'Initializing strategy [{self.name}] ' + self.get_strategy_text_details())
+        self._logger.info(f'Strategy Settings:\n' + rapidjson.dumps(self._config['strategy'], indent=2))
         self.last_trade_index = self.minimum_candles_to_start
         self.db = database
 
@@ -81,7 +83,8 @@ class ScalpEmaRsiAdx(BaseStrategy):
             'signal'] = -1
 
         self.data = df
-        #print('\n\n'+self.data.tail(10).to_string())
+        # df_print = df.drop(columns=['start', 'end'], axis=1)
+        # print('\n\n'+df_print.tail(10).to_string())
 
     # Return 2 values:
     #   - DataFrame with indicators

@@ -4,6 +4,7 @@ import time
 from typing import Any, Callable
 
 import rapidjson
+import websocket
 
 from CandleHandler import CandleHandler
 from Configuration import Configuration
@@ -67,6 +68,7 @@ class Bot:
             if signal['Signal'] in [TradeSignals.EnterLong, TradeSignals.EnterShort] \
                     and not self._position.currently_in_position():
                 Bot.beep(5, 2500, 100)
+                df_print = df.drop(columns=['start', 'end'], axis=1)
                 self._logger.info(f'\n{df.tail(10).to_string()} \n')
                 self._logger.info(f"{signal['Signal']}: {rapidjson.dumps(signal, indent=2)}")
                 self.enter_trade(signal)
@@ -93,6 +95,12 @@ class Bot:
             self._logger.info('\n')
             self.db.sync_all_tables(self.pair)
             self._logger.info("Application Terminated by User.")
+        except (websocket.WebSocketTimeoutException,
+                websocket.WebSocketAddressException) as e:
+            self._logger.exception(e)
+            Bot.beep(1, 500, 5000)
+            raise e
+            # restart(10)
         except Exception as e:
             self._logger.exception(e)
             Bot.beep(1, 500, 5000)
@@ -192,6 +200,13 @@ class Bot:
             for i in range(nb):
                 winsound.Beep(frequency, duration)
                 time.sleep(0.1)
+
+    def restart(self, nb_seconds):
+        # print("argv was", sys.argv)
+        # print("sys.executable was", sys.executable)
+        self._logger.error(f"restarting in {nb_seconds} seconds ...")
+        time.sleep(nb_seconds)
+        os.execv(sys.executable, ['python'] + sys.argv)
 
     def print_candles_and_entries(self, f):
         self._candles_df, data_changed = self._candle_handler.get_refreshed_candles()

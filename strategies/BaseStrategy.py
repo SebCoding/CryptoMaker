@@ -36,12 +36,12 @@ class BaseStrategy(ABC):
     def __init__(self):
         super().__init__()
         self.name = self.__class__.__name__
-        self.config = Configuration.get_config()
-        self.interval = self.config['trading']['interval']
+        self._config = Configuration.get_config()
+        self.interval = self._config['trading']['interval']
         # self.takeprofit = self.config['trading']['takeprofit']
         # self.stoploss = self.config['trading']['stoploss']
         # self.tradable_balance_ratio = self.config['trading']['tradable_balance_ratio']
-        self.minimum_candles_to_start = self.config['strategy']['minimum_candles_to_start']
+        self.minimum_candles_to_start = self._config['strategy']['minimum_candles_to_start']
 
     @abstractmethod
     def add_indicators_and_signals(self, candles_df):

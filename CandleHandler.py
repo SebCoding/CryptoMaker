@@ -1,5 +1,9 @@
 import pandas as pd
 import time
+
+import rapidjson
+import arrow
+
 import utils
 from Configuration import Configuration
 from enums.SignalMode import SignalMode
@@ -20,6 +24,7 @@ class CandleHandler:
         self._config = Configuration.get_config()
         self.pair = self._config['exchange']['pair']
         self.interval = self._config['trading']['interval']
+        self.minutes_in_interval = utils.convert_interval_to_sec(self.interval) / 60
         self.minimum_candles_to_start = int(self._config['strategy']['minimum_candles_to_start'])
         self._exchange = exchange
         self._candle_topic_name = \
@@ -29,13 +34,20 @@ class CandleHandler:
 
     # Fetch 'minimum_candles_to_start' candles preceding 'to_time' (not including to_time)
     def get_historic_candles(self, to_time):
-        self._logger.info(f'Fetching {self.minimum_candles_to_start} historical candles.')
+        self._logger.info(f'\nFetching {self.minimum_candles_to_start} historical candles.')
         from_time = utils.adjust_from_time_timestamp(to_time, self.interval, self.minimum_candles_to_start)
         to_time -= 1  # subtract 1s because get_candle_data() includes candle to 'to_time'
         df = self._exchange.get_candle_data(self.pair, from_time, to_time, self.interval)
         return df
 
-    """
+    def get_refreshed_candles(self):
+        if self._config['strategy']['signal_mode'] == SignalMode.Minute:
+            return self._get_refreshed_candles_minute()
+        else:
+            return self._get_refreshed_candles()
+
+    def _get_refreshed_candles(self):
+        """
             Push frequency: 1-60s from Bybit
             Candle format
             {
@@ -52,43 +64,42 @@ class CandleHandler:
                 "cross_seq": 6286368356,
                 "timestamp": 1641277877187493
             }
+            Returns 2 values: candles dataframe and True/False if the data has been modified since last call
         """
-
-    # Return 2 values: candles dataframe and True/False if the data has been modified since last call
-    def get_refreshed_candles(self):
         data_changed = False
-        data_list = self.ws_public.fetch(self._candle_topic_name)
-        if data_list:
-            for data in data_list:
-                if data['timestamp'] > self._last_candle_timestamp:
+        candle_list = self.ws_public.fetch(self._candle_topic_name)
+        if candle_list:
+            for candle in candle_list:
+                if candle['timestamp'] > self._last_candle_timestamp:
                     # If we only trade on closed candles ignore data that is not confirmed
-                    if self._config['strategy']['signal_mode'] == SignalMode.Interval and not data['confirm']:
+                    if self._config['strategy']['signal_mode'] == SignalMode.Interval and not candle['confirm']:
                         # Assuming confirmed candles are placed before the unconfirmed candles in the list,
                         # we can exit on the 1st unconfirmed candle encountered
                         return self._candles_df, False
                     to_append = [
                         {
-                            'start': data['start'],
-                            'end': data['end'],
-                            'datetime': dt.datetime.fromtimestamp(int(data['start'])),
+                            'start': candle['start'],
+                            'end': candle['end'],
+                            'start_time': dt.datetime.fromtimestamp(int(candle['start'])),
+                            'end_time': dt.datetime.fromtimestamp(int(candle['end'])),
                             'pair': self.pair,
-                            'open': data['open'],
-                            'high': data['high'],
-                            'low': data['low'],
-                            'close': data['close'],
-                            'volume': data['volume'],
-                            'confirm': data['confirm'],
-                            'timestamp': int(data['timestamp'])
+                            'open': candle['open'],
+                            'high': candle['high'],
+                            'low': candle['low'],
+                            'close': candle['close'],
+                            'volume': candle['volume'],
+                            'confirm': candle['confirm'],
+                            'timestamp': int(candle['timestamp'])
                         }
                     ]
                     # DataFrame is empty
                     if self._candles_df is None:
-                        self._candles_df = self.get_historic_candles(int(data['start']))
+                        self._candles_df = self.get_historic_candles(int(candle['start']))
                         self._candles_df = self._candles_df.append(to_append, ignore_index=True)
                         # print(self._candles_df.tail(10).to_string()); exit(0)
                     # DataFrame contains at least 1 row
                     else:
-                        if data['confirm']:
+                        if candle['confirm']:
                             # Previous candle is confirmed we add a new row
                             if self._candles_df["confirm"].iloc[-1]:
                                 self._candles_df = self._candles_df.append(to_append, ignore_index=True)
@@ -99,7 +110,7 @@ class CandleHandler:
                                 # self.confirmed_candles = self.confirmed_candles.append(to_append, ignore_index=True)
                                 self._candles_df = self._candles_df.iloc[:-1, :].append(to_append,
                                                                                         ignore_index=True)
-                        # Current candle not confirmed and previous confirmed we add a new row
+                        # Current candle not confirmed and previous candle is confirmed we add a new row
                         elif self._candles_df["confirm"].iloc[-1]:
                             self._candles_df = self._candles_df.append(to_append, ignore_index=True)
 
@@ -111,9 +122,9 @@ class CandleHandler:
 
                     # Confirm that the websocket did not skip any data
                     # Current candle 'start' time must be equal to prior candle 'end' time
-                    self.validate_last_entry(int(data['start']), to_append)
+                    self.validate_last_entry(int(candle['start']), to_append)
 
-                    self._last_candle_timestamp = data['timestamp']
+                    self._last_candle_timestamp = candle['timestamp']
                     data_changed = True
 
                     # Every DROP_OLD_ROWS_LIMIT new rows,
@@ -123,6 +134,127 @@ class CandleHandler:
                         self._candles_df = self._candles_df.tail(self.DROP_OLD_ROWS_THRESHOLD).copy()
                         self._candles_df.reset_index(inplace=True)
 
+                    # print('\n' + self._candles_df.tail(10).to_string())
+
+        return self._candles_df, data_changed
+
+    def _get_refreshed_candles_minute(self):
+        """
+            Push frequency: 1-60s from Bybit
+            Candle format
+            {
+                "start": 1641277860,
+                "end": 1641277920,
+                "period": "1",
+                "open": 46289.5,
+                "close": 46289.5,
+                "high": 46291,
+                "low": 46289.5,
+                "volume": "4.833",
+                "turnover": "223719.5515",
+                "confirm": false,
+                "cross_seq": 6286368356,
+                "timestamp": 1641277877187493
+            }
+            Returns 2 values: candles dataframe and True/False if the data has been modified since last call
+
+            In the "minute" signal_mode, confirmed interval candles get added to the dataframe.
+            Confirmed 1m minute candles are used as the un-confirmed candles in the dataframe
+        """
+        data_changed = False
+
+        # Read websockets
+        candle_list = self.ws_public.fetch(self._candle_topic_name)
+        candle_list_1m = self.ws_public.fetch(self._candle1m_topic_name)
+
+        # if candle_list or candle_list_1m:
+        #     print('hey')
+        #
+        # if candle_list_1m:
+        #     candle = candle_list_1m[0]
+        #     print(rapidjson.dumps(candle, indent=2))
+
+        # Remove unconfirmed candles
+        if candle_list:
+            candle_list = [e for e in candle_list if e['confirm'] is True]
+        if candle_list_1m:
+            candle_list_1m = [e for e in candle_list_1m if e['confirm'] is True]
+
+        # We did not receive any confirmed "trading interval" candles, but we received confirmed 1m candles.
+        # We add the confirmed 1m candles to the dataframe as unconfirmed "trading interval" candles.
+        if not candle_list and candle_list_1m:
+            candle_list = candle_list_1m
+            # For 1m candles, only keep the latest candle
+            candle_list = sorted(candle_list, key=lambda i: i['timestamp'], reverse=False)
+            candle_list = [candle_list[-1]]
+            candle_list[0]['confirm'] = False  # Mark the candle as unconfirmed
+
+        # We've received confirmed "trading interval" candles (not 1m), we add them to the dataframe
+        if candle_list:
+            for candle in candle_list:
+                if candle['timestamp'] > self._last_candle_timestamp:
+                    to_append = [
+                        {
+                            'start': candle['start'],
+                            'end': candle['end'],
+                            'start_time': dt.datetime.fromtimestamp(int(candle['start'])),
+                            'end_time': dt.datetime.fromtimestamp(int(candle['end'])),
+                            'pair': self.pair,
+                            'open': candle['open'],
+                            'high': candle['high'],
+                            'low': candle['low'],
+                            'close': candle['close'],
+                            'volume': candle['volume'],
+                            'confirm': candle['confirm'],
+                            'timestamp': int(candle['timestamp'])
+                        }
+                    ]
+                    # DataFrame is empty
+                    if self._candles_df is None:
+                        current_minute = arrow.get(candle['start']).to('local').minute
+                        offset = current_minute % self.minutes_in_interval
+                        start = int(candle['start']) - (offset * 60)
+                        self._candles_df = self.get_historic_candles(start)
+                        self._candles_df = self._candles_df.append(to_append, ignore_index=True)
+                        # print(self._candles_df.tail(10).to_string()); exit(0)
+                    # DataFrame contains at least 1 row
+                    else:
+                        if candle['confirm']:
+                            # Previous candle is confirmed we add a new row
+                            if self._candles_df["confirm"].iloc[-1]:
+                                self._candles_df = self._candles_df.append(to_append, ignore_index=True)
+
+                            # Previous candle is not confirmed we update the last row
+                            else:
+                                # self.confirmed_candles.drop(self.confirmed_candles.tail(1).index, inplace=True)
+                                # self.confirmed_candles = self.confirmed_candles.append(to_append, ignore_index=True)
+                                self._candles_df = self._candles_df.iloc[:-1, :].append(to_append,
+                                                                                        ignore_index=True)
+                        # Current candle not confirmed and previous candle is confirmed we add a new row
+                        elif self._candles_df["confirm"].iloc[-1]:
+                            self._candles_df = self._candles_df.append(to_append, ignore_index=True)
+
+                        # Current candle not confirmed and previous not confirmed we update the last row
+                        else:
+                            # self.confirmed_candles.drop(self.confirmed_candles.tail(1).index, inplace=True)
+                            # self.confirmed_candles = self.confirmed_candles.append(to_append, ignore_index=True)
+                            self._candles_df = self._candles_df.iloc[:-1, :].append(to_append, ignore_index=True)
+
+                    # Confirm that the websocket did not skip any data
+                    # Current candle 'start' time must be equal to prior candle 'end' time
+                    # self.validate_last_entry(int(candle['start']), to_append)
+
+                    self._last_candle_timestamp = candle['timestamp']
+                    data_changed = True
+
+                    # Every DROP_OLD_ROWS_LIMIT new rows,
+                    # drop the oldest DROP_OLD_ROWS_LIMIT rows
+                    if len(self._candles_df) > self.minimum_candles_to_start + self.DROP_OLD_ROWS_THRESHOLD:
+                        self._logger.info(f'Dropping oldest {self.DROP_OLD_ROWS_THRESHOLD} of candles dataframe.')
+                        self._candles_df = self._candles_df.tail(self.DROP_OLD_ROWS_THRESHOLD).copy()
+                        self._candles_df.reset_index(inplace=True)
+
+                    # print('\n'+self._candles_df.tail(10).to_string())
         return self._candles_df, data_changed
 
     def validate_last_entry(self, start_timestamp, to_append):

@@ -350,14 +350,16 @@ class ExchangeBybit:
         # Add columns
         df['pair'] = pair
         df['confirm'] = True
-        df['datetime'] = [dt.datetime.fromtimestamp(x) for x in df.open_time]
+        df['start_time'] = [dt.datetime.fromtimestamp(x) for x in df.open_time]
         df.rename(columns={'open_time': 'start'}, inplace=True)
         df['end'] = df['start'].map(lambda start: utils.adjust_from_time_timestamp(start, interval, 1, backward=False))
+        df['end_time'] = [dt.datetime.fromtimestamp(x) for x in df.end]
         df['timestamp'] = 0
 
         # Only keep relevant columns OHLCV and re-order
         df = df.loc[:,
-             ['start', 'end', 'datetime', 'pair', 'open', 'high', 'low', 'close', 'volume', 'confirm', 'timestamp']]
+             ['start', 'end', 'start_time', 'end_time', 'pair',
+              'open', 'high', 'low', 'close', 'volume', 'confirm', 'timestamp']]
 
         # Set proper data types
         df['start'] = df['start'].astype(int)

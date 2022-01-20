@@ -178,6 +178,9 @@ class LimitEntry(BaseTradeEntry):
 
             # Crossed time threshold, abort.
             if round(elapsed_time, 1) > self.abort_seconds:
+                self._logger.info(f'{side_l_s} Limit Entry Aborting. '
+                                  f'elapsed_time={round(elapsed_time, 1)}s > abort_threshold={self.abort_seconds}s')
+
                 # Wait for tp orders to match possibly partially opened position
                 timeout = time.time() + self.LOOP_TIMEOUT
                 while self.take_profit_qty < round(order_qty - leaves_qty, 10):
@@ -186,21 +189,11 @@ class LimitEntry(BaseTradeEntry):
                         self._logger.error(f'Possible infinite loop: Crossed time threshold, abort')
                         sys.exit(1)
 
-                self._logger.info(f'{side_l_s} Limit Entry Aborting. '
-                                  f'elapsed_time={round(elapsed_time, 1)}s > abort_threshold={self.abort_seconds}s')
                 self.cancel_order(side, order_id)
                 break
 
             # Crossed price threshold, abort.
             if price_diff > abort_price_diff:
-                # Wait for tp orders to match possibly partially opened position
-                timeout = time.time() + self.LOOP_TIMEOUT
-                while self.take_profit_qty < round(order_qty - leaves_qty, 10):
-                    self.create_tp_on_executions(side, trade_start_price, order_id)
-                    if time.time() > timeout:
-                        self._logger.error(f'Possible infinite loop: Crossed price threshold, abort')
-                        sys.exit(1)
-
                 if side == OrderSide.Buy:
                     abort_price = round(trade_start_price + abort_price_diff, 2)
                     self._logger.info(f'{side_l_s} Limit Entry Aborting. current_price={current_price} > '
@@ -209,6 +202,15 @@ class LimitEntry(BaseTradeEntry):
                     abort_price = trade_start_price - abort_price_diff
                     self._logger.info(f'{side_l_s} Limit Entry Aborting. current_price={current_price} < '
                                       f'abort_price={abort_price}')
+
+                # Wait for tp orders to match possibly partially opened position
+                timeout = time.time() + self.LOOP_TIMEOUT
+                while self.take_profit_qty < round(order_qty - leaves_qty, 10):
+                    self.create_tp_on_executions(side, trade_start_price, order_id)
+                    if time.time() > timeout:
+                        self._logger.error(f'Possible infinite loop: Crossed price threshold, abort')
+                        sys.exit(1)
+
                 self.cancel_order(side, order_id)
                 break
 
@@ -234,14 +236,14 @@ class LimitEntry(BaseTradeEntry):
                     self.create_tp_on_executions(side, trade_start_price, order_id)
                     continue
                 case OrderStatus.Filled:
+                    self._logger.info(
+                        f"Filled {side_l_s} Limit Order[{order_id[-8:]}: qty={order_qty} last_exec_price={order_price:.2f}]")
                     timeout = time.time() + self.LOOP_TIMEOUT
                     while self.take_profit_qty < order_qty:
                         self.create_tp_on_executions(side, trade_start_price, order_id)
                         if time.time() > timeout:
                             self._logger.error(f'Possible infinite loop: case OrderStatus.Filled')
                             sys.exit(1)
-                    self._logger.info(
-                        f"Filled {side_l_s} Limit Order[{order_id[-8:]}: qty={order_qty} last_exec_price={order_price:.2f}]")
                     break
                 # Rejected, PendingCancel, Cancelled
                 case _:
@@ -261,7 +263,7 @@ class LimitEntry(BaseTradeEntry):
         position = self._position.get_position(side)
         # qty = position['size'] if position else 0
         avg_price = position['entry_price'] if position else 0
-        self._logger.info(f'{side_l_s} limit entry trade executed in {utils.format_execution_time(exec_time)}, '
+        self._logger.info(f'{side_l_s} limit entry trade executed in {utils.seconds_to_human_readable(exec_time)}, '
                           f'qty[{self.filled_by_execution}/{trade_start_qty}], '
                           f'avg_entry_price[{avg_price:.2f}], '
                           f'slippage[{(avg_price - trade_start_price if avg_price > 0 else 0):.2f}]')
