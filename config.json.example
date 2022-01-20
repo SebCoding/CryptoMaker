@@ -29,26 +29,26 @@
          "minimum_candles_to_start": 3000
      },
      "trading": {
-         "interval": "1m",
+         "interval": "3m",
          "leverage_long": 1,
          "leverage_short": 1,
-         "take_profit": 0.0005,
-         "stop_loss": 0.0004,
-         "tradable_balance_ratio": 0.3,
+         "take_profit": 0.005,
+         "stop_loss": 0.004,
+         "tradable_balance_ratio": 0.5,
          "trade_on_closed_candles_only": false,
          "trade_entry_mode": "maker",
          "constant_take_profit": true
      },
      "limit_entry": {
          "abort_price_pct": 0.0049,
-         "abort_time_candle_ratio": 0.8
+         "abort_time_candle_ratio": 1
      },
      "database": {
          "db_name": "CryptoMakerTest",
          "address": "localhost",
          "port": 5432,
          "username": "CryptoMakerUser",
-         "password": "mypassword"
+         "password": "my_password"
      },
     "logging": {
         "logging_level": "info",

@@ -66,14 +66,23 @@ class LimitEntry(BaseTradeEntry):
                 # print(f"Orderbook spread={spread}, buyers top [{ob[0]['price']}]. Tentative Price: {price}")
         return round(price, 10)  # We need to round to avoid: 3323.05 - 0.05 = 3323.0499999999997
 
-    def place_limit_order(self, side):
+    def place_limit_order(self, side, trade_start_price=0):
+        """
+            The first time we place a limit order for this trade entry, trade_start_price=0.
+            All subsequents orders will have a value for trade_start_price that will be used
+            to calculate a stop_loss equal to the first original order. All orders placed
+            within a trade entry should have the same stop loss.
+        """
         balance = self._wallet.free
         tradable_balance = balance * self.tradable_ratio
         if tradable_balance < self.MIN_TRADE_AMOUNT:
             return 0, None
 
         price = self.get_entry_price(side)
-        stop_loss = self.get_stop_loss(side, price)
+        if trade_start_price == 0:
+            stop_loss = self.get_stop_loss(side, price)
+        else:
+            stop_loss = self.get_stop_loss(side, trade_start_price)
 
         # Calculate trade size (qty) based on leverage
         qty = tradable_balance / price
@@ -140,9 +149,9 @@ class LimitEntry(BaseTradeEntry):
 
         start_time = time.time()
         order_obj = self.place_limit_order(side)
-        start_qty = order_obj.qty
-        start_price = order_obj.price
-        abort_price_diff = round(self.abort_price_pct * start_price, 2)
+        trade_start_qty = order_obj.qty
+        trade_start_price = order_obj.price
+        abort_price_diff = round(self.abort_price_pct * trade_start_price, 2)
 
         time.sleep(self.PAUSE_TIME)
         while True:
@@ -165,14 +174,14 @@ class LimitEntry(BaseTradeEntry):
 
             elapsed_time = time.time() - start_time
             current_price = self.get_current_ob_price(side)
-            price_diff = abs(round(current_price - start_price, 2))
+            price_diff = abs(round(current_price - trade_start_price, 2))
 
             # Crossed time threshold, abort.
             if round(elapsed_time, 1) > self.abort_seconds:
                 # Wait for tp orders to match possibly partially opened position
                 timeout = time.time() + self.LOOP_TIMEOUT
                 while self.take_profit_qty < round(order_qty - leaves_qty, 10):
-                    self.create_tp_on_executions(side, start_price, order_id)
+                    self.create_tp_on_executions(side, trade_start_price, order_id)
                     if time.time() > timeout:
                         self._logger.exception(f'Possible infinite loop: Crossed time threshold, abort')
                         sys.exit(1)
@@ -187,17 +196,17 @@ class LimitEntry(BaseTradeEntry):
                 # Wait for tp orders to match possibly partially opened position
                 timeout = time.time() + self.LOOP_TIMEOUT
                 while self.take_profit_qty < round(order_qty - leaves_qty, 10):
-                    self.create_tp_on_executions(side, start_price, order_id)
+                    self.create_tp_on_executions(side, trade_start_price, order_id)
                     if time.time() > timeout:
                         self._logger.exception(f'Possible infinite loop: Crossed price threshold, abort')
                         sys.exit(1)
 
                 if side == OrderSide.Buy:
-                    abort_price = round(start_price + abort_price_diff, 2)
+                    abort_price = round(trade_start_price + abort_price_diff, 2)
                     self._logger.info(f'{side_l_s} Limit Entry Aborting. current_price={current_price} > '
                                       f'abort_price={abort_price}')
                 else:
-                    abort_price = start_price - abort_price_diff
+                    abort_price = trade_start_price - abort_price_diff
                     self._logger.info(f'{side_l_s} Limit Entry Aborting. current_price={current_price} < '
                                       f'abort_price={abort_price}')
                 self.cancel_order(side, order_id)
@@ -207,27 +216,27 @@ class LimitEntry(BaseTradeEntry):
             # Order Statuses: Created, New, PartiallyFilled, Filled, Rejected, PendingCancel, Cancelled
             match order_status:
                 case OrderStatus.Created | OrderStatus.New:
-                    filled = round(start_qty - leaves_qty, 10)
-                    line = f"{order_status} {side_l_s} Order[{order_id[-8:]}: {filled}/{start_qty} price={order_price:.2f}]"
+                    filled = round(trade_start_qty - leaves_qty, 10)
+                    line = f"{order_status} {side_l_s} Order[{order_id[-8:]}: {filled}/{trade_start_qty} price={order_price:.2f}]"
                     if line != prev_line:
                         self._logger.info(line)
                         prev_line = line
                     self.update_order_price(side, order_id, order_price)
-                    self.create_tp_on_executions(side, start_price, order_id)
+                    self.create_tp_on_executions(side, trade_start_price, order_id)
                     continue
                 case OrderStatus.PartiallyFilled:
-                    filled = round(start_qty - leaves_qty, 10)
-                    line = f"{order_status} {side_l_s} Order[{order_id[-8:]}: {filled}/{start_qty} price={order_price:.2f}]"
+                    filled = round(trade_start_qty - leaves_qty, 10)
+                    line = f"{order_status} {side_l_s} Order[{order_id[-8:]}: {filled}/{trade_start_qty} price={order_price:.2f}]"
                     if line != prev_line:
                         self._logger.info(line)
                         prev_line = line
                     self.update_order_price(side, order_id, order_price)
-                    self.create_tp_on_executions(side, start_price, order_id)
+                    self.create_tp_on_executions(side, trade_start_price, order_id)
                     continue
                 case OrderStatus.Filled:
                     timeout = time.time() + self.LOOP_TIMEOUT
                     while self.take_profit_qty < order_qty:
-                        self.create_tp_on_executions(side, start_price, order_id)
+                        self.create_tp_on_executions(side, trade_start_price, order_id)
                         if time.time() > timeout:
                             self._logger.exception(f'Possible infinite loop: case OrderStatus.Filled')
                             sys.exit(1)
@@ -240,7 +249,7 @@ class LimitEntry(BaseTradeEntry):
                     self._logger.info(
                         f"{order_status} {side_l_s} Order[{order_id[-8:]}]: orderbook={ob_price:.2f} "
                         f"order_price={order_price:.2f}. Retrying ...")
-                    order_obj = self.place_limit_order(side)
+                    order_obj = self.place_limit_order(side, trade_start_price)
                     self.take_profit_order_id = None
                     self.take_profit_qty = 0
                     self.create_tp_on_executions(side, order_obj.price, order_obj.order_id)
@@ -253,9 +262,9 @@ class LimitEntry(BaseTradeEntry):
         # qty = position['size'] if position else 0
         avg_price = position['entry_price'] if position else 0
         self._logger.info(f'{side_l_s} limit entry trade executed in {utils.format_execution_time(exec_time)}, '
-                          f'qty[{self.filled_by_execution}/{start_qty}], '
+                          f'qty[{self.filled_by_execution}/{trade_start_qty}], '
                           f'avg_entry_price[{avg_price:.2f}], '
-                          f'slippage[{(avg_price - start_price if avg_price > 0 else 0):.2f}]')
+                          f'slippage[{(avg_price - trade_start_price if avg_price > 0 else 0):.2f}]')
 
         return self.filled_by_execution, avg_price
 

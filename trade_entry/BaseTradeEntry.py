@@ -123,7 +123,7 @@ class BaseTradeEntry(ABC):
             ]
         """
         list_exec = None
-        # Note here that all executions of the opposite side are being lost here
+        # Note: all executions of the opposite side are being lost here
         data = self._exchange.ws_private.fetch(self._exchange.execution_topic_name)
         if data:
             if order_id:
