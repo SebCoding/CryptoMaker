@@ -39,38 +39,6 @@ CONFIG_SCHEMA = {
             },
             'required': ['throttle_secs', 'progress_bar']
         },
-        'exchange': {
-            'type': 'object',
-            'properties': {
-                'name': {'type': 'string', 'enum': SUPPORTED_EXCHANGES},
-                'testnet': {'type': 'boolean', 'default': True},
-                'market_type': {'type': 'string', 'enum': MARKET_TYPES},
-                'pair': {'type': 'string'},
-                'stake_currency': {'type': 'string'},
-                'http': {
-                    'type': 'object',
-                    'properties': {
-                        'linear_testnet': {'type': 'string', 'format': 'uri'},
-                        'linear_mainnet': {'type': 'string', 'format': 'uri'},
-                        'linear_mainnet2': {'type': 'string', 'format': 'uri'},
-                        'timeout': {'type': 'integer', 'minimum': 0}
-                    },
-                    'required': ['timeout']
-              },
-                'websockets': {
-                    'type': 'object',
-                    'properties': {
-                        'ws_linear_public_testnet': {'type': 'string', 'format': 'uri'},
-                        'ws_linear_private_testnet': {'type': 'string', 'format': 'uri'},
-                        'ws_linear_public_mainnet': {'type': 'string', 'format': 'uri'},
-                        'ws_linear_public_mainnet2': {'type': 'string', 'format': 'uri'},
-                        'ws_linear_private_mainnet': {'type': 'string', 'format': 'uri'},
-                        'ws_linear_private_mainnet2': {'type': 'string', 'format': 'uri'}
-                    }
-                }
-            },
-            'required': ['name', 'testnet', 'market_type', 'pair', 'stake_currency', 'http', 'websockets']
-        },
         'strategy': {
             'type': 'object',
             'properties': {
@@ -102,6 +70,38 @@ CONFIG_SCHEMA = {
                 'abort_time_candle_ratio': {'type': 'number', 'minimum': 0, 'maximum': 10}
             },
             'required': ['abort_price_pct', 'abort_time_candle_ratio']
+        },
+        'exchange': {
+            'type': 'object',
+            'properties': {
+                'name': {'type': 'string', 'enum': SUPPORTED_EXCHANGES},
+                'testnet': {'type': 'boolean', 'default': True},
+                'market_type': {'type': 'string', 'enum': MARKET_TYPES},
+                'pair': {'type': 'string'},
+                'stake_currency': {'type': 'string'},
+                'http': {
+                    'type': 'object',
+                    'properties': {
+                        'linear_testnet': {'type': 'string', 'format': 'uri'},
+                        'linear_mainnet': {'type': 'string', 'format': 'uri'},
+                        'linear_mainnet2': {'type': 'string', 'format': 'uri'},
+                        'timeout': {'type': 'integer', 'minimum': 0}
+                    },
+                    'required': ['timeout']
+                },
+                'websockets': {
+                    'type': 'object',
+                    'properties': {
+                        'ws_linear_public_testnet': {'type': 'string', 'format': 'uri'},
+                        'ws_linear_private_testnet': {'type': 'string', 'format': 'uri'},
+                        'ws_linear_public_mainnet': {'type': 'string', 'format': 'uri'},
+                        'ws_linear_public_mainnet2': {'type': 'string', 'format': 'uri'},
+                        'ws_linear_private_mainnet': {'type': 'string', 'format': 'uri'},
+                        'ws_linear_private_mainnet2': {'type': 'string', 'format': 'uri'}
+                    }
+                }
+            },
+            'required': ['name', 'testnet', 'market_type', 'pair', 'stake_currency', 'http', 'websockets']
         },
         'database': {
             'type': 'object',
