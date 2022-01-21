@@ -2,6 +2,7 @@ import rapidjson
 import talib
 import datetime as dt
 import constants
+from enums.BybitEnums import OrderSide
 from logging_.Logger import Logger
 from enums import TradeSignals
 from enums.TradeSignals import TradeSignals
@@ -83,8 +84,8 @@ class ScalpEmaRsiAdx(BaseStrategy):
             'signal'] = -1
 
         self.data = df
-        df_print = df.drop(columns=['start', 'end'], axis=1)
-        print('\n\n'+df_print.tail(10).to_string())
+        # df_print = df.drop(columns=['start', 'end'], axis=1)
+        # print('\n\n'+df_print.tail(10).to_string())
 
     # Return 2 values:
     #   - DataFrame with indicators
@@ -128,6 +129,7 @@ class ScalpEmaRsiAdx(BaseStrategy):
                     'Pair': row.pair,
                     'Interval': self.interval,
                     'Signal': TradeSignals.EnterLong,
+                    "Side": OrderSide.Buy,
                     'SignalOffset': signal_index - data_length + 1,
                     'EntryPrice': row.close,
                     'EMA': row.EMA,
@@ -148,6 +150,7 @@ class ScalpEmaRsiAdx(BaseStrategy):
                     'Pair': row.pair,
                     'Interval': self.interval,
                     'Signal': TradeSignals.EnterShort,
+                    "Side": OrderSide.Sell,
                     'SignalOffset': signal_index - data_length + 1,
                     'EntryPrice': row.close,
                     'EMA': row.EMA,

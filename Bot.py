@@ -46,14 +46,10 @@ class Bot:
 
         self._exchange = ExchangeBybit()
         self.db = Database(self._exchange)
+        self._candle_handler = CandleHandler(self._exchange)
+        self._position = Position(self.db, self._exchange)
         self.strategy = globals()[self._config['strategy']['name']](self.db)
         self._logger.info(f'Trading Settings:\n' + rapidjson.dumps(self._config['trading'], indent=2))
-        self._candle_handler = CandleHandler(self._exchange)
-        self._wallet = WalletUSDT(self._exchange)
-        self._position = Position(self.db, self._exchange)
-        self._orders = Orders(self.db, self._exchange)
-        self._LimitEntry = LimitEntry(self.db, self._exchange, self._wallet, self._orders, self._position)
-        self._MarketEntry = MarketEntry(self.db, self._exchange, self._wallet, self._orders, self._position)
 
     # Heart of the Bot. Work done at each iteration.
     def run(self):
@@ -69,16 +65,16 @@ class Bot:
                     and not self._position.currently_in_position():
                 Bot.beep(5, 2500, 100)
                 df_print = df.drop(columns=['start', 'end'], axis=1)
-                self._logger.info(f'\n{df.tail(10).to_string()} \n')
+                self._logger.info(f'\n{df_print.tail(10).to_string()} \n')
                 self._logger.info(f"{signal['Signal']}: {rapidjson.dumps(signal, indent=2)}")
                 self.enter_trade(signal)
 
     def enter_trade(self, signal):
         entry_mode = self._config['trading']['trade_entry_mode']
         if entry_mode == EntryMode.Taker:
-            order_id = self._MarketEntry.enter_trade(signal)
+            order_id = MarketEntry(self.db, self._exchange, self._position, signal).enter_trade()
         elif entry_mode == EntryMode.Maker:
-            order_id = self._LimitEntry.enter_trade(signal)
+            order_id = LimitEntry(self.db, self._exchange, self._position, signal).enter_trade()
 
     def run_forever(self):
         self._logger.info(f"Starting Main Loop with throttling = {self.throttle_secs} sec.")

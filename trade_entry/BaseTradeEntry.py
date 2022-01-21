@@ -10,7 +10,8 @@ import arrow
 import utils
 from Configuration import Configuration
 from Orderbook import Orderbook
-from Orders import Order
+from Orders import Order, Orders
+from WalletUSDT import WalletUSDT
 from enums.BybitEnums import OrderSide, OrderType
 from logging_.Logger import Logger
 
@@ -21,20 +22,19 @@ class BaseTradeEntry(ABC):
 
     MIN_TRADE_AMOUNT = 20
 
-    # current active last update_time
-    # order_last_update_time = arrow.now()
+    # Values based on the signal that will remain constant throughout the trade entry
+    signal_stop_loss = 0
+    signal_take_profit = 0
 
     # tp order details for the current trade entry
     take_profit_order_id = None
     take_profit_qty = 0
 
-    # Part of the order that has been filled, incremented on each execution
-    filled_by_execution = 0
-
-    def __init__(self, db, exchange, wallet, orders, position):
+    def __init__(self, db, exchange, position, signal):
         self._logger = Logger.get_module_logger(__name__)
         self._config = Configuration.get_config()
-        self.pair = self._config['exchange']['pair']
+        self.signal = signal
+        self.pair = signal['Pair']
         self.tradable_ratio = float(self._config['trading']['tradable_balance_ratio'])
         if self.tradable_ratio > self.MAX_TRADABLE_RATIO:
             self._logger.error(f'Cannot trade with a tradable_ratio[{self.tradable_ratio}] > '
@@ -42,12 +42,16 @@ class BaseTradeEntry(ABC):
             sys.exit(1)
         self._db = db
         self._exchange = exchange
-        self._wallet = wallet
-        self._orders = orders
         self._position = position
+        self._wallet = WalletUSDT(self._exchange)
+        self._orders = Orders(self._db, self._exchange)
+
+        self.side_l_s = 'Long' if self.signal['Side'] == OrderSide.Buy else 'Short'
+        self.signal_stop_loss = self.get_stop_loss(signal['Side'], signal['EntryPrice'])
+        self.signal_take_profit = self.get_take_profit(signal['Side'], signal['EntryPrice'])
 
     @abstractmethod
-    def enter_trade(self, signal):
+    def enter_trade(self):
         pass
 
     # @classmethod
@@ -144,27 +148,27 @@ class BaseTradeEntry(ABC):
             return result['order_id']
         return None
 
-    def create_tp_on_executions(self, trade_side, start_price, main_order_id):
+    def create_tp_on_executions(self, main_order_id):
         fixed_tp = self._config['trading']['constant_take_profit']
-        tp_side = OrderSide.Buy if trade_side == OrderSide.Sell else OrderSide.Sell
-        exec_list = self.get_executions(trade_side, main_order_id)
+        tp_side = OrderSide.Buy if self.signal['Side'] == OrderSide.Sell else OrderSide.Sell
+        exec_list = self.get_executions(self.signal['Side'], main_order_id)
 
         qty = 0
         # All take profits during the current trade will have the same value
         if exec_list and fixed_tp:
-            take_profit = self.get_take_profit(trade_side, start_price)
             for e in exec_list:
                 qty += float(e['exec_qty'])
-                self._logger.info(f"Execution: {trade_side} order[{e['order_id'][-8:]}: price={e['price']:.2f}, "
-                                  f"qty={e['exec_qty']}, cum_qty={round(self.take_profit_qty+qty, 10)}]")
+                self._logger.info(f"Execution: {self.signal['Side']} order[{e['order_id'][-8:]}: price={e['price']:.2f}, "
+                                  f"qty={e['exec_qty']}, cum_qty={round(self.take_profit_qty + qty, 10)}]")
             if self.take_profit_order_id:
                 self.take_profit_qty = round(self.take_profit_qty + qty, 10)
                 self._exchange.replace_active_order_qty(self.take_profit_order_id, self.take_profit_qty)
                 self._logger.info(f"Updated {tp_side} TakeProfit Limit Order[{self.take_profit_order_id[-8:]}: "
-                                  f"qty={self.take_profit_qty}, tp_price={take_profit:.2f}]")
+                                  f"qty={self.take_profit_qty}, tp_price={self.signal_take_profit:.2f}]")
             else:
                 self.take_profit_qty = round(qty, 10)
-                self.take_profit_order_id = self.place_tp_order(trade_side, self.take_profit_qty, take_profit)
+                self.take_profit_order_id = self.place_tp_order(self.signal['Side'], self.take_profit_qty,
+                                                                self.signal_take_profit)
 
         # Each execution uses its own take profit order and price
         elif exec_list and not fixed_tp:
@@ -179,13 +183,11 @@ class BaseTradeEntry(ABC):
             # Print executions
             for e in exec_list:
                 qty = round(float(e['exec_qty']), 10)
-                self._logger.info(f"Execution: {trade_side} order[{e['order_id'][-8:]}: price={e['price']:.2f}, "
+                self._logger.info(f"Execution: {self.signal['Side']} order[{e['order_id'][-8:]}: price={e['price']:.2f}, "
                                   f"qty={e['exec_qty']}, cum_qty={round(self.take_profit_qty + qty, 10)}]")
             # Place merged tp orders
             for e in grouped_list:
                 qty = round(float(e['exec_qty']), 10)
-                take_profit = self.get_take_profit(trade_side, float(e['price']))
-                self.place_tp_order(trade_side, qty, take_profit)
+                take_profit = self.get_take_profit(self.signal['Side'], float(e['price']))
+                self.place_tp_order(self.signal['Side'], qty, take_profit)
                 self.take_profit_qty = round(self.take_profit_qty + qty, 10)
-
-
