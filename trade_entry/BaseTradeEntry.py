@@ -151,7 +151,7 @@ class BaseTradeEntry(ABC):
         fixed_tp = self._config['trading']['constant_take_profit']
         tp_side = OrderSide.Buy if self.signal['Side'] == OrderSide.Sell else OrderSide.Sell
         main_order = self._exchange.get_order_by_id_ws_only(self.pair, main_order_id)
-        cum_exec_qty = main_order['cum_exec_qty']
+        cum_exec_qty = main_order['cum_exec_qty'] if main_order else 0
         exec_list = self.get_executions(self.signal['Side'], main_order_id)
 
         qty = 0
