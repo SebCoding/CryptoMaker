@@ -1,7 +1,10 @@
 import logging
 import sys
 
+import arrow
+
 import constants
+import utils
 from Configuration import Configuration
 
 
@@ -50,6 +53,7 @@ class Logger:
     def get_output_file_handler(cls, level=logging_level_str_to_int(_logging_level),
                                 filename=Configuration.get_config()['logging']['output_file_path']):
         if not cls._debug_file_handler:
+            filename = cls.append_date_to_filename(filename)
             f_handler = logging.FileHandler(filename, mode='w')
             f_format = logging.Formatter('[%(asctime)s] %(message)s', datefmt=cls._datefmt)
             f_handler.setFormatter(f_format)
@@ -63,6 +67,7 @@ class Logger:
     @classmethod
     def get_debug_file_handler(cls, filename=Configuration.get_config()['logging']['debug_file_path']):
         if not cls._debug_file_handler:
+            filename = cls.append_date_to_filename(filename)
             f_handler = logging.FileHandler(filename, mode='w')
             f_format = logging.Formatter(fmt='%(asctime)s [%(name)s] - %(levelname)s - %(message)s', datefmt=cls._datefmt)
             f_handler.setFormatter(f_format)
@@ -98,3 +103,12 @@ class Logger:
             logger.addHandler(cls.get_debug_file_handler())
         logger.propagate = False
         return logger
+
+    @staticmethod
+    def append_date_to_filename(filename):
+        date_str = arrow.utcnow().strftime(constants.DATETIME_FMT).replace(':', '.')
+        tokens = filename.split('.') if filename else None
+        if not tokens or len(tokens) < 2:
+            return filename + ' ' + date_str
+        tokens[-2] = tokens[-2] + ' ' + date_str
+        return '.'.join(tokens)

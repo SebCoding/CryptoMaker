@@ -1,3 +1,5 @@
+import arrow
+
 import constants
 import datetime as dt
 from logging_.Logger import Logger
@@ -91,3 +93,10 @@ def seconds_to_human_readable(seconds):
     return output
 
 
+def append_date_to_filename(filename):
+    date_str = arrow.utcnow().strftime(constants.DATETIME_FMT).replace(':', '.')
+    tokens = filename.split('.') if filename else None
+    if not tokens or len(tokens) < 2:
+        return filename + ' ' + date_str
+    tokens[-2] = tokens[-2] + ' ' + date_str
+    return '.'.join(tokens)

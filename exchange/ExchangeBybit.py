@@ -593,7 +593,9 @@ class ExchangeBybit:
             if e.status_code not in [20001, 30076]:
                 self._logger.exception(e)
                 raise e
-            result = {'ret_code': e.status_code, 'ret_msg': e.message}
+            result = {'order_id': order_id, 'new_qty': new_qty, 'new_price': new_price, 'new_stop_loss': new_stop_loss,
+                      'ret_code': e.status_code, 'ret_msg': e.message}
+            self._logger.error(result)
         return result
 
     def replace_active_order_pr_sl(self, order_id, new_price, new_stop_loss):
@@ -618,7 +620,9 @@ class ExchangeBybit:
             if e.status_code not in [20001, 30076]:
                 self._logger.exception(e)
                 raise e
-            result = {'ret_code': e.status_code, 'ret_msg': e.message}
+            result = {'order_id': order_id, 'new_price': new_price, 'new_stop_loss': new_stop_loss,
+                      'ret_code': e.status_code, 'ret_msg': e.message}
+            self._logger.error(result)
         return result
 
     def replace_active_order_pr(self, order_id, new_price):
@@ -642,7 +646,8 @@ class ExchangeBybit:
             if e.status_code not in [20001, 30076]:
                 self._logger.exception(e)
                 raise e
-            result = {'ret_code': e.status_code, 'ret_msg': e.message}
+            result = {'order_id': order_id, 'new_price': new_price, 'ret_code': e.status_code, 'ret_msg': e.message}
+            self._logger.error(result)
         return result
 
     def replace_active_order_qty(self, order_id, new_qty):
@@ -664,7 +669,7 @@ class ExchangeBybit:
             if e.status_code not in [20001, 30076]:
                 self._logger.exception(e)
                 raise e
-            result = {'ret_code': e.status_code, 'ret_msg': e.message}
+            result = {'order_id': order_id, 'new_qty': new_qty, 'ret_code': e.status_code, 'ret_msg': e.message}
             self._logger.error(result)
         return result
 
@@ -681,7 +686,8 @@ class ExchangeBybit:
             if e.status_code not in [20001, 30076]:
                 self._logger.exception(e)
                 raise e
-            result = {'ret_code': e.status_code, 'ret_msg': e.message}
+            result = {'order_id': order_id, 'ret_code': e.status_code, 'ret_msg': e.message}
+            self._logger.error(result)
         return result
 
     def cancel_all_active_orders(self):

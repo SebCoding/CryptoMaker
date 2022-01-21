@@ -6,6 +6,7 @@ from typing import Any, Callable
 import rapidjson
 import websocket
 
+import pybit
 from CandleHandler import CandleHandler
 from Configuration import Configuration
 from Orders import Orders
@@ -30,6 +31,9 @@ class Bot:
 
     STATUS_BAR_CHAR = chr(0x2588)
     STATUS_BAR_LENGTH = 20
+
+    # If Bot crashes it will try to restart itself in 30 seconds
+    RESTART_DELAY = 30
 
     def __init__(self):
         self._logger = Logger.get_module_logger(__name__)
@@ -93,11 +97,11 @@ class Bot:
             self.db.sync_all_tables(self.pair)
             self._logger.info("Application Terminated by User.")
         except (websocket.WebSocketTimeoutException,
-                websocket.WebSocketAddressException) as e:
+                websocket.WebSocketAddressException,
+                pybit.exceptions.FailedRequestError) as e:
             self._logger.exception(e)
-            Bot.beep(1, 500, 5000)
-            raise e
-            # restart(10)
+            self._logger.error(f"Bot Crashed. Restart in {self.RESTART_DELAY} seconds")
+            self.restart(self.RESTART_DELAY)
         except Exception as e:
             self._logger.exception(e)
             Bot.beep(1, 500, 5000)

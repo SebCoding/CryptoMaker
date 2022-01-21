@@ -5,6 +5,7 @@ LOGGING_LEVELS = ['debug', 'info', 'warning', 'error', 'critical']
 
 DATE_FMT = '%Y-%m-%d'
 DATETIME_FMT = '%Y-%m-%d %H:%M:%S'
+DATETIME_FMT_NS = '%Y-%m-%d %H:%M'
 # Use some_date.strftime('%Y-%m-%d %H:%M:%S.%f')[:-3] to get only 3 digits for ms
 DATETIME_FMT_MS = '%Y-%m-%d %H:%M:%S.%f'
 
