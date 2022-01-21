@@ -28,10 +28,8 @@ class MarketEntry(BaseTradeEntry):
         if tradable_balance < self.MIN_TRADE_AMOUNT:
             return None
 
-        tentative_entry_price = self.signal['EntryPrice']
-
         # Calculate trade size (qty) based on leverage
-        qty = tradable_balance / tentative_entry_price
+        qty = tradable_balance / self.signal['EntryPrice']
         if side == OrderSide.Buy:
             lev = float(self._config['trading']['leverage_long'])
         else:
@@ -43,7 +41,7 @@ class MarketEntry(BaseTradeEntry):
         qty = round(int(qty / min_trade_qty) * min_trade_qty, 10)
 
         # Place order and open position
-        order_id = self.place_market_order(side, qty, tentative_entry_price, self.signal_stop_loss)
+        order_id = self.place_market_order(side, qty, self.signal['EntryPrice'], self.signal_stop_loss)
 
         # Wait until the position is open
         while not self._position.get_position(side) and self._position.get_position(side)['size'] != qty:
@@ -52,7 +50,7 @@ class MarketEntry(BaseTradeEntry):
         # Created the tp order(s)
         # Wait for tp orders to match the open position
         while self.take_profit_qty < qty:
-            self.create_tp_on_executions(order_id)
+            self.set_tp_on_executions(order_id)
 
         # Assuming at this point that the position has been opened and available on websockets
         position = self._position.get_position(side)

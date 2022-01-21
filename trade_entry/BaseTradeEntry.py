@@ -148,7 +148,12 @@ class BaseTradeEntry(ABC):
             return result['order_id']
         return None
 
-    def create_tp_on_executions(self, main_order_id):
+    def set_tp_on_executions(self, main_order_id, confirmed_filled=0):
+        """
+            When an order has been filled or cancelled after being partially filled,
+            we can pass the filled confirmed value as param: confirmed_filled
+            if executions are missing the tp order will be adjusted accordingly.
+        """
         fixed_tp = self._config['trading']['constant_take_profit']
         tp_side = OrderSide.Buy if self.signal['Side'] == OrderSide.Sell else OrderSide.Sell
         exec_list = self.get_executions(self.signal['Side'], main_order_id)
@@ -160,6 +165,12 @@ class BaseTradeEntry(ABC):
                 qty += float(e['exec_qty'])
                 self._logger.info(f"Execution: {self.signal['Side']} order[{e['order_id'][-8:]}: price={e['price']:.2f}, "
                                   f"qty={e['exec_qty']}, cum_qty={round(self.take_profit_qty + qty, 10)}]")
+
+            missing_qty = round(confirmed_filled - self.take_profit_qty + qty, 10)
+            if confirmed_filled > 0 and missing_qty > 0:
+                self._logger.info(f'Discrepancy of {missing_qty} between executions and filled order size.')
+                qty = round(confirmed_filled-self.take_profit_qty, 10)
+
             if self.take_profit_order_id:
                 self.take_profit_qty = round(self.take_profit_qty + qty, 10)
                 self._exchange.replace_active_order_qty(self.take_profit_order_id, self.take_profit_qty)

@@ -271,6 +271,7 @@ class CandleHandler:
                  must be less or equal to the current interval being traded
         """
         valid = True
+        msg = ''
         if self._candles_df is not None and len(self._candles_df) >= 2:
             # signal_mode = 'minute'
             if self._config['strategy']['signal_mode'] == SignalMode.Minute:
@@ -279,15 +280,20 @@ class CandleHandler:
                 cur_confirm = self._candles_df["confirm"].iloc[-1]
                 if cur_confirm and cur_start != prev_end:
                     valid = False
+                    msg = f'*******  cur_start[{self._candles_df["start_time"].iloc[-1]}] != ' \
+                          f'prev_end[{self._candles_df["end_time"].iloc[-2]}]  *******\n'
                 elif (cur_start - prev_end) >= dt.timedelta(minutes=(self.minutes_in_interval-1)):
                     valid = False
+                    msg = f'*******  diff(cur_start[{self._candles_df["start_time"].iloc[-1]}], ' \
+                          f'prev_end[{self._candles_df["end_time"].iloc[-2]}]) >= ' \
+                          f'{self.minutes_in_interval-1}min *******\n'
             # signal_mode = 'interval' or 'realtime'
             elif self._candles_df["start"].iloc[-1] != self._candles_df["end"].iloc[-2]:
                 valid = False
+                msg = f'*******  cur_start[{self._candles_df["start_time"].iloc[-1]}] != ' \
+                      f'prev_end[{self._candles_df["end_time"].iloc[-2]}]  *******\n'
 
             if not valid:
-                msg = f'*******  start[{self._candles_df["start"].iloc[-1]}] != ' \
-                      f'prev_end[{self._candles_df["end"].iloc[-2]}]  *******\n'
                 msg += self._candles_df.tail(2).to_string() + '\n'
                 self._logger.error(msg)
                 # The dataframe is corrupted. Rebuild the dataframe from scratch

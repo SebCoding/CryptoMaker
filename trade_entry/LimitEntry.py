@@ -121,7 +121,7 @@ class LimitEntry(BaseTradeEntry):
         if order_dict['order_status'] == OrderStatus.Cancelled:
             self._logger.info(f"Cancelled {self.side_l_s} Limit Order {order_id[-8:]}.")
         elif order_dict['order_status'] == OrderStatus.Filled:
-            self._logger.info(f"While trying to cancel {self.side_l_s} Limit Order {order_id[-8:]} has been filled.")
+            self._logger.info(f"While trying to cancel, {self.side_l_s} Limit Order {order_id[-8:]} has been filled.")
         return order_dict['order_status']
 
     def enter_trade(self):
@@ -149,6 +149,7 @@ class LimitEntry(BaseTradeEntry):
             order_price = order_dict['price']
             leaves_qty = order_dict['leaves_qty']  # if 'leaves_qty' in order_dict.keys() else 0
 
+
             elapsed_time = time.time() - start_time
             current_price = self.get_current_ob_price(self.signal['Side'])
             price_diff = abs(round(current_price - trade_start_price, 2))
@@ -157,8 +158,10 @@ class LimitEntry(BaseTradeEntry):
             if round(elapsed_time, 1) > self.abort_seconds:
                 status = self.cancel_order(order_id)
                 if status == OrderStatus.Cancelled:
-                    time.sleep(2)
-                    self.create_tp_on_executions(order_id)
+                    # Confirm take_profit order = position size
+                    position = self._position.get_position(self.signal['Side'])
+                    qty = position['size'] if position else 0
+                    self.set_tp_on_executions(order_id, qty)
                     # order_dict = self._exchange.get_order_by_id_ws_only(self.pair, order_id)
                     # order_qty = order_dict['qty']
                     # leaves_qty = order_dict['leaves_qty']
@@ -169,7 +172,7 @@ class LimitEntry(BaseTradeEntry):
 
                     # timeout = time.time() + self.LOOP_TIMEOUT
                     # while self.take_profit_qty < round(order_qty - leaves_qty, 10):
-                    #     self.create_tp_on_executions(side, trade_start_price, order_id)
+                    #     self.set_tp_on_executions(side, trade_start_price, order_id)
                     #     if time.time() > timeout:
                     #         self._logger.error(f'Possible infinite loop: Crossed time threshold, abort')
                     #         sys.exit(1)
@@ -179,11 +182,11 @@ class LimitEntry(BaseTradeEntry):
             if price_diff > abort_price_diff:
                 status = self.cancel_order(order_id)
                 if status == OrderStatus.Cancelled:
-                    time.sleep(2)
-                    self.create_tp_on_executions(order_id)
-                    # order_dict = self._exchange.get_order_by_id_ws_only(self.pair, order_id)
-                    # order_qty = order_dict['qty']
-                    # leaves_qty = order_dict['leaves_qty']
+                    # Confirm take_profit order = position size
+                    position = self._position.get_position(self.signal['Side'])
+                    qty = position['size'] if position else 0
+                    self.set_tp_on_executions(order_id, qty)
+
                     if self.signal['Side'] == OrderSide.Buy:
                         abort_price = round(trade_start_price + abort_price_diff, 2)
                         self._logger.info(f'{self.side_l_s} Limit Entry Aborting. current_price={current_price} > '
@@ -196,7 +199,7 @@ class LimitEntry(BaseTradeEntry):
                     # Wait for tp orders to match possibly partially opened position
                     # timeout = time.time() + self.LOOP_TIMEOUT
                     # while self.take_profit_qty < round(order_qty - leaves_qty, 10):
-                    #     self.create_tp_on_executions(side, trade_start_price, order_id)
+                    #     self.set_tp_on_executions(side, trade_start_price, order_id)
                     #     if time.time() > timeout:
                     #         self._logger.error(f'Possible infinite loop: Crossed price threshold, abort')
                     #         sys.exit(1)
@@ -207,40 +210,36 @@ class LimitEntry(BaseTradeEntry):
             match order_status:
                 case OrderStatus.Created | OrderStatus.New:
                     # filled = round(trade_start_qty - leaves_qty, 10)
-                    # line = f"{order_status} {self.side_l_s} Order[{order_id[-8:]}: {filled}/{trade_start_qty} price={order_price:.2f}]"
+                    # line = f"{order_status} {self.side_l_s} Order[{order_id[-8:]}: " \
+                    #        f"{filled}/{trade_start_qty} price={order_price:.2f}]"
                     # if line != prev_line:
                     #     self._logger.info(line)
                     #     prev_line = line
                     self.update_order_price(order_id, order_price)
-                    self.create_tp_on_executions(order_id)
+                    self.set_tp_on_executions(order_id)
                     continue
                 case OrderStatus.PartiallyFilled:
                     # filled = round(trade_start_qty - leaves_qty, 10)
-                    # line = f"{order_status} {self.side_l_s} Order[{order_id[-8:]}: {filled}/{trade_start_qty} price={order_price:.2f}]"
+                    # line = f"{order_status} {self.side_l_s} Order[{order_id[-8:]}: " \
+                    #        f"{filled}/{trade_start_qty} price={order_price:.2f}]"
                     # if line != prev_line:
                     #     self._logger.info(line)
                     #     prev_line = line
                     self.update_order_price(order_id, order_price)
-                    self.create_tp_on_executions(order_id)
+                    self.set_tp_on_executions(order_id)
                     continue
                 case OrderStatus.Filled:
-                    self.create_tp_on_executions(order_id)
-
-                    # Some executions never make it to the websocket. Fix tp order discrepancy
-                    if self.take_profit_qty < order_qty:
-                        self._logger.info(f'Adjusting take_profit order. Discrepancy between executions and order size.')
-                        if self.take_profit_order_id:
-                            self._exchange.replace_active_order_qty(self.take_profit_order_id, order_qty)
-                        else:
-                            take_profit = self.get_take_profit(self.signal['Side'], trade_start_price)
-                            self.take_profit_order_id = self.place_tp_order(self.signal['Side'], order_qty, take_profit)
-                        self.take_profit_qty = order_qty
-
+                    self.set_tp_on_executions(order_id, order_qty)
                     self._logger.info(f"Filled {self.side_l_s} Limit Order[{order_id[-8:]}: "
                                       f"qty={order_qty} last_exec_price={order_price:.2f}]")
                     break
                 # Rejected, PendingCancel, Cancelled
                 case _:
+                    # Confirm take_profit order = position size
+                    position = self._position.get_position(self.signal['Side'])
+                    qty = position['size'] if position else 0
+                    self.set_tp_on_executions(order_id, qty)
+
                     ob_price = self.get_current_ob_price(self.signal['Side'])
                     self._logger.info(
                         f"{order_status} {self.side_l_s} Order[{order_id[-8:]}]: orderbook={ob_price:.2f} "
@@ -248,7 +247,7 @@ class LimitEntry(BaseTradeEntry):
                     order_obj = self.place_limit_order()
                     self.take_profit_order_id = None
                     self.take_profit_qty = 0
-                    self.create_tp_on_executions(order_obj.order_id)
+                    self.set_tp_on_executions(order_obj.order_id)
                     continue
 
         exec_time = time.time() - start_time
