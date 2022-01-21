@@ -241,8 +241,7 @@ class CandleHandler:
                             self._candles_df = self._candles_df.iloc[:-1, :].append(to_append, ignore_index=True)
 
                     # Confirm that the websocket did not skip any data
-                    # Current candle 'start' time must be equal to prior candle 'end' time
-                    # self.validate_last_entry(int(candle['start']), to_append)
+                    self.validate_last_entry(int(candle['start']), to_append)
 
                     self._last_candle_timestamp = candle['timestamp']
                     data_changed = True
@@ -260,20 +259,45 @@ class CandleHandler:
     def validate_last_entry(self, start_timestamp, to_append):
         """
             Confirm that the websocket did not skip any data
-            Current candle 'start' time must be equal to prior candle 'end' time
+
+            For signal_mode in ['interval', 'realtime']:
+              Current candle 'start' time must be equal to prior candle 'end' time
+
+            For signal_mode = 'minute':
+              if last row is confirmed
+                 Current candle 'start' time must be equal to prior candle 'end' time
+              else
+                 The time between Current candle 'start' time and to prior candle 'end' time
+                 must be less or equal to the current interval being traded
         """
-        if len(self._candles_df) >= 2 and (
-                self._candles_df["start"].iloc[-1] != self._candles_df["end"].iloc[-2]):
-            msg = f'*******  start[{self._candles_df["start"].iloc[-1]}] != ' \
-                  f'prev_end[{self._candles_df["end"].iloc[-2]}]  *******\n'
-            msg += self._candles_df.tail(2).to_string() + '\n'
-            self._logger.error(msg)
-            # The dataframe is corrupted. Rebuild the dataframe from scratch
-            self._logger.error(
-                'Recovering from missing candle data. rebuilding the dataframe from scratch.')
-            self._candles_df = self.get_historic_candles(start_timestamp)
-            self._candles_df = self._candles_df.append(to_append, ignore_index=True)
-            self._logger.error('Candles dataframe has been rebuilt successfully.')
+        valid = True
+        if self._candles_df is not None and len(self._candles_df) >= 2:
+            # signal_mode = 'minute'
+            if self._config['strategy']['signal_mode'] == SignalMode.Minute:
+                prev_end = arrow.get(int(self._candles_df["end"].iloc[-2]))
+                cur_start = arrow.get(int(self._candles_df["start"].iloc[-1]))
+                cur_confirm = self._candles_df["confirm"].iloc[-1]
+                if cur_confirm and cur_start != prev_end:
+                    valid = False
+                elif (cur_start - prev_end) >= dt.timedelta(minutes=(self.minutes_in_interval-1)):
+                    valid = False
+            # signal_mode = 'interval' or 'realtime'
+            elif self._candles_df["start"].iloc[-1] != self._candles_df["end"].iloc[-2]:
+                valid = False
+
+            if not valid:
+                msg = f'*******  start[{self._candles_df["start"].iloc[-1]}] != ' \
+                      f'prev_end[{self._candles_df["end"].iloc[-2]}]  *******\n'
+                msg += self._candles_df.tail(2).to_string() + '\n'
+                self._logger.error(msg)
+                # The dataframe is corrupted. Rebuild the dataframe from scratch
+                self._logger.error(
+                    'Recovering from missing candle data. rebuilding the dataframe from scratch.')
+                self._candles_df = self.get_historic_candles(start_timestamp)
+                self._candles_df = self._candles_df.append(to_append, ignore_index=True)
+                self._logger.error('Candles dataframe has been rebuilt successfully.')
+
+
 
     def get_latest_price(self):
         self.get_refreshed_candles()

@@ -50,6 +50,7 @@ class Bot:
         self._position = Position(self.db, self._exchange)
         self.strategy = globals()[self._config['strategy']['name']](self.db)
         self._logger.info(f'Trading Settings:\n' + rapidjson.dumps(self._config['trading'], indent=2))
+        self._logger.info(f'Limit Entry Settings:\n' + rapidjson.dumps(self._config['limit_entry'], indent=2))
 
     # Heart of the Bot. Work done at each iteration.
     def run(self):

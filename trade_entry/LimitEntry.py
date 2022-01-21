@@ -18,7 +18,6 @@ class LimitEntry(BaseTradeEntry):
 
     def __init__(self, database, exchange, position, signal):
         super().__init__(database, exchange, position, signal)
-        self._logger.info(f'Limit Entry Settings:\n' + rapidjson.dumps(self._config['limit_entry'], indent=2))
         self._orderbook = Orderbook(exchange)
         self.interval_secs = utils.convert_interval_to_sec(self._config['trading']['interval'])
 
