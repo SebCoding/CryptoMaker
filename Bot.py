@@ -73,9 +73,9 @@ class Bot:
     def enter_trade(self, signal):
         entry_mode = self._config['trading']['trade_entry_mode']
         if entry_mode == EntryMode.Taker:
-            order_id = MarketEntry(self.db, self._exchange, self._position, signal).enter_trade()
+            qty, avg_price = MarketEntry(self.db, self._exchange, self._position, signal).enter_trade()
         elif entry_mode == EntryMode.Maker:
-            order_id = LimitEntry(self.db, self._exchange, self._position, signal).enter_trade()
+            qty, avg_price = LimitEntry(self.db, self._exchange, self._position, signal).enter_trade()
 
     def run_forever(self):
         self._logger.info(f"Starting Main Loop with throttling = {self.throttle_secs} sec.")

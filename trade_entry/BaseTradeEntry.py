@@ -1,15 +1,9 @@
-import math
 import sys
-import time
 from abc import ABC, abstractmethod
 
 import pandas as pd
-import rapidjson
-import arrow
 
-import utils
 from Configuration import Configuration
-from Orderbook import Orderbook
 from Orders import Order, Orders
 from WalletUSDT import WalletUSDT
 from enums.BybitEnums import OrderSide, OrderType
@@ -148,14 +142,16 @@ class BaseTradeEntry(ABC):
             return result['order_id']
         return None
 
-    def set_tp_on_executions(self, main_order_id, confirmed_filled=0):
+    def set_tp_on_executions(self, main_order_id, validate_tp=False):
         """
-            When an order has been filled or cancelled after being partially filled,
-            we can pass the filled confirmed value as param: confirmed_filled
-            if executions are missing the tp order will be adjusted accordingly.
+            Strangely some executions are never received on the websocket. On the final call to set_tp_on_executions()
+            prior to finalizing the trade entry, we must validate that take_profit = cum_exec_qty for the given order.
+            When param validate_tp is set to true, the missing qty is added to fill the discrepancy.
         """
         fixed_tp = self._config['trading']['constant_take_profit']
         tp_side = OrderSide.Buy if self.signal['Side'] == OrderSide.Sell else OrderSide.Sell
+        main_order = self._exchange.get_order_by_id_ws_only(self.pair, main_order_id)
+        cum_exec_qty = main_order['cum_exec_qty']
         exec_list = self.get_executions(self.signal['Side'], main_order_id)
 
         qty = 0
@@ -166,10 +162,10 @@ class BaseTradeEntry(ABC):
                 self._logger.info(f"Execution: {self.signal['Side']} order[{e['order_id'][-8:]}: price={e['price']:.2f}, "
                                   f"qty={e['exec_qty']}, cum_qty={round(self.take_profit_qty + qty, 10)}]")
 
-            missing_qty = round(confirmed_filled - self.take_profit_qty + qty, 10)
-            if confirmed_filled > 0 and missing_qty > 0:
-                self._logger.info(f'Discrepancy of {missing_qty} between executions and filled order size.')
-                qty = round(confirmed_filled-self.take_profit_qty, 10)
+            missing_qty = round(cum_exec_qty - self.take_profit_qty + qty, 10)
+            if validate_tp and missing_qty > 0:
+                self._logger.info(f'Correcting discrepancy of {missing_qty} between executions and filled order size.')
+                qty = round(cum_exec_qty-self.take_profit_qty, 10)
 
             if self.take_profit_order_id:
                 self.take_profit_qty = round(self.take_profit_qty + qty, 10)
@@ -180,6 +176,22 @@ class BaseTradeEntry(ABC):
                 self.take_profit_qty = round(qty, 10)
                 self.take_profit_order_id = self.place_tp_order(self.signal['Side'], self.take_profit_qty,
                                                                 self.signal_take_profit)
+
+        # There are no more executions, the order has been filled, and the take_profit order needs to be adjusted
+        elif not exec_list and fixed_tp and validate_tp:
+            missing_qty = round(cum_exec_qty - self.take_profit_qty, 10)
+            if missing_qty > 0:
+                self._logger.info(f'Correcting discrepancy of {missing_qty} between executions and filled order size.')
+                qty = round(cum_exec_qty - self.take_profit_qty, 10)
+                if self.take_profit_order_id:
+                    self.take_profit_qty = round(self.take_profit_qty + qty, 10)
+                    self._exchange.replace_active_order_qty(self.take_profit_order_id, self.take_profit_qty)
+                    self._logger.info(f"Updated {tp_side} TakeProfit Limit Order[{self.take_profit_order_id[-8:]}: "
+                                      f"qty={self.take_profit_qty}, tp_price={self.signal_take_profit:.2f}]")
+                else:
+                    self.take_profit_qty = round(qty, 10)
+                    self.take_profit_order_id = self.place_tp_order(self.signal['Side'], self.take_profit_qty,
+                                                                    self.signal_take_profit)
 
         # Each execution uses its own take profit order and price
         elif exec_list and not fixed_tp:
