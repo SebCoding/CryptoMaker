@@ -134,6 +134,7 @@ class LimitEntry(BaseTradeEntry):
         trade_start_qty = order_obj.qty
         trade_start_price = order_obj.price
         abort_price_diff = round(self.abort_price_pct * trade_start_price, 2)
+        cum_trade_qty = 0
 
         time.sleep(self.PAUSE_TIME)
         while True:
@@ -206,11 +207,13 @@ class LimitEntry(BaseTradeEntry):
                     self.set_tp_on_executions(order_id, validate_tp=True)
                     self._logger.info(f"Filled {self.side_l_s} Limit Order[{order_id[-8:]}: "
                                       f"qty({cum_exec_qty}/{order_qty}) last_exec_price={order_price:.2f}]")
+                    cum_trade_qty += cum_exec_qty
                     assert(cum_exec_qty == self.take_profit_qty)
                     break
                 # Rejected, PendingCancel, Cancelled
                 case _:
                     self.set_tp_on_executions(order_id, validate_tp=True)
+                    cum_trade_qty += cum_exec_qty
                     assert (cum_exec_qty == self.take_profit_qty)
                     ob_price = self.get_current_ob_price(self.signal['Side'])
                     self._logger.info(
@@ -226,14 +229,17 @@ class LimitEntry(BaseTradeEntry):
 
         # Get position summary.
         # NOTE: The qty and avg_price are only valid if the position was zero prior to this trade entry.
+        # It also happens that the position has closed already by sl/tp by the time we arrive at this line.
         position = self._position.get_position(self.signal['Side'])
         qty = position['size'] if position else 0
         avg_price = position['entry_price'] if position else 0
-        self._logger.info(
-            f'{self.side_l_s} limit entry trade executed in {utils.seconds_to_human_readable(exec_time)}, '
-            f'qty[{qty}/{trade_start_qty}], '
-            f'avg_entry_price[{avg_price:.2f}], '
-            f'slippage[{(avg_price - self.signal["EntryPrice"] if avg_price > 0 else 0):.2f}]')
+        msg = f'{self.side_l_s} limit entry trade executed in {utils.seconds_to_human_readable(exec_time)}, ' \
+              f'qty[{cum_trade_qty}/{trade_start_qty}], '
+        # Position has been closed by sl/tp
+        if avg_price != 0:
+            msg += f'avg_entry_price[{avg_price:.2f}], ' \
+                   f'slippage[{(avg_price - self.signal["EntryPrice"] if avg_price > 0 else 0):.2f}] '
+        self._logger.info(msg)
 
         return qty, avg_price
 

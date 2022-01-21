@@ -162,7 +162,7 @@ class BaseTradeEntry(ABC):
                 self._logger.info(f"Execution: {self.signal['Side']} order[{e['order_id'][-8:]}: price={e['price']:.2f}, "
                                   f"qty={e['exec_qty']}, cum_qty={round(self.take_profit_qty + qty, 10)}]")
 
-            missing_qty = round(cum_exec_qty - self.take_profit_qty + qty, 10)
+            missing_qty = round(cum_exec_qty - (self.take_profit_qty + qty), 10)
             if validate_tp and missing_qty > 0:
                 self._logger.info(f'Correcting discrepancy of {missing_qty} between executions and filled order size.')
                 qty = round(cum_exec_qty-self.take_profit_qty, 10)

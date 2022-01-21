@@ -541,8 +541,8 @@ class ExchangeBybit:
                     symbol=o.symbol,
                     order_type=o.order_type,
                     qty=o.qty,
-                    take_profit=o.take_profit,  # TODO: Check what happens when these are 0
-                    stop_loss=o.stop_loss,  # TODO: Check what happens when these are 0
+                    take_profit=o.take_profit,
+                    stop_loss=o.stop_loss,
                     time_in_force=o.time_in_force,
                     close_on_trigger=False,
                     reduce_only=o.reduce_only
