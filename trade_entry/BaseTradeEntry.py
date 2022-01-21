@@ -181,7 +181,7 @@ class BaseTradeEntry(ABC):
         elif not exec_list and fixed_tp and validate_tp:
             missing_qty = round(cum_exec_qty - self.take_profit_qty, 10)
             if missing_qty > 0:
-                self._logger.info(f'Correcting discrepancy of {missing_qty} between executions and filled order size.')
+                self._logger.info(f'Correcting discrepancy of {missing_qty} between executions and filled order size..')
                 qty = round(cum_exec_qty - self.take_profit_qty, 10)
                 if self.take_profit_order_id:
                     self.take_profit_qty = round(self.take_profit_qty + qty, 10)

@@ -4,9 +4,14 @@ import time
 import rapidjson
 
 import utils
+from CandleHandler import CandleHandler
 from Orderbook import Orderbook
 from Orders import Order
+from Position import Position
+from database.Database import Database
 from enums.BybitEnums import OrderType, OrderSide, OrderStatus
+from enums.TradeSignals import TradeSignals
+from exchange.ExchangeBybit import ExchangeBybit
 from trade_entry.BaseTradeEntry import BaseTradeEntry
 
 
@@ -159,6 +164,7 @@ class LimitEntry(BaseTradeEntry):
                 status = self.cancel_order(order_id)
                 if status == OrderStatus.Cancelled:
                     self.set_tp_on_executions(order_id, validate_tp=True)
+                    cum_trade_qty += cum_exec_qty
                     assert (cum_exec_qty == self.take_profit_qty)
                     self._logger.info(f'{self.side_l_s} Limit Entry Aborting. '
                                       f'elapsed_time={round(elapsed_time, 1)}s > abort_threshold={self.abort_seconds}s')
@@ -169,15 +175,16 @@ class LimitEntry(BaseTradeEntry):
                 status = self.cancel_order(order_id)
                 if status == OrderStatus.Cancelled:
                     self.set_tp_on_executions(order_id, validate_tp=True)
+                    cum_trade_qty += cum_exec_qty
                     assert (cum_exec_qty == self.take_profit_qty)
                     if self.signal['Side'] == OrderSide.Buy:
-                        abort_price = round(trade_start_price + abort_price_diff, 2)
-                        self._logger.info(f'{self.side_l_s} Limit Entry Aborting. current_price={current_price} > '
-                                          f'abort_price={abort_price}')
+                        abort_price = trade_start_price + abort_price_diff
+                        self._logger.info(f'{self.side_l_s} Limit Entry Aborting. current_price={current_price:.2f} > '
+                                          f'abort_price={abort_price:.2f}')
                     else:
                         abort_price = trade_start_price - abort_price_diff
-                        self._logger.info(f'{self.side_l_s} Limit Entry Aborting. current_price={current_price} < '
-                                          f'abort_price={abort_price}')
+                        self._logger.info(f'{self.side_l_s} Limit Entry Aborting. current_price={current_price:.2f} < '
+                                          f'abort_price={abort_price:.2f}')
                     break
 
             # Check order status and take action
@@ -247,22 +254,19 @@ class LimitEntry(BaseTradeEntry):
 """
     Testing Limit Order Trade Entries
 """
-# ex = ExchangeBybit()
-# db = Database(ex)
-# Wal = WalletUSDT(ex)
-# Ord = Orders(db, ex)
-# Pos = Position(db, ex)
-# limit_entry = LimitEntry(db, ex, Wal, Ord, Pos)
-#
-# limit_entry.enter_trade({'Signal': TradeSignals.EnterShort})
-# print('sleeping'); time.sleep(10)
-# limit_entry.enter_trade({'Signal': TradeSignals.EnterLong})
-# print('sleeping'); time.sleep(10)
-# ex.cancel_all_active_orders()
-# limit_entry.enter_trade({'Signal': TradeSignals.EnterShort})
-# print('sleeping'); time.sleep(10)
-# ex.cancel_all_active_orders()
-# limit_entry.enter_trade({'Signal': TradeSignals.EnterLong})
-# print('sleeping'); time.sleep(10)
-# ex.cancel_all_active_orders()
-# limit_entry.enter_trade({'Signal': TradeSignals.EnterShort})
+ex = ExchangeBybit()
+db = Database(ex)
+Pos = Position(db, ex)
+CH = CandleHandler(ex)
+
+signal = {
+    'Signal': TradeSignals.EnterShort,
+    'Pair': 'ETHUSDT',
+    'Side': 'Sell',
+    'EntryPrice': CH.get_latest_price()
+}
+
+limit_entry = LimitEntry(db, ex, Pos, signal).enter_trade()
+
+
+

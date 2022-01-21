@@ -1,5 +1,7 @@
 import arrow
 import pandas as pd
+import rapidjson
+
 import api_keys
 import constants
 import datetime as dt
@@ -663,6 +665,7 @@ class ExchangeBybit:
                 self._logger.exception(e)
                 raise e
             result = {'ret_code': e.status_code, 'ret_msg': e.message}
+            self._logger.error(result)
         return result
 
     def cancel_active_order(self, order_id):
