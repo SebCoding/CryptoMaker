@@ -120,9 +120,10 @@ CONFIG_SCHEMA = {
             'properties': {
                 'logging_level': {'type': 'string', 'enum': LOGGING_LEVELS},
                 'debug_file_path': {'type': 'string'},
-                'output_file_path': {'type': 'string'}
+                'output_file_path': {'type': 'string'},
+                'message_telegram_group': {'type': 'boolean', 'default': False},
             },
-            'required': ['logging_level', 'debug_file_path', 'output_file_path']
+            'required': ['logging_level', 'debug_file_path', 'output_file_path', 'message_telegram_group']
         }
     },
     'required': ['bot', 'exchange', 'strategy', 'trading', 'database', 'logging']
