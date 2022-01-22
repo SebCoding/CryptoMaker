@@ -16,7 +16,7 @@ from telethon import TelegramClient, sync, events
 # client.loop.run_until_complete(main())
 
 # get your api_id, api_hash, token
-# from telegram as described above
+# from telegram_ as described above
 # https://my.telegram.org/apps
 import api_keys
 
@@ -32,7 +32,7 @@ async def send_message_to_user(user_name, message):
 
     # in case of script ran first time it will
     # ask either to input token or otp sent to
-    # number or sent or your telegram id
+    # number or sent or your telegram_ id
     if not await client.is_user_authorized():
         await client.send_code_request(phone)
         # signing in the client
@@ -50,7 +50,7 @@ async def send_message_to_user(user_name, message):
         # print(receiver_entity)
 
         print(f'Sending to Telegram user[{user_name}]. Message=[{message}]')
-        # sending message using telegram client
+        # sending message using telegram_ client
         await client.send_message(receiver, message, parse_mode='html')
     except Exception as e:
         # there may be many error coming in while like peer
@@ -59,14 +59,14 @@ async def send_message_to_user(user_name, message):
     await client.disconnect()
 
 # Send message to user
-message = f'{int(time.time())}: It\'s full of mosquitoes in here.'
-asyncio.run(send_message_to_user('@SebLife3', message))
+# message = f'{int(time.time())}: It\'s full of mosquitoes in here.'
+# asyncio.run(send_message_to_user('@SebLife3', message))
 
 # To send messages to chat or group (the group must be public) use the invite link
 # otherwise you get this error if you use the name:
 # > You can't write in this chat (caused by SendMessageRequest)
 message = f'{int(time.time())}: Sending messages to group from python.'
-asyncio.run(send_message_to_user('https://t.me/CryptoMakerUpdates', message))
+asyncio.run(send_message_to_user('https://t.me/CryptoMakerChannelTest', message))
 
 
 
