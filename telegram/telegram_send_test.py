@@ -7,7 +7,7 @@
     First run at the terminal:
      - pip install telegram
      - pip install telegram-send
-     - pip install python-telegram_-bot
+     - pip install python-telegram-bot
      - telegram-send --configure
 """
 
