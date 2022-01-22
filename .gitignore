@@ -1,6 +1,7 @@
 # Contain keys not to be published online
 api_keys.py
 config.json
+telegram_/session.session
 
 log.txt
 trace.txt

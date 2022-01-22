@@ -4,8 +4,10 @@ import time
 from typing import Any, Callable
 
 import rapidjson
+import telegram_
 import websocket
 
+import api_keys
 import pybit
 from CandleHandler import CandleHandler
 from Configuration import Configuration
@@ -21,6 +23,7 @@ from enums.TradeSignals import TradeSignals
 from strategies.ScalpEmaRsiAdx import ScalpEmaRsiAdx
 from exchange.ExchangeBybit import ExchangeBybit
 from logging_.Logger import Logger
+from telegram_.TelegramBot import TelegramBot
 from trade_entry.LimitEntry import LimitEntry
 from trade_entry.MarketEntry import MarketEntry
 
@@ -101,47 +104,14 @@ class Bot:
                 pybit.exceptions.FailedRequestError) as e:
             self._logger.exception(e)
             self._logger.error(f"Bot Crashed. Restart in {self.RESTART_DELAY} seconds")
+            TelegramBot.send_to_group(f'Application crashed. {e}')
+            TelegramBot.send_to_group(f"Bot Crashed. Restart in {self.RESTART_DELAY} seconds")
             self.restart(self.RESTART_DELAY)
         except Exception as e:
             self._logger.exception(e)
+            TelegramBot.send_to_group(f'Application crashed. {e}')
             Bot.beep(1, 500, 5000)
             raise e
-
-    def run_forever2(self):
-        self._logger.info(f"Initializing Main Loop.")
-
-        self.db.sync_all_user_trade_records(self.pair)
-        exit(1)
-
-        # print(self._wallet.to_string() + "\n")
-        # print('Position:\n' + self._position.get_positions_df().to_string() + "\n")
-        # print('Orders:\n' + self._orders.get_orders_df(order_status=OrderStatus.New).to_string() + '\n')
-        #
-        # order1 = Order(OrderSide.Buy, self.pair, OrderType.Limit, 0.1, 10000, take_profit=11000, stop_loss=9000)
-        # result = self._orders.place_limit_order(order1, 'TakeProfit')
-        # print("Order Result:\n", rapidjson.dumps(result, indent=2))
-        #
-        # self._orders.update_db_order_stop_loss_by_id(result['order_id'], 777)
-        #
-        # self._wallet.update_wallet()
-        # print(self._wallet.to_string() + "\n")
-        # print('Position:\n' + self._position.get_positions_df().to_string() + "\n")
-        # print('Orders:\n' + self._orders.get_orders_df(order_status=OrderStatus.New).to_string() + '\n')
-        #
-        # order2 = Order(Side.Sell, self.pair, OrderType.Market, 0.001, take_profit=35000, stop_loss=50000)
-        # result = self._orders.place_limit_order(order2)
-        # print("Order Result:\n", rapidjson.dumps(result, indent=2))
-        #
-        # self._wallet.update_wallet()
-        # print(self._wallet.to_string() + "\n")
-        # print('Position:\n' + self._position.get_positions_df().to_string() + "\n")
-        # print('Orders:\n' + self._orders.get_orders_df(order_status=OrderStatus.New).to_string() + '\n')
-
-        # with open('trace.txt', 'w') as f:
-        #     while True:
-        #         self.print_candles_and_entries(f)
-        #         time.sleep(0.5)
-        # self.throttle(self.print_candles_and_entries, throttle_secs=5, f=f)
 
     def throttle(self, func: Callable[..., Any], throttle_secs: float, *args, **kwargs) -> Any:
         """
@@ -209,27 +179,29 @@ class Bot:
         time.sleep(nb_seconds)
         os.execv(sys.executable, ['python'] + sys.argv)
 
-    def print_candles_and_entries(self, f):
-        self._candles_df, data_changed = self._candle_handler.get_refreshed_candles()
-        if data_changed:
-            df, result = self.strategy.find_entry(self._candles_df)
-            f.write('')
-            print()
-            f.write('\n' + df.tail(10).to_string())
-            print('\n' + df.tail(10).to_string())
-            f.write(f"\nLast valid signal offset: {result['SignalOffset']}\n")
-            print(f"Last valid signal offset: {result['SignalOffset']}\n")
-            print(self._wallet.to_string())
-            print(self._position.get_positions_df().to_string())
-            print(self._orders.get_orders_df().to_string())
-            exit(1)
+    # def print_candles_and_entries(self, f):
+    #     self._candles_df, data_changed = self._candle_handler.get_refreshed_candles()
+    #     if data_changed:
+    #         df, result = self.strategy.find_entry(self._candles_df)
+    #         f.write('')
+    #         print()
+    #         f.write('\n' + df.tail(10).to_string())
+    #         print('\n' + df.tail(10).to_string())
+    #         f.write(f"\nLast valid signal offset: {result['SignalOffset']}\n")
+    #         print(f"Last valid signal offset: {result['SignalOffset']}\n")
+    #         print(self._wallet.to_string())
+    #         print(self._position.get_positions_df().to_string())
+    #         print(self._orders.get_orders_df().to_string())
+    #         exit(1)
+    #
+    #         if result['Signal'] in [TradeSignals.EnterLong, TradeSignals.EnterShort]:
+    #             f.write('')
+    #             print()
+    #             f.write('\n' + df.tail(10).to_string())
+    #             print('\n' + df.tail(10).to_string())
+    #             f.write(f"\nLast valid signal offset: {result['SignalOffset']}\n")
+    #             print(f"Last valid signal offset: {result['SignalOffset']}\n")
+    #             f.write(f"{result['Signal']}: {rapidjson.dumps(result, indent=2)}")
+    #             print(f"{result['Signal']}: {rapidjson.dumps(result, indent=2)}")
 
-            if result['Signal'] in [TradeSignals.EnterLong, TradeSignals.EnterShort]:
-                f.write('')
-                print()
-                f.write('\n' + df.tail(10).to_string())
-                print('\n' + df.tail(10).to_string())
-                f.write(f"\nLast valid signal offset: {result['SignalOffset']}\n")
-                print(f"Last valid signal offset: {result['SignalOffset']}\n")
-                f.write(f"{result['Signal']}: {rapidjson.dumps(result, indent=2)}")
-                print(f"{result['Signal']}: {rapidjson.dumps(result, indent=2)}")
+

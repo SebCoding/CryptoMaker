@@ -12,6 +12,7 @@ from database.Database import Database
 from enums.BybitEnums import OrderType, OrderSide, OrderStatus
 from enums.TradeSignals import TradeSignals
 from exchange.ExchangeBybit import ExchangeBybit
+from telegram_.TelegramBot import TelegramBot
 from trade_entry.BaseTradeEntry import BaseTradeEntry
 
 
@@ -240,13 +241,14 @@ class LimitEntry(BaseTradeEntry):
         position = self._position.get_position(self.signal['Side'])
         qty = position['size'] if position else 0
         avg_price = position['entry_price'] if position else 0
-        msg = f'{self.side_l_s} limit entry trade executed in {utils.seconds_to_human_readable(exec_time)}, ' \
+        msg = f'{self.side_l_s} limit trade entry executed in {utils.seconds_to_human_readable(exec_time)}, ' \
               f'qty[{cum_trade_qty}/{trade_start_qty}], '
         # Position has been closed by sl/tp
         if avg_price != 0:
             msg += f'avg_entry_price[{avg_price:.2f}], ' \
                    f'slippage[{(avg_price - self.signal["EntryPrice"] if avg_price > 0 else 0):.2f}] '
         self._logger.info(msg)
+        TelegramBot.send_to_group(msg)
 
         return qty, avg_price
 

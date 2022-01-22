@@ -1,8 +1,12 @@
+import datetime as dt
 import sys
 from abc import ABC, abstractmethod
 
 import pandas as pd
+import telegram
 
+import api_keys
+import constants
 from Configuration import Configuration
 from Orders import Order, Orders
 from WalletUSDT import WalletUSDT
@@ -229,3 +233,4 @@ class BaseTradeEntry(ABC):
                 take_profit = self.get_take_profit(self.signal['Side'], float(e['price']))
                 self.place_tp_order(self.signal['Side'], qty, take_profit)
                 self.take_profit_qty = round(self.take_profit_qty + qty, 10)
+

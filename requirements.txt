@@ -4,7 +4,9 @@ pandas
 pyTelegramBotAPI
 python_rapidjson
 rapidjson
+telegram
 telegram_send
+python-telegram-bot
 Telethon
 tabulate
 telebot

@@ -5,10 +5,10 @@
     https://core.telegram.org/bots/api
 
     First run at the terminal:
-     - pip install telegram
-     - pip install telegram-send
-     - pip install python-telegram-bot
-     - telegram-send --configure
+     - pip install telegram_
+     - pip install telegram_-send
+     - pip install python-telegram_-bot
+     - telegram_-send --configure
 """
 
 import telegram_send as ts
