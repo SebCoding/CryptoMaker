@@ -8,6 +8,7 @@ from database.Database import Database
 from enums.BybitEnums import OrderSide, OrderType
 from enums.TradeSignals import TradeSignals
 from exchange.ExchangeBybit import ExchangeBybit
+from telegram_.TelegramBot import TelegramBot
 from trade_entry.LimitEntry import LimitEntry
 from trade_entry.BaseTradeEntry import BaseTradeEntry
 
@@ -69,8 +70,11 @@ class MarketEntry(BaseTradeEntry):
         else:
             _side = 'Short'
             _lev = f"{self._config['trading']['leverage_short']}x"
-        self._logger.info(f'Entered {_lev} {_side} position, avg_entry_price={entry_price:.2f}, qty={qty}, '
-                          f'slippage={(self.signal["EntryPrice"] - entry_price):.2f}.')
+        msg = f'Entered {_lev} {_side} position, avg_entry_price={entry_price:.2f}, qty={qty}, ' \
+              f'slippage={(self.signal["EntryPrice"] - entry_price):.2f}.'
+        self._logger.info(msg)
+        TelegramBot.send_to_group(msg)
+
         return qty, entry_price
 
     def place_market_order(self, side, qty, price, stop_loss):

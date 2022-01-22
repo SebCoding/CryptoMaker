@@ -1,7 +1,7 @@
 """
     pip install --user --force-reinstall python-telegram_-bot
 
-    How to get a grou or a channel chat_id?
+    How to get a group or a channel chat_id?
     Ask the @username_to_id_bot and it will return the id
 
     @CryptoMaker2022Bot: token(5093560329:AAH_emOOa09RIUj6RDzWy_wh7pr2ysLnKaI)

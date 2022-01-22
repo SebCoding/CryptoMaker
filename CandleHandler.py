@@ -211,7 +211,7 @@ class CandleHandler:
                     ]
                     # DataFrame is empty
                     if self._candles_df is None:
-                        current_minute = arrow.get(candle['start']).to('local').minute
+                        current_minute = arrow.get(int(candle['start'])).to('local').minute
                         offset = current_minute % self.minutes_in_interval
                         start = int(candle['start']) - (offset * 60)
                         self._candles_df = self.get_historic_candles(start)
@@ -297,7 +297,7 @@ class CandleHandler:
 
                 # For 'minute' mode adjust start_timestamp
                 if self._config['strategy']['signal_mode'] == SignalMode.Minute:
-                    current_minute = arrow.get(to_append['start']).to('local').minute
+                    current_minute = arrow.get(int(to_append['start'])).to('local').minute
                     offset = current_minute % self.minutes_in_interval
                     start_timestamp = int(to_append['start']) - (offset * 60)
 
