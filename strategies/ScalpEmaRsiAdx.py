@@ -15,6 +15,10 @@ class ScalpEmaRsiAdx(BaseStrategy):
     # Trend indicator: EMA - Exponential Moving Average
     EMA_PERIODS = 60
 
+    # % over/under the EMA that can be tolerated to determine if the long/short trade can be placed
+    # Value should be between 0 and 1
+    EMA_TOLERANCE = 0.05
+
     # Momentum indicator: RSI - Relative Strength Index
     RSI_PERIODS = 2
     RSI_MIN_SIGNAL_THRESHOLD = 31
@@ -37,7 +41,8 @@ class ScalpEmaRsiAdx(BaseStrategy):
         self.db = database
 
     def get_strategy_text_details(self):
-        details = f'EMA({self.EMA_PERIODS}), RSI({self.RSI_PERIODS}), ADX({self.ADX_PERIODS}) ' \
+        details = f'EMA({self.EMA_PERIODS}), EMA_TOLERANCE({self.EMA_TOLERANCE}), ' \
+                  f'RSI({self.RSI_PERIODS}), ADX({self.ADX_PERIODS}) ' \
                   f'RSI_SIGNAL({self.RSI_MIN_SIGNAL_THRESHOLD}, {self.RSI_MAX_SIGNAL_THRESHOLD}), ' \
                   f'RSI_ENTRY({self.RSI_MIN_ENTRY_THRESHOLD}, {self.RSI_MAX_ENTRY_THRESHOLD}), ' \
                   f'ADX_THRESHOLD({self.ADX_THRESHOLD})'
@@ -68,7 +73,7 @@ class ScalpEmaRsiAdx(BaseStrategy):
         # Populate long signals
         df.loc[
             (
-                (df['close'] > df['EMA']) &  # price > EMA
+                (df['close'] > (df['EMA'] - df['EMA']*self.EMA_TOLERANCE)) &  # price > (EMA - Tolerance)
                 (df['RSI'] < self.RSI_MIN_SIGNAL_THRESHOLD) &  # RSI < RSI_MIN_THRESHOLD
                 (df['ADX'] > self.ADX_THRESHOLD)  # ADX > ADX_THRESHOLD
             ),
@@ -77,7 +82,7 @@ class ScalpEmaRsiAdx(BaseStrategy):
         # Populate short signals
         df.loc[
             (
-                (df['close'] < df['EMA']) &  # price < EMA-50
+                (df['close'] < (df['EMA'] + df['EMA']*self.EMA_TOLERANCE)) &  # price < (EMA + Tolerance)
                 (df['RSI'] > self.RSI_MAX_SIGNAL_THRESHOLD) &  # RSI > RSI_MAX_THRESHOLD
                 (df['ADX'] > self.ADX_THRESHOLD)  # ADX > ADX_THRESHOLD
             ),
