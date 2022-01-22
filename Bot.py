@@ -41,10 +41,11 @@ class Bot:
     def __init__(self):
         self._logger = Logger.get_module_logger(__name__)
         self._config = Configuration.get_config()
+        self.instance_name = self._config['bot']['instance_name']
         self.pair = self._config['exchange']['pair']
         net = '** Testnet **' if self._config['exchange']['testnet'] else 'Mainnet'
         self.interval = self._config['trading']['interval']
-        self._logger.info(f"Initializing Bot to trade [{self.pair}][{self.interval}] on "
+        self._logger.info(f"Initializing {self.instance_name} to trade [{self.pair}][{self.interval}] on "
                           f"{self._config['exchange']['name']} {net}.")
         self.status_bar = self.moving_status_bar(self.STATUS_BAR_CHAR, self.STATUS_BAR_LENGTH)
         # self.stake_currency = self._config['exchange']['stake_currency']

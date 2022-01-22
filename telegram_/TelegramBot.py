@@ -14,19 +14,22 @@ import telegram
 import datetime as dt
 import api_keys
 import constants
+from Configuration import Configuration
 
 
 class TelegramBot:
+    enabled = Configuration.get_config()['telegram']['enable']
+    instance_name = Configuration.get_config()['bot']['instance_name']
     telegram_bot = telegram.Bot(token=api_keys.TELEGRAM_BOT_TOKEN)
 
     @classmethod
-    def send_to_group(cls, msg, fixed_width=True):
-        if api_keys.TELEGRAM_BOT_TOKEN and api_keys.TELEGRAM_GRP_CHAT_ID:
-            _now = dt.datetime.now().strftime(constants.DATETIME_FMT)
+    def send_to_group(cls, msg, fixed_width=True, include_time=False):
+        if cls.enabled and api_keys.TELEGRAM_BOT_TOKEN and api_keys.TELEGRAM_GRP_CHAT_ID:
+            _now = f'[{dt.datetime.now().strftime(constants.DATETIME_FMT)}] ' if include_time else ''
             if fixed_width:
-                msg = f'`[{_now}] {msg}`'
+                msg = f'`{_now}{cls.instance_name}: {msg}`'
             else:
-                msg = f'[{_now}] {msg}'.replace('-', '\\-')
+                msg = f'{_now}{cls.instance_name}: {msg}'.replace('-', '\\-')
             cls.telegram_bot.send_message(text=msg, chat_id=api_keys.TELEGRAM_GRP_CHAT_ID,
                                           parse_mode=telegram.ParseMode.MARKDOWN_V2)
 

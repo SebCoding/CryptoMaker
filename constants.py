@@ -35,10 +35,11 @@ CONFIG_SCHEMA = {
         'bot': {
             'type': 'object',
             'properties': {
+                'instance_name': {'type': 'string'},
                 'throttle_secs': {'type': 'integer', 'minimum': 0},
                 'progress_bar': {'type': 'boolean', 'default': True},
             },
-            'required': ['throttle_secs', 'progress_bar']
+            'required': ['instance_name', 'throttle_secs', 'progress_bar']
         },
         'strategy': {
             'type': 'object',
@@ -120,10 +121,16 @@ CONFIG_SCHEMA = {
             'properties': {
                 'logging_level': {'type': 'string', 'enum': LOGGING_LEVELS},
                 'debug_file_path': {'type': 'string'},
-                'output_file_path': {'type': 'string'},
-                'message_telegram_group': {'type': 'boolean', 'default': False},
+                'output_file_path': {'type': 'string'}
             },
-            'required': ['logging_level', 'debug_file_path', 'output_file_path', 'message_telegram_group']
+            'required': ['logging_level', 'debug_file_path', 'output_file_path']
+        },
+        'telegram': {
+            'type': 'object',
+            'properties': {
+                'enable': {'type': 'boolean', 'default': False}
+            },
+            'required': ['enable']
         }
     },
     'required': ['bot', 'exchange', 'strategy', 'trading', 'database', 'logging']

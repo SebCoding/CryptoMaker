@@ -1,61 +1,63 @@
  {
-    "bot": {
-        "throttle_secs": 1,
-        "progress_bar": true
-    },
-     "strategy": {
-         "name": "ScalpEmaRsiAdx",
-         "signal_mode": "realtime",
-         "minimum_candles_to_start": 3000
+   "bot": {
+     "throttle_secs": 1,
+     "progress_bar": true
+   },
+   "strategy": {
+     "name": "ScalpEmaRsiAdx",
+     "signal_mode": "realtime",
+     "minimum_candles_to_start": 3000
+   },
+   "trading": {
+     "interval": "3m",
+     "leverage_long": 1,
+     "leverage_short": 1,
+     "take_profit": 0.003,
+     "stop_loss": 0.002,
+     "tradable_balance_ratio": 0.99,
+     "trade_entry_mode": "maker",
+     "constant_take_profit": true
+   },
+   "limit_entry": {
+     "abort_price_pct": 0.0029,
+     "abort_time_candle_ratio": 1
+   },
+   "exchange": {
+     "name": "Bybit",
+     "testnet": true,
+     "market_type": "perpetual futures",
+     "pair": "ETHUSDT",
+     "stake_currency": "USDT",
+     "http": {
+          "linear_testnet": "https://api-testnet.bybit.com",
+          "linear_mainnet": "https://api.bybit.com",
+          "linear_mainnet2": "https://api.bytick.com",
+          "timeout": 30
      },
-     "trading": {
-         "interval": "3m",
-         "leverage_long": 1,
-         "leverage_short": 1,
-         "take_profit": 0.003,
-         "stop_loss": 0.002,
-         "tradable_balance_ratio": 0.99,
-         "trade_entry_mode": "maker",
-         "constant_take_profit": true
-     },
-     "limit_entry": {
-         "abort_price_pct": 0.0029,
-         "abort_time_candle_ratio": 1
-     },
-      "exchange": {
-        "name": "Bybit",
-        "testnet": true,
-        "market_type": "perpetual futures",
-        "pair": "ETHUSDT",
-        "stake_currency": "USDT",
-        "http": {
-            "linear_testnet": "https://api-testnet.bybit.com",
-            "linear_mainnet": "https://api.bybit.com",
-            "linear_mainnet2": "https://api.bytick.com",
-            "timeout": 30
-        },
-        "websockets": {
-            "ws_linear_public_testnet": "wss://stream-testnet.bybit.com/realtime_public",
-            "ws_linear_private_testnet": "wss://stream-testnet.bybit.com/realtime_private",
-            "ws_linear_public_mainnet": "wss://stream.bybit.com/realtime_public",
-            "ws_linear_public_mainnet2": "wss://stream.bytick.com/realtime_public",
-            "ws_linear_private_mainnet": "wss://stream.bybit.com/realtime_private",
-            "ws_linear_private_mainnet2": "wss://stream.bytick.com/realtime_private"
-        }
-    },
-     "database": {
-       "db_name": "CryptoMakerTest",
-       "address": "localhost",
-       "port": 5432,
-       "username": "CryptoMakerUser",
-       "password": "my_password"
-     },
-    "logging": {
-      "logging_level": "info",
-      "debug_file_path": "logs/debug_log.txt",
-      "output_file_path": "logs/output_log.txt",
-      "message_telegram_group": false
-    }
+     "websockets": {
+       "ws_linear_public_testnet": "wss://stream-testnet.bybit.com/realtime_public",
+       "ws_linear_private_testnet": "wss://stream-testnet.bybit.com/realtime_private",
+       "ws_linear_public_mainnet": "wss://stream.bybit.com/realtime_public",
+       "ws_linear_public_mainnet2": "wss://stream.bytick.com/realtime_public",
+       "ws_linear_private_mainnet": "wss://stream.bybit.com/realtime_private",
+       "ws_linear_private_mainnet2": "wss://stream.bytick.com/realtime_private"
+     }
+   },
+   "database": {
+     "db_name": "CryptoMakerTest",
+     "address": "localhost",
+     "port": 5432,
+     "username": "CryptoMakerUser",
+     "password": "password"
+   },
+   "logging": {
+     "logging_level": "info",
+     "debug_file_path": "logs/debug_log.txt",
+     "output_file_path": "logs/output_log.txt"
+   },
+   "telegram": {
+     "enable": false
+   }
 }
 
 

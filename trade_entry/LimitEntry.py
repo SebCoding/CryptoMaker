@@ -245,10 +245,11 @@ class LimitEntry(BaseTradeEntry):
               f'qty[{cum_trade_qty}/{trade_start_qty}], '
         # Position has been closed by sl/tp
         if avg_price != 0:
-            msg += f'avg_entry_price[{avg_price:.2f}], ' \
-                   f'slippage[{(avg_price - self.signal["EntryPrice"] if avg_price > 0 else 0):.2f}] '
+            msg += f'avg_price[{avg_price:.2f}], ' \
+                   f'slip[{(avg_price - self.signal["EntryPrice"] if avg_price > 0 else 0):.2f}] '
         self._logger.info(msg)
-        TelegramBot.send_to_group(msg)
+
+        TelegramBot.send_to_group(msg.replace('limit trade entry executed in ', ''))
 
         return qty, avg_price
 
