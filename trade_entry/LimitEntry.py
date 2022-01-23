@@ -328,18 +328,18 @@ class LimitEntry(BaseTradeEntry):
 """
     Testing Limit Order Trade Entries
 """
-ex = ExchangeBybit()
-db = Database(ex)
-Pos = Position(db, ex)
-CH = CandleHandler(ex)
-
-signal = {
-    'Pair': 'ETHUSDT',
-    'Side': 'Sell',
-    'EntryPrice': CH.get_latest_price()
-}
-
-limit_entry = LimitEntry(db, ex, Pos, signal).enter_trade()
+# ex = ExchangeBybit()
+# db = Database(ex)
+# Pos = Position(db, ex)
+# CH = CandleHandler(ex)
+#
+# signal = {
+#     'Pair': 'ETHUSDT',
+#     'Side': 'Sell',
+#     'EntryPrice': CH.get_latest_price()
+# }
+#
+# limit_entry = LimitEntry(db, ex, Pos, signal).enter_trade()
 # limit_entry = LimitEntry(db, ex, Pos, signal).enter_trade()
 # limit_entry = LimitEntry(db, ex, Pos, signal).enter_trade()
 
