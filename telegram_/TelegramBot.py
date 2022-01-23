@@ -27,9 +27,9 @@ class TelegramBot:
         if cls.enabled and api_keys.TELEGRAM_BOT_TOKEN and api_keys.TELEGRAM_GRP_CHAT_ID:
             _now = f'[{dt.datetime.now().strftime(constants.DATETIME_FMT)}] ' if include_time else ''
             if fixed_width:
-                msg = f'`{_now}{cls.instance_name}: {msg}`'
+                msg = f'`{_now}{cls.instance_name} {msg}`'
             else:
-                msg = f'{_now}{cls.instance_name}: {msg}'.replace('-', '\\-')
+                msg = f'{_now}{cls.instance_name} {msg}'.replace('-', '\\-')
             cls.telegram_bot.send_message(text=msg, chat_id=api_keys.TELEGRAM_GRP_CHAT_ID,
                                           parse_mode=telegram.ParseMode.MARKDOWN_V2)
 

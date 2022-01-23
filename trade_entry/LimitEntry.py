@@ -18,7 +18,7 @@ from trade_entry.BaseTradeEntry import BaseTradeEntry
 
 class LimitEntry(BaseTradeEntry):
 
-    # Counting number of trades
+    # Class/Static variable for counting total number of trades
     nb_trades = 0
 
     def __init__(self, database, exchange, position, signal):
@@ -221,7 +221,7 @@ class LimitEntry(BaseTradeEntry):
                     continue
 
         exec_time = time.time() - start_time
-        cls.nb_trades += 1
+        LimitEntry.nb_trades += 1
 
         # Get position summary.
         # NOTE: The qty and avg_price are only valid if the position was zero prior to this trade entry.
@@ -229,14 +229,16 @@ class LimitEntry(BaseTradeEntry):
         position = self._position.get_position(self.signal['Side'])
         qty = round(position['size'], 10) if position else 0
         avg_price = position['entry_price'] if position else 0
-        msg = f'{self.nb_trades}: {self.side_l_s} limit trade entry completed. Exec[{utils.seconds_to_human_readable(exec_time)}], ' \
+        position_value = position['position_value'] if position else 0
+        cum_trade_qty = round(cum_trade_qty, 10)
+        msg = f'{LimitEntry.nb_trades}: {self.side_l_s} limit trade entry completed. Exec[{utils.seconds_to_human_readable(exec_time)}], ' \
               f'qty[{cum_trade_qty}/{trade_start_qty}], '
         # Position has been closed by sl/tp
-        if avg_price != 0:
-            msg += f'avg_price[{avg_price:.2f}], ' \
+        if position_value != 0:
+            msg += f'pos_value[{position_value:.2f}], avg_price[{avg_price:.2f}], ' \
                    f'slip[{(avg_price - self.signal["EntryPrice"] if avg_price > 0 else 0):.2f}] '
         self._logger.info(msg)
-        TelegramBot.send_to_group(msg.replace('limit trade entry completed. ', ''))
+        TelegramBot.send_to_group(msg.replace(' limit trade entry completed. ', '. '))
 
         return qty, avg_price
 
@@ -333,10 +335,12 @@ class LimitEntry(BaseTradeEntry):
 #
 # signal = {
 #     'Pair': 'ETHUSDT',
-#     'Side': 'Buy',
+#     'Side': 'Sell',
 #     'EntryPrice': CH.get_latest_price()
 # }
 #
+# limit_entry = LimitEntry(db, ex, Pos, signal).enter_trade()
+# limit_entry = LimitEntry(db, ex, Pos, signal).enter_trade()
 # limit_entry = LimitEntry(db, ex, Pos, signal).enter_trade()
 
 #print(rapidjson.dumps(ex.query_orders_rt_by_id('ETHUSDT', 'd39c6cc0-3cb1-48a2-9773-85464e2cb510'), indent=2))

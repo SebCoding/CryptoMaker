@@ -57,7 +57,7 @@
      "output_file_path": "logs/output_log.txt"
    },
    "telegram": {
-     "enable": true
+     "enable": false
    }
 }
 
