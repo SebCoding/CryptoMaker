@@ -24,9 +24,6 @@ class BaseTradeEntry(ABC):
     # Wait time in seconds after creating/updating orders
     PAUSE_TIME = 0.3
 
-    # Counting number of trades
-    nb_trades = 0
-
     def __init__(self, db, exchange, position, signal):
         self._logger = Logger.get_module_logger(__name__)
         self._config = Configuration.get_config()

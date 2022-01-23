@@ -18,8 +18,8 @@ from trade_entry.BaseTradeEntry import BaseTradeEntry
 
 class LimitEntry(BaseTradeEntry):
 
-
-    LOOP_TIMEOUT = 2 * 60  # 2 minutes
+    # Counting number of trades
+    nb_trades = 0
 
     def __init__(self, database, exchange, position, signal):
         super().__init__(database, exchange, position, signal)
@@ -221,7 +221,7 @@ class LimitEntry(BaseTradeEntry):
                     continue
 
         exec_time = time.time() - start_time
-        self.nb_trades += 1
+        cls.nb_trades += 1
 
         # Get position summary.
         # NOTE: The qty and avg_price are only valid if the position was zero prior to this trade entry.
