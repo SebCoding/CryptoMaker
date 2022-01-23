@@ -106,7 +106,7 @@ class Logger:
 
     @staticmethod
     def append_date_to_filename(filename):
-        date_str = arrow.utcnow().strftime(constants.DATETIME_FMT).replace(':', '.')
+        date_str = arrow.utcnow().to('local').strftime(constants.DATETIME_FMT).replace(':', '.')
         tokens = filename.split('.') if filename else None
         if not tokens or len(tokens) < 2:
             return filename + ' ' + date_str
