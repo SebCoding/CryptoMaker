@@ -231,7 +231,7 @@ class LimitEntry(BaseTradeEntry):
         avg_price = position['entry_price'] if position else 0
         position_value = position['position_value'] if position else 0
         cum_trade_qty = round(cum_trade_qty, 10)
-        msg = f'{LimitEntry.nb_trades}: {self.side_l_s} limit trade entry completed. Exec[{utils.seconds_to_human_readable(exec_time)}], ' \
+        msg = f'{LimitEntry.nb_trades} {self.side_l_s} limit trade entry completed. Exec[{utils.seconds_to_human_readable(exec_time)}], ' \
               f'qty[{cum_trade_qty}/{trade_start_qty}], '
         # Position has been closed by sl/tp
         if position_value != 0:

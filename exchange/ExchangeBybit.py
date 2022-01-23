@@ -792,12 +792,14 @@ class ExchangeBybit:
             else:
                 break
         # Convert created_at timestamp to datetime string
-        df = pd.DataFrame(list_records)
-        df['trade_time_ms'] = \
-            [arrow.get(x).to('local').datetime.strftime(constants.DATETIME_FMT_MS)[:-3] for x in df['trade_time_ms']]
-        df.sort_values(by=['trade_time_ms'], ascending=True)
-        dict_list = df.to_dict('records')
-        return dict_list
+        if list_records:
+            df = pd.DataFrame(list_records)
+            df['trade_time_ms'] = \
+                [arrow.get(x).to('local').datetime.strftime(constants.DATETIME_FMT_MS)[:-3] for x in df['trade_time_ms']]
+            df.sort_values(by=['trade_time_ms'], ascending=True)
+            dict_list = df.to_dict('records')
+            return dict_list
+        return None
 
     def reset_trading_settings(self, pair):
         """

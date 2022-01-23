@@ -1,5 +1,5 @@
 """
-    pip install --user --force-reinstall python-telegram_-bot
+    pip install --user --force-reinstall python-telegram-bot
 
     How to get a group or a channel chat_id?
     Ask the @username_to_id_bot and it will return the id
@@ -27,9 +27,9 @@ class TelegramBot:
         if cls.enabled and api_keys.TELEGRAM_BOT_TOKEN and api_keys.TELEGRAM_GRP_CHAT_ID:
             _now = f'[{dt.datetime.now().strftime(constants.DATETIME_FMT)}] ' if include_time else ''
             if fixed_width:
-                msg = f'`{_now}{cls.instance_name} {msg}`'
+                msg = f'`{_now}{cls.instance_name}: {msg}`'
             else:
-                msg = f'{_now}{cls.instance_name} {msg}'.replace('-', '\\-')
+                msg = f'{_now}{cls.instance_name}: {msg}'.replace('-', '\\-')
             cls.telegram_bot.send_message(text=msg, chat_id=api_keys.TELEGRAM_GRP_CHAT_ID,
                                           parse_mode=telegram.ParseMode.MARKDOWN_V2)
 

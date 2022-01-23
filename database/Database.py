@@ -292,22 +292,23 @@ class Database:
         self._logger.info(f'Syncing all User Trade records.')
         table = self.get_table(self.USER_TRADES_TBL_NAME)
         dict_list = self._exchange.get_user_trades_records(pair)
-        to_insert_df = pd.DataFrame(dict_list)
-        to_insert_df = to_insert_df.drop(['order_link_id', 'price', 'trade_time'], axis=1)
+        if dict_list:
+            to_insert_df = pd.DataFrame(dict_list)
+            to_insert_df = to_insert_df.drop(['order_link_id', 'price', 'trade_time'], axis=1)
 
-        # records_df.sort_values(['order_id'], inplace=True)
-        # print(records_df.to_string()); exit(1)
+            # records_df.sort_values(['order_id'], inplace=True)
+            # print(records_df.to_string()); exit(1)
 
-        # Get list of PK exec_id in the table to not re-insert (already existing rows)
-        query = f'SELECT "exec_id" FROM public."{self.USER_TRADES_TBL_NAME}"'
-        with self.engine.connect() as connection:
-            existing_ids_list = pd.read_sql(query, connection)['exec_id'].tolist()
+            # Get list of PK exec_id in the table to not re-insert (already existing rows)
+            query = f'SELECT "exec_id" FROM public."{self.USER_TRADES_TBL_NAME}"'
+            with self.engine.connect() as connection:
+                existing_ids_list = pd.read_sql(query, connection)['exec_id'].tolist()
 
-            # Delete rows that already exist in the db
-            df = to_insert_df[~to_insert_df['exec_id'].isin(existing_ids_list)]
+                # Delete rows that already exist in the db
+                df = to_insert_df[~to_insert_df['exec_id'].isin(existing_ids_list)]
 
-            if len(df) > 0:
-                connection.execute(table.insert(), df.to_dict('records'))
+                if len(df) > 0:
+                    connection.execute(table.insert(), df.to_dict('records'))
 
     """
         -----------------------------------------------------------------------------
