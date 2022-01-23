@@ -479,8 +479,8 @@ class ExchangeBybit:
         dict_list = df.to_dict('records')
         return dict_list
 
-    # Get active order by id
-    def get_order_by_id(self, pair, order_id):
+    # Get active order by id, using websocket or realtime http method
+    def get_order_by_id_hybrid(self, pair, order_id):
         data = self.ws_private.fetch(self.order_topic_name)
         if data:
             for order in data:
@@ -488,10 +488,8 @@ class ExchangeBybit:
                     return order
             return None
         else:
-            data = self.session_auth.get_active_order(symbol=pair, order_id=order_id)
-            if data and data['result'] and data['result']['data']:
-                return data['result']['data'][0]
-        return None
+            data = self.session_auth.query_active_order(symbol=pair, order_id=order_id)
+            return data['result']
 
     # Get active order by id
     def get_order_by_id_ws_only(self, pair, order_id):
@@ -511,10 +509,8 @@ class ExchangeBybit:
         return None
 
     def query_orders_rt_by_id(self, pair, order_id):
-        data = self.session_auth.query_active_order(pair=pair, order_id=order_id)
-        if data and len(data['result']) > 0:
-            return data['result'][0]
-        return None
+        data = self.session_auth.query_active_order(symbol=pair, order_id=order_id)
+        return data['result']
 
     def place_order(self, o: Order):
         """
@@ -647,6 +643,30 @@ class ExchangeBybit:
                 self._logger.exception(e)
                 raise e
             result = {'order_id': order_id, 'new_price': new_price, 'ret_code': e.status_code, 'ret_msg': e.message}
+            self._logger.error(result)
+        return result
+
+    def replace_active_order_qty_pr(self, order_id, new_qty, new_price):
+        """
+            replace_active_order() can modify/amend your active orders.
+            Params:
+              - p_r_qty: New order quantity. Do not pass this field if you don't want modify it
+         """
+        try:
+            result = self.session_auth.replace_active_order(
+                symbol=self.pair,
+                order_id=order_id,
+                p_r_qty=new_qty,
+                p_r_price=new_price
+            )
+            return result
+        except pybit.exceptions.InvalidRequestError as e:
+            # 20001: Order not exists or too late to replace
+            # 30076 Order not modified
+            if e.status_code not in [20001, 30076]:
+                self._logger.exception(e)
+                raise e
+            result = {'order_id': order_id, 'new_qty': new_qty, 'ret_code': e.status_code, 'ret_msg': e.message}
             self._logger.error(result)
         return result
 

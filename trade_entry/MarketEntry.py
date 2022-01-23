@@ -42,7 +42,7 @@ class MarketEntry(BaseTradeEntry):
         qty = round(int(qty / min_trade_qty) * min_trade_qty, 10)
 
         # Place order and open position
-        order_id = self.place_market_order(side, qty, self.signal['EntryPrice'], self.signal_stop_loss)
+        order_id = self.place_market_order(side, qty, self.signal['EntryPrice'], self.sig_stop_loss_amount)
 
         # Wait until the position is open
         while not self._position.get_position(side) and self._position.get_position(side)['size'] != qty:
@@ -62,6 +62,13 @@ class MarketEntry(BaseTradeEntry):
         if qty == 0:
             return
 
+        # Update position stop_loss based on actual average entry price
+        old_stop_loss = self._position.get_current_stop_loss(side)
+        new_stop_loss = self.get_stop_loss(side, entry_price)
+        if old_stop_loss != new_stop_loss:
+            # Update position stop_loss if required because of entry price slippage
+            self._position.set_trading_stop(side, stop_loss=new_stop_loss)
+
         entry_price = round(entry_price, 2)
         # now = dt.datetime.now().strftime(constants.DATETIME_FMT)
         if side == OrderSide.Buy:
@@ -70,8 +77,8 @@ class MarketEntry(BaseTradeEntry):
         else:
             _side = 'Short'
             _lev = f"{self._config['trading']['leverage_short']}x"
-        msg = f'Entered {_lev} {_side} position, avg_entry_price={entry_price:.2f}, qty={qty}, ' \
-              f'slippage={(self.signal["EntryPrice"] - entry_price):.2f}.'
+        msg = f'Entered {_lev} {_side} position, avg_price={entry_price:.2f}, qty={qty}, sl={new_stop_loss:.2f}' \
+              f'slip={(self.signal["EntryPrice"] - entry_price):.2f}.'
         self._logger.info(msg)
         TelegramBot.send_to_group(msg)
 

@@ -17,8 +17,7 @@ from trade_entry.BaseTradeEntry import BaseTradeEntry
 
 
 class LimitEntry(BaseTradeEntry):
-    # Wait time in seconds after creating/updating orders
-    PAUSE_TIME = 0.3
+
 
     LOOP_TIMEOUT = 2 * 60  # 2 minutes
 
@@ -28,9 +27,9 @@ class LimitEntry(BaseTradeEntry):
         self.interval_secs = utils.convert_interval_to_sec(self._config['trading']['interval'])
 
         # When we place an order the price = orderbook_top + "price_delta"
-        # Price delta must be an even multiple of: exchange.pair_details_dict['price_filter']['min_price']
+        # Price delta must be an even multiple of:self.tick_size
         # For example: BTCUSDT: 0.50, ETHUSDT: 0.05, ...
-        self.price_delta = float(self._exchange.pair_details_dict['price_filter']['min_price'])
+        self.price_delta = self.tick_size
 
         # We do not place orders when the spread is greater than "spread_tolerance"
         self.spread_tolerance = float(self.price_delta * 2)
@@ -93,7 +92,7 @@ class LimitEntry(BaseTradeEntry):
             order_type=OrderType.Limit,
             qty=qty,
             price=price,
-            stop_loss=self.signal_stop_loss
+            stop_loss=self.sig_stop_loss_amount
         )
         order.order_id = self._orders.place_order(order, 'TradeEntry')['order_id']
         time.sleep(self.PAUSE_TIME)
@@ -101,15 +100,17 @@ class LimitEntry(BaseTradeEntry):
 
     def update_order_price(self, order_id, cur_order_price):
         new_entry_price = self.get_entry_price(self.signal['Side'])
+        new_stop_loss = self.get_stop_loss(self.signal['Side'], new_entry_price)
         # Re-validate that the update is really required
         if (self.signal['Side'] == OrderSide.Buy and new_entry_price > cur_order_price) \
                 or (self.signal['Side'] == OrderSide.Sell and new_entry_price < cur_order_price):
-            result = self._exchange.replace_active_order_pr(order_id, new_entry_price)
-            self._logger.info(f"Updated {self.side_l_s} Limit Order[{order_id[-8:]}: price={new_entry_price:.2f}]")
+            result = self._exchange.replace_active_order_pr_sl(order_id, new_entry_price, new_stop_loss)
+            self._logger.info(f"Updated {self.side_l_s} Limit Order[{order_id[-8:]}: "
+                              f"price={new_entry_price:.2f}, sl={new_stop_loss:.2f}]")
 
             # Wait until update appears on websocket
             while True:
-                order_dict = self._exchange.get_order_by_id_ws_only(self.pair, order_id)
+                order_dict = self._exchange.query_orders_rt_by_id(self.pair, order_id)
                 if (order_dict and order_dict['price'] == new_entry_price) or \
                         (order_dict and order_dict['order_status'] in
                          [OrderStatus.Filled, OrderStatus.Rejected, OrderStatus.PendingCancel, OrderStatus.Cancelled]):
@@ -119,10 +120,10 @@ class LimitEntry(BaseTradeEntry):
         result = self._exchange.cancel_active_order(order_id)
 
         # Sometimes the order gets filled before we have time to cancel
-        order_dict = self._exchange.get_order_by_id_ws_only(self.pair, order_id)
+        order_dict = self._exchange.query_orders_rt_by_id(self.pair, order_id)
         while not order_dict or order_dict['order_status'] not in [OrderStatus.Cancelled, OrderStatus.Filled]:
             time.sleep(self.PAUSE_TIME)
-            order_dict = self._exchange.get_order_by_id_ws_only(self.pair, order_id)
+            order_dict = self._exchange.query_orders_rt_by_id(self.pair, order_id)
 
         if order_dict['order_status'] == OrderStatus.Cancelled:
             self._logger.info(f"Cancelled {self.side_l_s} Limit Order {order_id[-8:]}.")
@@ -131,8 +132,6 @@ class LimitEntry(BaseTradeEntry):
         return order_dict['order_status']
 
     def enter_trade(self):
-        self.take_profit_order_id = None
-        self.take_profit_qty = 0
         prev_line = ''
 
         start_time = time.time()
@@ -146,7 +145,7 @@ class LimitEntry(BaseTradeEntry):
         while True:
             # Wait for the order to appear on websocket
             while True:
-                order_dict = self._exchange.get_order_by_id_ws_only(self.pair, order_obj.order_id)
+                order_dict = self._exchange.get_order_by_id_hybrid(self.pair, order_obj.order_id)
                 if order_dict:
                     break
 
@@ -164,9 +163,9 @@ class LimitEntry(BaseTradeEntry):
             if round(elapsed_time, 1) > self.abort_seconds:
                 status = self.cancel_order(order_id)
                 if status == OrderStatus.Cancelled:
-                    self.set_tp_on_executions(order_id, validate_tp=True)
+                    self.adjust_tp_order(order_id)
                     cum_trade_qty += cum_exec_qty
-                    assert (cum_exec_qty == self.take_profit_qty)
+                    assert (cum_exec_qty == self.take_profit_cum_qty)
                     self._logger.info(f'{self.side_l_s} Limit Entry Aborting. '
                                       f'elapsed_time={round(elapsed_time, 1)}s > abort_threshold={self.abort_seconds}s')
                     break
@@ -175,9 +174,9 @@ class LimitEntry(BaseTradeEntry):
             if price_diff > abort_price_diff:
                 status = self.cancel_order(order_id)
                 if status == OrderStatus.Cancelled:
-                    self.set_tp_on_executions(order_id, validate_tp=True)
+                    self.adjust_tp_order(order_id)
                     cum_trade_qty += cum_exec_qty
-                    assert (cum_exec_qty == self.take_profit_qty)
+                    assert (cum_exec_qty == self.take_profit_cum_qty)
                     if self.signal['Side'] == OrderSide.Buy:
                         abort_price = trade_start_price + abort_price_diff
                         self._logger.info(f'{self.side_l_s} Limit Entry Aborting. current_price={current_price:.2f} > '
@@ -192,66 +191,136 @@ class LimitEntry(BaseTradeEntry):
             # Order Statuses: Created, New, PartiallyFilled, Filled, Rejected, PendingCancel, Cancelled
             match order_status:
                 case OrderStatus.Created | OrderStatus.New:
-                    # filled = round(trade_start_qty - leaves_qty, 10)
-                    # line = f"{order_status} {self.side_l_s} Order[{order_id[-8:]}: " \
-                    #        f"{filled}/{trade_start_qty} price={order_price:.2f}]"
-                    # if line != prev_line:
-                    #     self._logger.info(line)
-                    #     prev_line = line
                     self.update_order_price(order_id, order_price)
-                    self.set_tp_on_executions(order_id)
+                    self.adjust_tp_order(order_id)
                     continue
                 case OrderStatus.PartiallyFilled:
-                    # filled = round(trade_start_qty - leaves_qty, 10)
-                    # line = f"{order_status} {self.side_l_s} Order[{order_id[-8:]}: " \
-                    #        f"{filled}/{trade_start_qty} price={order_price:.2f}]"
-                    # if line != prev_line:
-                    #     self._logger.info(line)
-                    #     prev_line = line
                     self.update_order_price(order_id, order_price)
-                    self.set_tp_on_executions(order_id)
+                    self.adjust_tp_order(order_id)
                     continue
                 case OrderStatus.Filled:
-                    self.set_tp_on_executions(order_id, validate_tp=True)
+                    self.adjust_tp_order(order_id)
                     self._logger.info(f"Filled {self.side_l_s} Limit Order[{order_id[-8:]}: "
-                                      f"qty({cum_exec_qty}/{order_qty}) last_exec_price={order_price:.2f}]")
+                                      f"qty={cum_exec_qty}/{order_qty} last_exec_price={order_price:.2f}]")
                     cum_trade_qty += cum_exec_qty
-                    assert(cum_exec_qty == self.take_profit_qty)
+                    assert(cum_exec_qty == self.take_profit_cum_qty)
                     break
                 # Rejected, PendingCancel, Cancelled
                 case _:
-                    self.set_tp_on_executions(order_id, validate_tp=True)
+                    self.adjust_tp_order(order_id)
                     cum_trade_qty += cum_exec_qty
-                    assert (cum_exec_qty == self.take_profit_qty)
+                    assert (cum_exec_qty == self.take_profit_cum_qty)
                     ob_price = self.get_current_ob_price(self.signal['Side'])
                     self._logger.info(
-                        f"{order_status} {self.side_l_s} Order[{order_id[-8:]}]: orderbook={ob_price:.2f} "
-                        f"order_price={order_price:.2f}. Retrying ...")
+                        f"{order_status} {self.side_l_s} Order[{order_id[-8:]}: qty={cum_exec_qty}/{order_qty}, "
+                        f"orderbook={ob_price:.2f} = order_price={order_price:.2f}]. Retrying ...")
                     order_obj = self.place_limit_order()
                     self.take_profit_order_id = None
-                    self.take_profit_qty = 0
-                    self.set_tp_on_executions(order_obj.order_id)
+                    self.take_profit_cum_qty = 0
+                    self.adjust_tp_order(order_obj.order_id)
                     continue
 
         exec_time = time.time() - start_time
+        self.nb_trades += 1
 
         # Get position summary.
         # NOTE: The qty and avg_price are only valid if the position was zero prior to this trade entry.
         # It also happens that the position has closed already by sl/tp by the time we arrive at this line.
         position = self._position.get_position(self.signal['Side'])
-        qty = position['size'] if position else 0
+        qty = round(position['size'], 10) if position else 0
         avg_price = position['entry_price'] if position else 0
-        msg = f'{self.side_l_s} limit trade entry executed in {utils.seconds_to_human_readable(exec_time)}, ' \
+        msg = f'{self.nb_trades}: {self.side_l_s} limit trade entry completed. Exec[{utils.seconds_to_human_readable(exec_time)}], ' \
               f'qty[{cum_trade_qty}/{trade_start_qty}], '
         # Position has been closed by sl/tp
         if avg_price != 0:
             msg += f'avg_price[{avg_price:.2f}], ' \
                    f'slip[{(avg_price - self.signal["EntryPrice"] if avg_price > 0 else 0):.2f}] '
         self._logger.info(msg)
-
-        TelegramBot.send_to_group(msg.replace('limit trade entry executed in ', ''))
+        TelegramBot.send_to_group(msg.replace('limit trade entry completed. ', ''))
 
         return qty, avg_price
+
+    def adjust_tp_order(self, order_id):
+        """
+            Create/Update take profit limit order based on the current cum_exec_qty of the current order
+        """
+        tp_side = OrderSide.Buy if self.signal['Side'] == OrderSide.Sell else OrderSide.Sell
+        order = self._exchange.get_order_by_id_hybrid(self.pair, order_id)
+
+        if order and order['cum_exec_qty'] > self.take_profit_cum_qty:
+            qty = round(order['cum_exec_qty'] - self.take_profit_cum_qty, 10)
+            tp_order = self._exchange.query_orders_rt_by_id(self.pair, self.take_profit_order_id)
+
+            # No pre-existing take_profit order or if it exists it has been filled or cancelled
+            # Create a new take_profit order
+            if not self.take_profit_order_id or tp_order['order_status'] not in [OrderStatus.New,
+                                                                                 OrderStatus.PartiallyFilled]:
+                self.take_profit_cum_qty = round(self.take_profit_cum_qty + qty, 10)
+                while True:
+                    current_price = self.get_current_ob_price(tp_side)
+                    # current_price did not cross take_profit price yet
+                    if (self.signal['Side'] == OrderSide.Buy and current_price < self.sig_take_profit_amount) \
+                            or (self.signal['Side'] == OrderSide.Sell and current_price > self.sig_take_profit_amount):
+                        tp_order_id = self.place_tp_order(self.signal['Side'], self.take_profit_cum_qty,
+                                                          self.sig_take_profit_amount)
+                    # The take_profit has been crossed, re-adjust take_profit price
+                    else:
+                        if self.signal['Side'] == OrderSide.Buy:
+                            new_take_profit = self.adj_price(current_price + self.tick_size)
+                        else:
+                            new_take_profit = self.adj_price(current_price - self.tick_size)
+                        tp_order_id = self.place_tp_order(self.signal['Side'], self.take_profit_cum_qty,
+                                                          new_take_profit)
+
+                    tp_order = self._exchange.query_orders_rt_by_id(self.pair, tp_order_id)
+                    if not tp_order or tp_order['order_status'] \
+                            in [OrderStatus.Cancelled, OrderStatus.PendingCancel, OrderStatus.Rejected]:
+                        continue
+                    else:
+                        break
+                self.take_profit_order_id = tp_order['order_id']
+                op_type = 'create'
+            # We update the existing take_profit order
+            else:
+                self.take_profit_cum_qty = round(self.take_profit_cum_qty + qty, 10)
+                tp_order = self._exchange.query_orders_rt_by_id(self.pair, self.take_profit_order_id)
+                current_price = self.get_current_ob_price(tp_side)
+
+                # The take_profit order is still active.
+                if tp_order['order_status'] in [OrderStatus.Created, OrderStatus.New, OrderStatus.PartiallyFilled]:
+                    # Adjust qty only. The current_price did not cross over the take_profit price
+                    if (self.signal['Side'] == OrderSide.Buy and current_price < self.sig_take_profit_amount) \
+                            or (self.signal['Side'] == OrderSide.Sell and current_price > self.sig_take_profit_amount):
+                        self._exchange.replace_active_order_qty(
+                            tp_order['order_id'],
+                            self.take_profit_cum_qty
+                        )
+                    # Adjust qty and price. The take_profit has been crossed, re-adjust take_profit price
+                    else:
+                        while True:
+                            if self.signal['Side'] == OrderSide.Buy:
+                                new_take_profit = self.adj_price(current_price + self.tick_size)
+                            else:
+                                new_take_profit = self.adj_price(current_price - self.tick_size)
+                            self.sig_take_profit_amount = new_take_profit
+                            self._exchange.replace_active_order_qty_pr(
+                                tp_order['order_id'],
+                                self.take_profit_cum_qty,
+                                new_take_profit
+                            )
+                            tp_order = self._exchange.query_orders_rt_by_id(self.pair, tp_order['order_id'])
+                            if tp_order['qty'] != self.take_profit_cum_qty \
+                                    or tp_order['order_status'] in [OrderStatus.Cancelled, OrderStatus.PendingCancel,
+                                                                    OrderStatus.Rejected]:
+                                continue
+                            else:
+                                break
+                op_type = 'update'
+
+            if op_type == 'update':
+                self._logger.info(f"Updated {tp_side} TakeProfit Limit Order[{self.take_profit_order_id[-8:]}: "
+                                  f"qty={self.take_profit_cum_qty}, tp_price={self.sig_take_profit_amount:.2f}]")
+
 
 
 """
@@ -263,13 +332,12 @@ class LimitEntry(BaseTradeEntry):
 # CH = CandleHandler(ex)
 #
 # signal = {
-#     'Signal': TradeSignals.EnterShort,
 #     'Pair': 'ETHUSDT',
-#     'Side': 'Sell',
+#     'Side': 'Buy',
 #     'EntryPrice': CH.get_latest_price()
 # }
 #
 # limit_entry = LimitEntry(db, ex, Pos, signal).enter_trade()
 
-
+#print(rapidjson.dumps(ex.query_orders_rt_by_id('ETHUSDT', 'd39c6cc0-3cb1-48a2-9773-85464e2cb510'), indent=2))
 

@@ -41,7 +41,7 @@ class CandleHandler:
         return df
 
     def get_refreshed_candles(self):
-        if self._config['strategy']['signal_mode'] == SignalMode.Minute:
+        if self._config['strategy']['signal_mode'] == SignalMode.Minute and self.interval != '1m':
             return self._get_refreshed_candles_minute()
         else:
             return self._get_refreshed_candles()
@@ -282,11 +282,11 @@ class CandleHandler:
                     valid = False
                     msg = f'*******  cur_start[{self._candles_df["start_time"].iloc[-1]}] != ' \
                           f'prev_end[{self._candles_df["end_time"].iloc[-2]}]  *******\n'
-                elif (cur_start - prev_end) >= dt.timedelta(minutes=(self.minutes_in_interval-1)):
+                elif (cur_start - prev_end) >= dt.timedelta(minutes=(self.minutes_in_interval - 1)):
                     valid = False
                     msg = f'*******  diff(cur_start[{self._candles_df["start_time"].iloc[-1]}], ' \
                           f'prev_end[{self._candles_df["end_time"].iloc[-2]}]) >= ' \
-                          f'{self.minutes_in_interval-1}min *******\n'
+                          f'{self.minutes_in_interval - 1}min *******\n'
             # signal_mode = 'interval' or 'realtime'
             elif self._candles_df["start"].iloc[-1] != self._candles_df["end"].iloc[-2]:
                 valid = False
@@ -309,8 +309,6 @@ class CandleHandler:
                 self._candles_df = self.get_historic_candles(start_timestamp)
                 self._candles_df = self._candles_df.append(to_append, ignore_index=True)
                 self._logger.error('Candles dataframe has been rebuilt successfully.')
-
-
 
     def get_latest_price(self):
         self.get_refreshed_candles()

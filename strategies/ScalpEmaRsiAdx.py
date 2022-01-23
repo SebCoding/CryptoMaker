@@ -17,7 +17,7 @@ class ScalpEmaRsiAdx(BaseStrategy):
 
     # % over/under the EMA that can be tolerated to determine if the long/short trade can be placed
     # Value should be between 0 and 1
-    EMA_TOLERANCE = 0.05
+    EMA_TOLERANCE = 0
 
     # Momentum indicator: RSI - Relative Strength Index
     RSI_PERIODS = 2

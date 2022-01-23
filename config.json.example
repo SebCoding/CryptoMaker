@@ -1,5 +1,6 @@
  {
    "bot": {
+     "instance_name": "Bot1",
      "throttle_secs": 1,
      "progress_bar": true
    },
@@ -56,7 +57,7 @@
      "output_file_path": "logs/output_log.txt"
    },
    "telegram": {
-     "enable": false
+     "enable": true
    }
 }
 
