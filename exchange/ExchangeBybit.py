@@ -443,15 +443,17 @@ class ExchangeBybit:
                 page += 1
             else:
                 break
-        # Convert created_at timestamp to datetime string
-        df = pd.DataFrame(list_records)
-        df['created_time'] = \
-            [arrow.get(x).to('local').datetime.strftime(constants.DATETIME_FMT) for x in df.created_time]
-        df['updated_time'] = \
-            [arrow.get(x).to('local').datetime.strftime(constants.DATETIME_FMT) for x in df.updated_time]
-        df.sort_values(by=['created_time'], ascending=True)
-        dict_list = df.to_dict('records')
-        return dict_list
+        if list_records:
+            # Convert created_at timestamp to datetime string
+            df = pd.DataFrame(list_records)
+            df['created_time'] = \
+                [arrow.get(x).to('local').datetime.strftime(constants.DATETIME_FMT) for x in df.created_time]
+            df['updated_time'] = \
+                [arrow.get(x).to('local').datetime.strftime(constants.DATETIME_FMT) for x in df.updated_time]
+            df.sort_values(by=['created_time'], ascending=True)
+            dict_list = df.to_dict('records')
+            return dict_list
+        return None
 
     # Get all conditional orders with all statuses for this pair stored on Bybit
     def get_all_conditional_order_records(self, pair):
@@ -469,15 +471,17 @@ class ExchangeBybit:
                 page += 1
             else:
                 break
-        # Convert created_at timestamp to datetime string
-        df = pd.DataFrame(list_records)
-        df['created_time'] = \
-            [arrow.get(x).to('local').datetime.strftime(constants.DATETIME_FMT) for x in df.created_time]
-        df['updated_time'] = \
-            [arrow.get(x).to('local').datetime.strftime(constants.DATETIME_FMT) for x in df.updated_time]
-        df.sort_values(by=['created_time'], ascending=True)
-        dict_list = df.to_dict('records')
-        return dict_list
+        if list_records:
+            # Convert created_at timestamp to datetime string
+            df = pd.DataFrame(list_records)
+            df['created_time'] = \
+                [arrow.get(x).to('local').datetime.strftime(constants.DATETIME_FMT) for x in df.created_time]
+            df['updated_time'] = \
+                [arrow.get(x).to('local').datetime.strftime(constants.DATETIME_FMT) for x in df.updated_time]
+            df.sort_values(by=['created_time'], ascending=True)
+            dict_list = df.to_dict('records')
+            return dict_list
+        return None
 
     # Get active order by id, using websocket or realtime http method
     def get_order_by_id_hybrid(self, pair, order_id):
@@ -763,12 +767,14 @@ class ExchangeBybit:
                 page += 1
             else:
                 break
-        # Convert created_at timestamp to datetime string
-        df = pd.DataFrame(list_records)
-        df['created_at'] = [arrow.get(x).to('local').datetime.strftime(constants.DATETIME_FMT) for x in df.created_at]
-        df.sort_values(by=['id'])
-        dict_list = df.to_dict('records')
-        return dict_list
+        if list_records:
+            # Convert created_at timestamp to datetime string
+            df = pd.DataFrame(list_records)
+            df['created_at'] = [arrow.get(x).to('local').datetime.strftime(constants.DATETIME_FMT) for x in df.created_at]
+            df.sort_values(by=['id'])
+            dict_list = df.to_dict('records')
+            return dict_list
+        return None
 
     # Get all orders with all statuses for this pair stored on Bybit
     def get_user_trades_records(self, pair):

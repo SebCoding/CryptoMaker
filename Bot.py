@@ -73,7 +73,7 @@ class Bot:
             if signal['Signal'] in [TradeSignals.EnterLong, TradeSignals.EnterShort] \
                     and not self._position.currently_in_position():
                 Bot.beep(5, 2500, 100)
-                df_print = df.drop(columns=['start', 'end'], axis=1)
+                df_print = df.drop(columns=['start', 'end', 'timestamp'], axis=1)
                 self._logger.info(f'\n{df_print.tail(10).to_string()} \n')
                 self._logger.info(f"{signal['Signal']}: {rapidjson.dumps(signal, indent=2)}")
                 self.enter_trade(signal)

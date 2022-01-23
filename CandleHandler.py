@@ -122,7 +122,7 @@ class CandleHandler:
 
                     # Confirm that the websocket did not skip any data
                     # Current candle 'start' time must be equal to prior candle 'end' time
-                    self.validate_last_entry(int(candle['start']), to_append)
+                    self.validate_last_entry(to_append)
 
                     self._last_candle_timestamp = candle['timestamp']
                     data_changed = True
@@ -241,7 +241,7 @@ class CandleHandler:
                             self._candles_df = self._candles_df.iloc[:-1, :].append(to_append, ignore_index=True)
 
                     # Confirm that the websocket did not skip any data
-                    self.validate_last_entry(int(candle['start']), to_append)
+                    self.validate_last_entry(to_append)
 
                     self._last_candle_timestamp = candle['timestamp']
                     data_changed = True
@@ -256,7 +256,7 @@ class CandleHandler:
                     # print('\n'+self._candles_df.tail(10).to_string())
         return self._candles_df, data_changed
 
-    def validate_last_entry(self, start_timestamp, to_append):
+    def validate_last_entry(self, to_append):
         """
             Confirm that the websocket did not skip any data
 
@@ -273,6 +273,7 @@ class CandleHandler:
         valid = True
         msg = ''
         if self._candles_df is not None and len(self._candles_df) >= 2:
+            start_timestamp = arrow.get(int(self._candles_df["start"].iloc[-1]))
             # signal_mode = 'minute'
             if self._config['strategy']['signal_mode'] == SignalMode.Minute:
                 prev_end = arrow.get(int(self._candles_df["end"].iloc[-2]))

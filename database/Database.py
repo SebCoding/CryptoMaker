@@ -173,24 +173,25 @@ class Database:
         self._logger.info(f'Syncing all Order records.')
         table = self.get_table(self.ORDERS_TBL_NAME)
         dict_list = self._exchange.get_all_order_records(pair)
-        records_df = pd.DataFrame(dict_list)
+        if dict_list:
+            records_df = pd.DataFrame(dict_list)
 
-        with self.engine.connect() as connection:
-            # Delete all rows in the table that do not have a status of Filled or Cancelled
-            # These orders might have an updated version so we re-insert
-            connection.execute(table.delete().where(
-                table.c.order_status not in [OrderStatus.Filled, OrderStatus.Cancelled])
-            )
+            with self.engine.connect() as connection:
+                # Delete all rows in the table that do not have a status of Filled or Cancelled
+                # These orders might have an updated version so we re-insert
+                connection.execute(table.delete().where(
+                    table.c.order_status not in [OrderStatus.Filled, OrderStatus.Cancelled])
+                )
 
-            # Get list of PK (order_id) in the table to not insert already existing rows
-            query = f'SELECT "order_id" FROM public."{self.ORDERS_TBL_NAME}"'
-            existing_ids_list = pd.read_sql(query, connection)['order_id'].tolist()
+                # Get list of PK (order_id) in the table to not insert already existing rows
+                query = f'SELECT "order_id" FROM public."{self.ORDERS_TBL_NAME}"'
+                existing_ids_list = pd.read_sql(query, connection)['order_id'].tolist()
 
-            # Delete rows that already exist in the db
-            df = records_df[~records_df['order_id'].isin(existing_ids_list)]
+                # Delete rows that already exist in the db
+                df = records_df[~records_df['order_id'].isin(existing_ids_list)]
 
-            if len(df) > 0:
-                connection.execute(table.insert(), df.to_dict('records'))
+                if len(df) > 0:
+                    connection.execute(table.insert(), df.to_dict('records'))
 
     """
         -----------------------------------------------------------------------------
@@ -236,22 +237,23 @@ class Database:
         self._logger.info(f'Syncing all Closed P&L records.')
         table = self.get_table(self.CLOSED_PNL_TBL_NAME)
         dict_list = self._exchange.get_all_closed_pnl_records(pair)
-        records_df = pd.DataFrame(dict_list)
+        if dict_list:
+            records_df = pd.DataFrame(dict_list)
 
-        # Delete all rows in the table
-        # with self.engine.connect() as connection:
-        #     connection.execute(table.delete())
+            # Delete all rows in the table
+            # with self.engine.connect() as connection:
+            #     connection.execute(table.delete())
 
-        # Get list of PK (Id) in the table to not insert already existing rows
-        query = f'SELECT "id" FROM public."{self.CLOSED_PNL_TBL_NAME}"'
-        with self.engine.connect() as connection:
-            existing_ids_list = pd.read_sql(query, connection)['id'].tolist()
+            # Get list of PK (Id) in the table to not insert already existing rows
+            query = f'SELECT "id" FROM public."{self.CLOSED_PNL_TBL_NAME}"'
+            with self.engine.connect() as connection:
+                existing_ids_list = pd.read_sql(query, connection)['id'].tolist()
 
-            # Delete rows that already exist in the db
-            df = records_df[~records_df['id'].isin(existing_ids_list)]
+                # Delete rows that already exist in the db
+                df = records_df[~records_df['id'].isin(existing_ids_list)]
 
-            if len(df) > 0:
-                connection.execute(table.insert(), df.to_dict('records'))
+                if len(df) > 0:
+                    connection.execute(table.insert(), df.to_dict('records'))
 
     """
         -----------------------------------------------------------------------------
@@ -348,21 +350,22 @@ class Database:
         self._logger.info(f'Syncing all Conditional Order records.')
         table = self.get_table(self.COND_ORDERS_TBL_NAME)
         dict_list = self._exchange.get_all_conditional_order_records(pair)
-        records_df = pd.DataFrame(dict_list)
+        if dict_list:
+            records_df = pd.DataFrame(dict_list)
 
-        with self.engine.connect() as connection:
-            # Delete all rows in the table that do not have a status of Filled or Cancelled
-            # These orders might have an updated version so we re-insert
-            connection.execute(table.delete().where(
-                table.c.order_status not in [OrderStatus.Filled, OrderStatus.Cancelled])
-            )
+            with self.engine.connect() as connection:
+                # Delete all rows in the table that do not have a status of Filled or Cancelled
+                # These orders might have an updated version so we re-insert
+                connection.execute(table.delete().where(
+                    table.c.order_status not in [OrderStatus.Filled, OrderStatus.Cancelled])
+                )
 
-            # Get list of PK (order_id) in the table to not insert already existing rows
-            query = f'SELECT "stop_order_id" FROM public."{self.COND_ORDERS_TBL_NAME}"'
-            existing_ids_list = pd.read_sql(query, connection)['stop_order_id'].tolist()
+                # Get list of PK (order_id) in the table to not insert already existing rows
+                query = f'SELECT "stop_order_id" FROM public."{self.COND_ORDERS_TBL_NAME}"'
+                existing_ids_list = pd.read_sql(query, connection)['stop_order_id'].tolist()
 
-            # Delete rows that already exist in the db
-            df = records_df[~records_df['stop_order_id'].isin(existing_ids_list)]
+                # Delete rows that already exist in the db
+                df = records_df[~records_df['stop_order_id'].isin(existing_ids_list)]
 
-            if len(df) > 0:
-                connection.execute(table.insert(), df.to_dict('records'))
+                if len(df) > 0:
+                    connection.execute(table.insert(), df.to_dict('records'))
