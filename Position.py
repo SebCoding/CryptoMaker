@@ -117,9 +117,11 @@ class Position:
     def get_position(self, side):
         if side == OrderSide.Buy:
             return self.long_position
-        else:
+        elif side == OrderSide.Sell:
             return self.short_position
+        return None
 
+    # Properties
     long_position = property(get_long_position)
     short_position = property(get_short_position)
     positions = property(get_positions)
@@ -154,6 +156,7 @@ class Position:
             return self._short_position['size'] > 0
 
     def get_current_stop_loss(self, side):
+        self.refresh_position()
         if side == OrderSide.Buy:
             return self._long_position['stop_loss']
         if side == OrderSide.Sell:
