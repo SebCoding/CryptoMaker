@@ -68,12 +68,16 @@ class ScalpEmaRsiAdx(BaseStrategy):
         # Volatility Indicator. ADX-5
         df['ADX'] = talib.ADX(df['high'], df['low'], df['close'], timeperiod=self.ADX_PERIODS)
 
+        # EMA Tolerance columns
+        df['EMA_LONG'] = df['EMA'] - df['EMA'] * self.EMA_TOLERANCE
+        df['EMA_SHORT'] = df['EMA'] + df['EMA'] * self.EMA_TOLERANCE
+
         df['signal'] = 0
 
         # Populate long signals
         df.loc[
             (
-                (df['close'] > (df['EMA'] - df['EMA']*self.EMA_TOLERANCE)) &  # price > (EMA - Tolerance)
+                (df['close'] > df['EMA_LONG']) &  # price > (EMA - Tolerance)
                 (df['RSI'] < self.RSI_MIN_SIGNAL_THRESHOLD) &  # RSI < RSI_MIN_THRESHOLD
                 (df['ADX'] > self.ADX_THRESHOLD)  # ADX > ADX_THRESHOLD
             ),
@@ -82,7 +86,7 @@ class ScalpEmaRsiAdx(BaseStrategy):
         # Populate short signals
         df.loc[
             (
-                (df['close'] < (df['EMA'] + df['EMA']*self.EMA_TOLERANCE)) &  # price < (EMA + Tolerance)
+                (df['close'] < df['EMA_SHORT']) &  # price < (EMA + Tolerance)
                 (df['RSI'] > self.RSI_MAX_SIGNAL_THRESHOLD) &  # RSI > RSI_MAX_THRESHOLD
                 (df['ADX'] > self.ADX_THRESHOLD)  # ADX > ADX_THRESHOLD
             ),
