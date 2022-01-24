@@ -121,11 +121,11 @@ class ScalpEmaRsiAdx(BaseStrategy):
         start_scan = signal_index + 1
         for i, row in self.data.iloc[start_scan:].iterrows():
             # If after receiving a long signal the EMA or ADX are no longer satisfied, cancel signal
-            if long_signal and (row.close < row.EMA or row.ADX < self.ADX_THRESHOLD):
+            if long_signal and (row.close < row.EMA_LONG or row.ADX < self.ADX_THRESHOLD):
                 return self.data, {'Signal': TradeSignals.NoTrade, 'SignalOffset': signal_index - data_length + 1}
 
             # If after receiving a short signal the EMA or ADX are no longer satisfied, cancel signal
-            if short_signal and (row.close > row.EMA or row.ADX < self.ADX_THRESHOLD):
+            if short_signal and (row.close > row.EMA_SHORT or row.ADX < self.ADX_THRESHOLD):
                 return self.data, {'Signal': TradeSignals.NoTrade, 'SignalOffset': signal_index - data_length + 1}
 
             # RSI exiting oversold area. Long Entry
