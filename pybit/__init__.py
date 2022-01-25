@@ -1894,7 +1894,6 @@ class HTTP:
                     pass
 
                 else:
-                    TelegramBot.send_to_group(f'InvalidRequestError: {path}: {req_params}. message={s_json["ret_msg"]}')
                     raise InvalidRequestError(
                         request=f'{method} {path}: {req_params}',
                         message=s_json["ret_msg"],
