@@ -27,6 +27,7 @@ import websocket
 from datetime import datetime as dt
 from concurrent.futures import ThreadPoolExecutor
 
+from telegram_.TelegramBot import TelegramBot
 from .exceptions import FailedRequestError, InvalidRequestError
 
 # Requests will use simplejson if available.
@@ -1742,6 +1743,7 @@ class HTTP:
 
             retries_attempted -= 1
             if retries_attempted < 0:
+                TelegramBot.send_to_group(f'FailedRequestError: {path}: {req_params}. Bad Request. Retries exceeded maximum.')
                 raise FailedRequestError(
                     request=f'{method} {path}: {req_params}',
                     message='Bad Request. Retries exceeded maximum.',
@@ -1892,6 +1894,7 @@ class HTTP:
                     pass
 
                 else:
+                    TelegramBot.send_to_group(f'InvalidRequestError: {path}: {req_params}. message={s_json["ret_msg"]}')
                     raise InvalidRequestError(
                         request=f'{method} {path}: {req_params}',
                         message=s_json["ret_msg"],
@@ -2472,6 +2475,7 @@ class WebSocket:
         if not self.exited:
             name = 'Public' if {self.wsName} == 'Authenticated' else 'Private'
             self.logger.error(f'On_Error: {name} WebSocket encountered error: {error}.')
+            TelegramBot.send_to_group(f'{name} WebSocket encountered error: {error}.')
             self.exit()
 
         # Reconnect.

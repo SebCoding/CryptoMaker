@@ -238,7 +238,7 @@ class LimitEntry(BaseTradeEntry):
             msg += f'pos_value[{position_value:.2f}], avg_price[{avg_price:.2f}], ' \
                    f'slip[{(avg_price - self.signal["EntryPrice"] if avg_price > 0 else 0):.2f}] '
         self._logger.info(msg)
-        TelegramBot.send_to_group(msg.replace(' limit trade entry completed. ', '. '))
+        #TelegramBot.send_to_group(msg.replace(' limit trade entry completed. ', '. '))
 
         return qty, avg_price
 
