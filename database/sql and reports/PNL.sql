@@ -13,6 +13,7 @@ select
 		when cpnl.side = 'Sell' then 'Long'
 		else null
 	  end "Trade"
+	, cpnl.symbol "Pair"
 	, ord.created_time "Opened"
 	, ord.updated_time "Closed"
 	, case 
@@ -49,6 +50,7 @@ select
 		when cpnl.side = 'Sell' then 'Long'
 		else null
 	  end "Trade"
+	, cpnl.symbol "Trade"
 	, cond_ord.created_time "Opened"
 	, cond_ord.updated_time "Closed"
 	, case 

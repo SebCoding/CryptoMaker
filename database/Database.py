@@ -180,6 +180,7 @@ class Database:
                 # Delete all rows in the table that do not have a status of Filled or Cancelled
                 # These orders might have an updated version so we re-insert
                 connection.execute(table.delete().where(
+                    table.c.symbol == pair and
                     table.c.order_status not in [OrderStatus.Filled, OrderStatus.Cancelled])
                 )
 
@@ -357,6 +358,7 @@ class Database:
                 # Delete all rows in the table that do not have a status of Filled or Cancelled
                 # These orders might have an updated version so we re-insert
                 connection.execute(table.delete().where(
+                    table.c.symbol == pair and
                     table.c.order_status not in [OrderStatus.Filled, OrderStatus.Cancelled])
                 )
 

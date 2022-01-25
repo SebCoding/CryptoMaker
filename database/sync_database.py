@@ -8,7 +8,7 @@ from exchange.ExchangeBybit import ExchangeBybit
     to the main folder of CryptoMaker in your Run Configuration at the top right of the window.
 """
 
-PAIR = 'BTCUSDT'
+PAIR = 'ETHUSDT'
 
 
 def main():

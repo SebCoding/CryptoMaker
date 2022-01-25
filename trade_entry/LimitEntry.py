@@ -250,14 +250,13 @@ class LimitEntry(BaseTradeEntry):
         order = self._exchange.get_order_by_id_hybrid(self.pair, order_id)
 
         if order and order['cum_exec_qty'] > self.take_profit_cum_qty:
-            qty = round(order['cum_exec_qty'] - self.take_profit_cum_qty, 10)
+            self.take_profit_cum_qty = float(order['cum_exec_qty'])
             tp_order = self._exchange.query_orders_rt_by_id(self.pair, self.take_profit_order_id)
 
             # No pre-existing take_profit order or if it exists it has been filled or cancelled
             # Create a new take_profit order
             if not self.take_profit_order_id or tp_order['order_status'] not in [OrderStatus.New,
                                                                                  OrderStatus.PartiallyFilled]:
-                self.take_profit_cum_qty = round(self.take_profit_cum_qty + qty, 10)
                 while True:
                     current_price = self.get_current_ob_price(tp_side)
                     # current_price did not cross take_profit price yet
@@ -275,8 +274,9 @@ class LimitEntry(BaseTradeEntry):
                                                           new_take_profit)
 
                     tp_order = self._exchange.query_orders_rt_by_id(self.pair, tp_order_id)
-                    if not tp_order or tp_order['order_status'] \
-                            in [OrderStatus.Cancelled, OrderStatus.PendingCancel, OrderStatus.Rejected]:
+                    if (not tp_order or tp_order['order_status'] \
+                            in [OrderStatus.Cancelled, OrderStatus.PendingCancel, OrderStatus.Rejected]) \
+                            and self._position.currently_in_position(self.signal['Side']):
                         continue
                     else:
                         break
@@ -284,7 +284,6 @@ class LimitEntry(BaseTradeEntry):
                 op_type = 'create'
             # We update the existing take_profit order
             else:
-                self.take_profit_cum_qty = round(self.take_profit_cum_qty + qty, 10)
                 tp_order = self._exchange.query_orders_rt_by_id(self.pair, self.take_profit_order_id)
                 current_price = self.get_current_ob_price(tp_side)
 
