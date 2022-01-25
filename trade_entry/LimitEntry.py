@@ -162,7 +162,13 @@ class LimitEntry(BaseTradeEntry):
                 if status == OrderStatus.Cancelled:
                     self.adjust_tp_order(order_id)
                     cum_trade_qty += cum_exec_qty
-                    assert (cum_exec_qty == self.take_profit_cum_qty)
+
+                    # assert (cum_exec_qty == self.take_profit_cum_qty)
+                    if cum_exec_qty != self.take_profit_cum_qty:
+                        self._logger.error(f'Assert failed. cum_exec_qty={cum_exec_qty} != '
+                                           f'take_profit_cum_qty={self.take_profit_cum_qty}')
+                        raise AssertionError
+
                     self._logger.info(f'{self.side_l_s} Limit Entry Aborting. '
                                       f'elapsed_time={round(elapsed_time, 1)}s > abort_threshold={self.abort_seconds}s')
                     break
@@ -173,7 +179,13 @@ class LimitEntry(BaseTradeEntry):
                 if status == OrderStatus.Cancelled:
                     self.adjust_tp_order(order_id)
                     cum_trade_qty += cum_exec_qty
-                    assert (cum_exec_qty == self.take_profit_cum_qty)
+
+                    # assert (cum_exec_qty == self.take_profit_cum_qty)
+                    if cum_exec_qty != self.take_profit_cum_qty:
+                        self._logger.error(f'Assert failed. cum_exec_qty={cum_exec_qty} != '
+                                           f'take_profit_cum_qty={self.take_profit_cum_qty}')
+                        raise AssertionError
+
                     if self.signal['Side'] == OrderSide.Buy:
                         abort_price = trade_start_price + abort_price_diff
                         self._logger.info(f'{self.side_l_s} Limit Entry Aborting. current_price={current_price:.2f} > '
@@ -200,13 +212,25 @@ class LimitEntry(BaseTradeEntry):
                     self._logger.info(f"Filled {self.side_l_s} Limit Order[{order_id[-8:]}: "
                                       f"qty={cum_exec_qty}/{order_qty} last_exec_price={order_price:.2f}]")
                     cum_trade_qty += cum_exec_qty
-                    assert(cum_exec_qty == self.take_profit_cum_qty)
+
+                    # assert (cum_exec_qty == self.take_profit_cum_qty)
+                    if cum_exec_qty != self.take_profit_cum_qty:
+                        self._logger.error(f'Assert failed. cum_exec_qty={cum_exec_qty} != '
+                                           f'take_profit_cum_qty={self.take_profit_cum_qty}')
+                        raise AssertionError
+
                     break
                 # Rejected, PendingCancel, Cancelled
                 case _:
                     self.adjust_tp_order(order_id)
                     cum_trade_qty += cum_exec_qty
-                    assert (cum_exec_qty == self.take_profit_cum_qty)
+
+                    # assert (cum_exec_qty == self.take_profit_cum_qty)
+                    if cum_exec_qty != self.take_profit_cum_qty:
+                        self._logger.error(f'Assert failed. cum_exec_qty={cum_exec_qty} != '
+                                           f'take_profit_cum_qty={self.take_profit_cum_qty}')
+                        raise AssertionError
+
                     ob_price = self.get_current_ob_price(self.signal['Side'])
                     self._logger.info(
                         f"{order_status} {self.side_l_s} Order[{order_id[-8:]}: qty={cum_exec_qty}/{order_qty}, "
