@@ -18,7 +18,7 @@ class ScalpEmaRsiAdx(BaseStrategy):
 
     # % over/under the EMA that can be tolerated to determine if the long/short trade can be placed
     # Value should be between 0 and 1
-    EMA_TOLERANCE = 0.02
+    EMA_TOLERANCE = 0
 
     # Momentum indicator: RSI - Relative Strength Index
     RSI_PERIODS = 2
@@ -31,16 +31,16 @@ class ScalpEmaRsiAdx(BaseStrategy):
 
     # Volatility indicator: ADX - Average Directional Index
     ADX_PERIODS = 3
-    ADX_THRESHOLD = 20
+    ADX_THRESHOLD = 30
 
-    def __init__(self, database, exchange):
+    def __init__(self, database):
         super().__init__()
         self._logger = Logger.get_module_logger(__name__)
         self._logger.info(f'Initializing strategy [{self.name}] ' + self.get_strategy_text_details())
         self._logger.info(f'Strategy Settings:\n' + rapidjson.dumps(self._config['strategy'], indent=2))
         self.last_trade_index = self.minimum_candles_to_start
         self.db = database
-        self._wallet = WalletUSDT(exchange)
+        # self._wallet = WalletUSDT(exchange)
 
     def get_strategy_text_details(self):
         details = f'EMA({self.EMA_PERIODS}), EMA_TOLERANCE({self.EMA_TOLERANCE}), ' \
@@ -50,12 +50,12 @@ class ScalpEmaRsiAdx(BaseStrategy):
                   f'ADX({self.ADX_PERIODS}), ADX_THRESHOLD({self.ADX_THRESHOLD})'
         return details
 
-    def get_projected_profit(self, price):
-        balance = self._wallet.free
-        take_profit_pct = float(self._config['trading']['take_profit'])
-        tradable_balance = balance * float(self._config['trading']['tradable_balance_ratio'])
-        profit = tradable_balance * take_profit_pct
-        return profit
+    # def get_projected_profit(self, price):
+    #     balance = self._wallet.free
+    #     take_profit_pct = float(self._config['trading']['take_profit'])
+    #     tradable_balance = balance * float(self._config['trading']['tradable_balance_ratio'])
+    #     profit = tradable_balance * take_profit_pct
+    #     return profit
 
     # Step 1: Calculate indicator values required to determine long/short signals
     def add_indicators_and_signals(self, candles_df):
@@ -150,10 +150,10 @@ class ScalpEmaRsiAdx(BaseStrategy):
                     "Side": OrderSide.Buy,
                     'SignalOffset': signal_index - data_length + 1,
                     'EntryPrice': row.close,
-                    'ProjectedProfit': round(self.get_projected_profit(row.close), 2),
+                    #'ProjectedProfit': round(self.get_projected_profit(row.close), 2),
                     'EMA': round(row.EMA, 2),
-                    'EMA_Long': round(row.EMA_Long, 2),
-                    'EMA_Short': round(row.EMA_Short, 2),
+                    # 'EMA_Long': round(row.EMA_Long, 2),
+                    # 'EMA_Short': round(row.EMA_Short, 2),
                     'RSI': round(row.RSI, 2),
                     'ADX': round(row.ADX, 2),
                     'Notes': self.get_strategy_text_details()
@@ -174,10 +174,10 @@ class ScalpEmaRsiAdx(BaseStrategy):
                     "Side": OrderSide.Sell,
                     'SignalOffset': signal_index - data_length + 1,
                     'EntryPrice': row.close,
-                    'ProjectedProfit': round(self.get_projected_profit(row.close), 2),
+                    #'ProjectedProfit': round(self.get_projected_profit(row.close), 2),
                     'EMA': round(row.EMA, 2),
-                    'EMA_Long': round(row.EMA_Long, 2),
-                    'EMA_Short': round(row.EMA_Short, 2),
+                    # 'EMA_Long': round(row.EMA_Long, 2),
+                    # 'EMA_Short': round(row.EMA_Short, 2),
                     'RSI': round(row.RSI, 2),
                     'ADX': round(row.ADX, 2),
                     'Notes': self.get_strategy_text_details()
