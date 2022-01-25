@@ -71,10 +71,7 @@ class LimitEntry(BaseTradeEntry):
             to calculate a stop_loss equal to the first original order. All orders placed
             within a trade entry should have the same stop loss.
         """
-        balance = self._wallet.free
-        tradable_balance = balance * self.tradable_ratio
-        if tradable_balance < self.MIN_TRADE_AMOUNT:
-            return 0, None
+        tradable_balance = self.get_tradable_balance()
 
         price = self.get_entry_price(self.signal['Side'])
 

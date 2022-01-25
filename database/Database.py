@@ -106,9 +106,13 @@ class Database:
                               Column('Pair', String, nullable=False),
                               Column('Interval', String, nullable=False),
                               Column('Signal', String, nullable=False),
+                              Column('Side', String, nullable=False),
                               Column('SignalOffset', Integer, nullable=False),
                               Column('EntryPrice', Float, nullable=False),
+                              Column('ProjectedProfit', Float, nullable=False),
                               Column('EMA', Float, nullable=False),
+                              Column('EMA_Long', Float, nullable=False),
+                              Column('EMA_Short', Float, nullable=False),
                               Column('RSI', Float, nullable=False),
                               Column('ADX', Float, nullable=False),
                               Column('Notes', String)

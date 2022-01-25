@@ -2,6 +2,7 @@ import rapidjson
 import talib
 import datetime as dt
 import constants
+from WalletUSDT import WalletUSDT
 from enums.BybitEnums import OrderSide
 from logging_.Logger import Logger
 from enums import TradeSignals
@@ -17,7 +18,7 @@ class ScalpEmaRsiAdx(BaseStrategy):
 
     # % over/under the EMA that can be tolerated to determine if the long/short trade can be placed
     # Value should be between 0 and 1
-    EMA_TOLERANCE = 0
+    EMA_TOLERANCE = 0.02
 
     # Momentum indicator: RSI - Relative Strength Index
     RSI_PERIODS = 2
@@ -32,21 +33,29 @@ class ScalpEmaRsiAdx(BaseStrategy):
     ADX_PERIODS = 3
     ADX_THRESHOLD = 20
 
-    def __init__(self, database):
+    def __init__(self, database, exchange):
         super().__init__()
         self._logger = Logger.get_module_logger(__name__)
         self._logger.info(f'Initializing strategy [{self.name}] ' + self.get_strategy_text_details())
         self._logger.info(f'Strategy Settings:\n' + rapidjson.dumps(self._config['strategy'], indent=2))
         self.last_trade_index = self.minimum_candles_to_start
         self.db = database
+        self._wallet = WalletUSDT(exchange)
 
     def get_strategy_text_details(self):
         details = f'EMA({self.EMA_PERIODS}), EMA_TOLERANCE({self.EMA_TOLERANCE}), ' \
-                  f'RSI({self.RSI_PERIODS}), ADX({self.ADX_PERIODS}) ' \
+                  f'RSI({self.RSI_PERIODS}), ' \
                   f'RSI_SIGNAL({self.RSI_MIN_SIGNAL_THRESHOLD}, {self.RSI_MAX_SIGNAL_THRESHOLD}), ' \
                   f'RSI_ENTRY({self.RSI_MIN_ENTRY_THRESHOLD}, {self.RSI_MAX_ENTRY_THRESHOLD}), ' \
-                  f'ADX_THRESHOLD({self.ADX_THRESHOLD})'
+                  f'ADX({self.ADX_PERIODS}), ADX_THRESHOLD({self.ADX_THRESHOLD})'
         return details
+
+    def get_projected_profit(self, price):
+        balance = self._wallet.free
+        take_profit_pct = float(self._config['trading']['take_profit'])
+        tradable_balance = balance * float(self._config['trading']['tradable_balance_ratio'])
+        profit = tradable_balance * take_profit_pct
+        return profit
 
     # Step 1: Calculate indicator values required to determine long/short signals
     def add_indicators_and_signals(self, candles_df):
@@ -69,26 +78,26 @@ class ScalpEmaRsiAdx(BaseStrategy):
         df['ADX'] = talib.ADX(df['high'], df['low'], df['close'], timeperiod=self.ADX_PERIODS)
 
         # EMA Tolerance columns
-        df['EMA_LONG'] = df['EMA'] - df['EMA'] * self.EMA_TOLERANCE
-        df['EMA_SHORT'] = df['EMA'] + df['EMA'] * self.EMA_TOLERANCE
+        df['EMA_Long'] = df['EMA'] - df['EMA'] * self.EMA_TOLERANCE
+        df['EMA_Short'] = df['EMA'] + df['EMA'] * self.EMA_TOLERANCE
 
         df['signal'] = 0
 
         # Populate long signals
         df.loc[
             (
-                (df['close'] > df['EMA_LONG']) &  # price > (EMA - Tolerance)
-                (df['RSI'] < self.RSI_MIN_SIGNAL_THRESHOLD) &  # RSI < RSI_MIN_THRESHOLD
-                (df['ADX'] > self.ADX_THRESHOLD)  # ADX > ADX_THRESHOLD
+                    (df['close'] > df['EMA_Long']) &  # price > (EMA - Tolerance)
+                    (df['RSI'] < self.RSI_MIN_SIGNAL_THRESHOLD) &  # RSI < RSI_MIN_THRESHOLD
+                    (df['ADX'] > self.ADX_THRESHOLD)  # ADX > ADX_THRESHOLD
             ),
             'signal'] = 1
 
         # Populate short signals
         df.loc[
             (
-                (df['close'] < df['EMA_SHORT']) &  # price < (EMA + Tolerance)
-                (df['RSI'] > self.RSI_MAX_SIGNAL_THRESHOLD) &  # RSI > RSI_MAX_THRESHOLD
-                (df['ADX'] > self.ADX_THRESHOLD)  # ADX > ADX_THRESHOLD
+                    (df['close'] < df['EMA_Short']) &  # price < (EMA + Tolerance)
+                    (df['RSI'] > self.RSI_MAX_SIGNAL_THRESHOLD) &  # RSI > RSI_MAX_THRESHOLD
+                    (df['ADX'] > self.ADX_THRESHOLD)  # ADX > ADX_THRESHOLD
             ),
             'signal'] = -1
 
@@ -121,11 +130,11 @@ class ScalpEmaRsiAdx(BaseStrategy):
         start_scan = signal_index + 1
         for i, row in self.data.iloc[start_scan:].iterrows():
             # If after receiving a long signal the EMA or ADX are no longer satisfied, cancel signal
-            if long_signal and (row.close < row.EMA_LONG or row.ADX < self.ADX_THRESHOLD):
+            if long_signal and (row.close < row.EMA_Long or row.ADX < self.ADX_THRESHOLD):
                 return self.data, {'Signal': TradeSignals.NoTrade, 'SignalOffset': signal_index - data_length + 1}
 
             # If after receiving a short signal the EMA or ADX are no longer satisfied, cancel signal
-            if short_signal and (row.close > row.EMA_SHORT or row.ADX < self.ADX_THRESHOLD):
+            if short_signal and (row.close > row.EMA_Short or row.ADX < self.ADX_THRESHOLD):
                 return self.data, {'Signal': TradeSignals.NoTrade, 'SignalOffset': signal_index - data_length + 1}
 
             # RSI exiting oversold area. Long Entry
@@ -141,9 +150,12 @@ class ScalpEmaRsiAdx(BaseStrategy):
                     "Side": OrderSide.Buy,
                     'SignalOffset': signal_index - data_length + 1,
                     'EntryPrice': row.close,
-                    'EMA': row.EMA,
-                    'RSI': row.RSI,
-                    'ADX': row.ADX,
+                    'ProjectedProfit': round(self.get_projected_profit(row.close), 2),
+                    'EMA': round(row.EMA, 2),
+                    'EMA_Long': round(row.EMA_Long, 2),
+                    'EMA_Short': round(row.EMA_Short, 2),
+                    'RSI': round(row.RSI, 2),
+                    'ADX': round(row.ADX, 2),
                     'Notes': self.get_strategy_text_details()
                 }
                 self.db.add_trade_signals_dict(signal)
@@ -162,9 +174,12 @@ class ScalpEmaRsiAdx(BaseStrategy):
                     "Side": OrderSide.Sell,
                     'SignalOffset': signal_index - data_length + 1,
                     'EntryPrice': row.close,
-                    'EMA': row.EMA,
-                    'RSI': row.RSI,
-                    'ADX': row.ADX,
+                    'ProjectedProfit': round(self.get_projected_profit(row.close), 2),
+                    'EMA': round(row.EMA, 2),
+                    'EMA_Long': round(row.EMA_Long, 2),
+                    'EMA_Short': round(row.EMA_Short, 2),
+                    'RSI': round(row.RSI, 2),
+                    'ADX': round(row.ADX, 2),
                     'Notes': self.get_strategy_text_details()
                 }
                 self.db.add_trade_signals_dict(signal)

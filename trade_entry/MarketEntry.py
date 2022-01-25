@@ -23,11 +23,7 @@ class MarketEntry(BaseTradeEntry):
         self.take_profit_order_id = None
         self.take_profit_qty = 0
 
-        tradable_ratio = self._config['trading']['tradable_balance_ratio']
-        balance = self._wallet.free
-        tradable_balance = balance * tradable_ratio
-        if tradable_balance < self.MIN_TRADE_AMOUNT:
-            return None
+        tradable_balance = self.get_tradable_balance()
 
         # Calculate trade size (qty) based on leverage
         qty = tradable_balance / self.signal['EntryPrice']

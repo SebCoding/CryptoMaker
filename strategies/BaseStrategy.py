@@ -32,7 +32,6 @@ class BaseStrategy(ABC):
     # start trading as soon as the application is started
     minimum_candles_to_start = 0
 
-
     def __init__(self):
         super().__init__()
         self.name = self.__class__.__name__

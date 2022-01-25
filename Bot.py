@@ -58,7 +58,7 @@ class Bot:
         self._position = Position(self.db, self._exchange)
         self._wallet = WalletUSDT(self._exchange)
         self._logger.info(f'{self._wallet.to_string()}')
-        self.strategy = globals()[self._config['strategy']['name']](self.db)
+        self.strategy = globals()[self._config['strategy']['name']](self.db, self._exchange)
         self._logger.info(f'Trading Settings:\n' + rapidjson.dumps(self._config['trading'], indent=2))
         self._logger.info(f'Limit Entry Settings:\n' + rapidjson.dumps(self._config['limit_entry'], indent=2))
 
@@ -74,7 +74,7 @@ class Bot:
             # Step 3: Check if we received an entry signal and we are not in an open position
             if signal['Signal'] in [TradeSignals.EnterLong, TradeSignals.EnterShort] \
                     and not self._position.currently_in_position():
-                Bot.beep(5, 2500, 100)
+                #Bot.beep(5, 2500, 100)
                 df_print = df.drop(columns=['start', 'end', 'timestamp'], axis=1)
                 self._logger.info(f'\n{df_print.tail(10).to_string()} \n')
                 self._logger.info(f"{signal['Signal']}: {rapidjson.dumps(signal, indent=2)}")

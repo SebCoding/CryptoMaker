@@ -110,6 +110,13 @@ class BaseTradeEntry(ABC):
             take_profit = price - take_profit
         return self.adj_price(take_profit)
 
+    def get_tradable_balance(self):
+        balance = self._wallet.free
+        tradable_balance = balance * self.tradable_ratio
+        if tradable_balance < self.MIN_TRADE_AMOUNT:
+            return None
+        return tradable_balance
+
     def get_executions(self, side, order_id=None):
         """
             Returns a list of execution dictionaries for the specified side
