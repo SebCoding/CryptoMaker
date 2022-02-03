@@ -186,7 +186,11 @@ class BaseTradeEntry(ABC):
 
             if self.take_profit_order_id:
                 self.take_profit_cum_qty = round(self.take_profit_cum_qty + qty, 10)
-                result = self._exchange.replace_active_order_qty(self.take_profit_order_id, self.take_profit_cum_qty)
+                result = self._exchange.replace_active_order(
+                    symbol=self.pair,
+                    order_id=self.take_profit_order_id,
+                    p_r_qty=self.take_profit_cum_qty
+                )
                 # The previous tp order still exists (not yet filled)
                 if result and result['ret_code'] == 0:
                     self._logger.info(f"Updated {tp_side} TakeProfit Limit Order[{self.take_profit_order_id[-8:]}: "
@@ -210,8 +214,11 @@ class BaseTradeEntry(ABC):
 
                 if self.take_profit_order_id:
                     self.take_profit_cum_qty = round(self.take_profit_cum_qty + qty, 10)
-                    result = self._exchange.replace_active_order_qty(self.take_profit_order_id,
-                                                                     self.take_profit_cum_qty)
+                    result = self._exchange.replace_active_order(
+                        symbol=self.pair,
+                        order_id=self.take_profit_order_id,
+                        p_r_qty=self.take_profit_cum_qty
+                    )
                     # The previous tp order still exists (not yet filled)
                     if result and result['ret_code'] == 0:
                         self._logger.info(f"Updated {tp_side} TakeProfit Limit Order[{self.take_profit_order_id[-8:]}: "

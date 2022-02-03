@@ -359,9 +359,8 @@ class ExchangeBybit:
         df['timestamp'] = 0
 
         # Only keep relevant columns OHLCV and re-order
-        df = df.loc[:,
-             ['start', 'end', 'start_time', 'end_time', 'pair',
-              'open', 'high', 'low', 'close', 'volume', 'confirm', 'timestamp']]
+        df = df.loc[:, ['start', 'end', 'start_time', 'end_time', 'pair',
+                        'open', 'high', 'low', 'close', 'volume', 'confirm', 'timestamp']]
 
         # Set proper data types
         df['start'] = df['start'].astype(int)
@@ -569,133 +568,171 @@ class ExchangeBybit:
                 raise e
         return data['result'] if data else None
 
-    def replace_active_order_qt_pr_sl(self, order_id, new_qty, new_price, new_stop_loss):
+    def replace_active_order(self, **kwargs):
         """
             replace_active_order() can modify/amend your active orders.
-            Params:
-             - p_r_qty: New order quantity. Do not pass this field if you don't want modify it
-             - p_r_price: New order price. Do not pass this field if you don't want modify it
-             - take_profit: New take_profit price, also known as stop_px. Do not pass this field if you don't want modify it
-             - stop_loss: New stop_loss price, also known as stop_px. Do not pass this field if you don't want modify it
+            Params:         mandatory   type    description
+            - order_id:	        false	string	Order ID. Required if not passing order_link_id
+            - order_link_id:	false	string	Unique user-set order ID. Required if not passing order_id
+            - symbol	        true	string	Symbol
+            - p_r_qty	        false	integer	New order quantity. Do not pass this field if you don't want modify it
+            - p_r_price	        false	number	New order price. Do not pass this field if you don't want modify it
+            - take_profit	    false	number	New take_profit price, also known as stop_px.
+                                                Do not pass this field if you don't want modify it
+            - stop_loss	        false	number	New stop_loss price, also known as stop_px.
+                                                Do not pass this field if you don't want modify it
+            - tp_trigger_by	    false	string	Take profit trigger price type, default: LastPrice
+            - sl_trigger_by	    false	string	Stop loss trigger price type, default: LastPrice
          """
         try:
-            result = self.session_auth.replace_active_order(
-                symbol=self.pair,
-                order_id=order_id,
-                p_r_qty=new_qty,
-                p_r_price=new_price,
-                stop_loss=new_stop_loss
-            )
+            result = self.session_auth.replace_active_order(**kwargs)
             return result
         except pybit.exceptions.InvalidRequestError as e:
             # 20001: Order not exists or too late to replace
             # 30076 Order not modified
-            if e.status_code not in [20001, 30076]:
+            # 30032: Can not initiate replace_ao while still having pending item
+            if e.status_code not in [20001, 30076, 30032]:
                 self._logger.exception(e)
                 raise e
-            result = {'order_id': order_id, 'new_qty': new_qty, 'new_price': new_price, 'new_stop_loss': new_stop_loss,
-                      'ret_code': e.status_code, 'ret_msg': e.message}
+            result = kwargs
+            result['ret_code'] = e.status_code
+            result['ret_msg'] = e.message
             self._logger.error(result)
         return result
 
-    def replace_active_order_pr_sl(self, order_id, new_price, new_stop_loss):
-        """
-            replace_active_order() can modify/amend your active orders.
-            Params:
-             - p_r_price: New order price. Do not pass this field if you don't want modify it
-             - take_profit: New take_profit price, also known as stop_px. Do not pass this field if you don't want modify it
-             - stop_loss: New stop_loss price, also known as stop_px. Do not pass this field if you don't want modify it
-         """
-        try:
-            result = self.session_auth.replace_active_order(
-                symbol=self.pair,
-                order_id=order_id,
-                p_r_price=new_price,
-                stop_loss=new_stop_loss
-            )
-            return result
-        except pybit.exceptions.InvalidRequestError as e:
-            # 20001: Order not exists or too late to replace
-            # 30076 Order not modified
-            if e.status_code not in [20001, 30076]:
-                self._logger.exception(e)
-                raise e
-            result = {'order_id': order_id, 'new_price': new_price, 'new_stop_loss': new_stop_loss,
-                      'ret_code': e.status_code, 'ret_msg': e.message}
-            self._logger.error(result)
-        return result
-
-    def replace_active_order_pr(self, order_id, new_price):
-        """
-            replace_active_order() can modify/amend your active orders.
-            Params:
-             - p_r_price: New order price. Do not pass this field if you don't want modify it
-             - take_profit: New take_profit price, also known as stop_px. Do not pass this field if you don't want modify it
-             - stop_loss: New stop_loss price, also known as stop_px. Do not pass this field if you don't want modify it
-         """
-        try:
-            result = self.session_auth.replace_active_order(
-                symbol=self.pair,
-                order_id=order_id,
-                p_r_price=new_price
-            )
-            return result
-        except pybit.exceptions.InvalidRequestError as e:
-            # 20001: Order not exists or too late to replace
-            # 30076 Order not modified
-            if e.status_code not in [20001, 30076]:
-                self._logger.exception(e)
-                raise e
-            result = {'order_id': order_id, 'new_price': new_price, 'ret_code': e.status_code, 'ret_msg': e.message}
-            self._logger.error(result)
-        return result
-
-    def replace_active_order_qty_pr(self, order_id, new_qty, new_price):
-        """
-            replace_active_order() can modify/amend your active orders.
-            Params:
-              - p_r_qty: New order quantity. Do not pass this field if you don't want modify it
-         """
-        try:
-            result = self.session_auth.replace_active_order(
-                symbol=self.pair,
-                order_id=order_id,
-                p_r_qty=new_qty,
-                p_r_price=new_price
-            )
-            return result
-        except pybit.exceptions.InvalidRequestError as e:
-            # 20001: Order not exists or too late to replace
-            # 30076 Order not modified
-            if e.status_code not in [20001, 30076]:
-                self._logger.exception(e)
-                raise e
-            result = {'order_id': order_id, 'new_qty': new_qty, 'ret_code': e.status_code, 'ret_msg': e.message}
-            self._logger.error(result)
-        return result
-
-    def replace_active_order_qty(self, order_id, new_qty):
-        """
-            replace_active_order() can modify/amend your active orders.
-            Params:
-              - p_r_qty: New order quantity. Do not pass this field if you don't want modify it
-         """
-        try:
-            result = self.session_auth.replace_active_order(
-                symbol=self.pair,
-                order_id=order_id,
-                p_r_qty=new_qty
-            )
-            return result
-        except pybit.exceptions.InvalidRequestError as e:
-            # 20001: Order not exists or too late to replace
-            # 30076 Order not modified
-            if e.status_code not in [20001, 30076]:
-                self._logger.exception(e)
-                raise e
-            result = {'order_id': order_id, 'new_qty': new_qty, 'ret_code': e.status_code, 'ret_msg': e.message}
-            self._logger.error(result)
-        return result
+    #
+    # def replace_active_order_qt_pr_sl(self, order_id, new_qty, new_price, new_stop_loss):
+    #     """
+    #         replace_active_order() can modify/amend your active orders.
+    #         Params:
+    #          - p_r_qty: New order quantity. Do not pass this field if you don't want modify it
+    #          - p_r_price: New order price. Do not pass this field if you don't want modify it
+    #          - take_profit: New take_profit price, also known as stop_px. Do not pass this field if you don't want modify it
+    #          - stop_loss: New stop_loss price, also known as stop_px. Do not pass this field if you don't want modify it
+    #      """
+    #     try:
+    #         result = self.session_auth.replace_active_order(
+    #             symbol=self.pair,
+    #             order_id=order_id,
+    #             p_r_qty=new_qty,
+    #             p_r_price=new_price,
+    #             stop_loss=new_stop_loss
+    #         )
+    #         return result
+    #     except pybit.exceptions.InvalidRequestError as e:
+    #         # 20001: Order not exists or too late to replace
+    #         # 30076 Order not modified
+    #         # 30032: Can not initiate replace_ao while still having pending item
+    #         if e.status_code not in [20001, 30076, 30032]:
+    #             self._logger.exception(e)
+    #             raise e
+    #         result = {'order_id': order_id, 'new_qty': new_qty, 'new_price': new_price, 'new_stop_loss': new_stop_loss,
+    #                   'ret_code': e.status_code, 'ret_msg': e.message}
+    #         self._logger.error(result)
+    #     return result
+    #
+    # def replace_active_order_pr_sl(self, order_id, new_price, new_stop_loss):
+    #     """
+    #         replace_active_order() can modify/amend your active orders.
+    #         Params:
+    #          - p_r_price: New order price. Do not pass this field if you don't want modify it
+    #          - take_profit: New take_profit price, also known as stop_px. Do not pass this field if you don't want modify it
+    #          - stop_loss: New stop_loss price, also known as stop_px. Do not pass this field if you don't want modify it
+    #      """
+    #     try:
+    #         result = self.session_auth.replace_active_order(
+    #             symbol=self.pair,
+    #             order_id=order_id,
+    #             p_r_price=new_price,
+    #             stop_loss=new_stop_loss
+    #         )
+    #         return result
+    #     except pybit.exceptions.InvalidRequestError as e:
+    #         # 20001: Order not exists or too late to replace
+    #         # 30076 Order not modified
+    #         # 30032: Can not initiate replace_ao while still having pending item
+    #         if e.status_code not in [20001, 30076, 30032]:
+    #             self._logger.exception(e)
+    #             raise e
+    #         result = {'order_id': order_id, 'new_price': new_price, 'new_stop_loss': new_stop_loss,
+    #                   'ret_code': e.status_code, 'ret_msg': e.message}
+    #         self._logger.error(result)
+    #     return result
+    #
+    # def replace_active_order_pr(self, order_id, new_price):
+    #     """
+    #         replace_active_order() can modify/amend your active orders.
+    #         Params:
+    #          - p_r_price: New order price. Do not pass this field if you don't want modify it
+    #          - take_profit: New take_profit price, also known as stop_px. Do not pass this field if you don't want modify it
+    #          - stop_loss: New stop_loss price, also known as stop_px. Do not pass this field if you don't want modify it
+    #      """
+    #     try:
+    #         result = self.session_auth.replace_active_order(
+    #             symbol=self.pair,
+    #             order_id=order_id,
+    #             p_r_price=new_price
+    #         )
+    #         return result
+    #     except pybit.exceptions.InvalidRequestError as e:
+    #         # 20001: Order not exists or too late to replace
+    #         # 30076 Order not modified
+    #         # 30032: Can not initiate replace_ao while still having pending item
+    #         if e.status_code not in [20001, 30076, 30032]:
+    #             self._logger.exception(e)
+    #             raise e
+    #         result = {'order_id': order_id, 'new_price': new_price, 'ret_code': e.status_code, 'ret_msg': e.message}
+    #         self._logger.error(result)
+    #     return result
+    #
+    # def replace_active_order_qty_pr(self, order_id, new_qty, new_price):
+    #     """
+    #         replace_active_order() can modify/amend your active orders.
+    #         Params:
+    #           - p_r_qty: New order quantity. Do not pass this field if you don't want modify it
+    #      """
+    #     try:
+    #         result = self.session_auth.replace_active_order(
+    #             symbol=self.pair,
+    #             order_id=order_id,
+    #             p_r_qty=new_qty,
+    #             p_r_price=new_price
+    #         )
+    #         return result
+    #     except pybit.exceptions.InvalidRequestError as e:
+    #         # 20001: Order not exists or too late to replace
+    #         # 30076 Order not modified
+    #         # 30032: Can not initiate replace_ao while still having pending item
+    #         if e.status_code not in [20001, 30076, 30032]:
+    #             self._logger.exception(e)
+    #             raise e
+    #         result = {'order_id': order_id, 'new_qty': new_qty, 'ret_code': e.status_code, 'ret_msg': e.message}
+    #         self._logger.error(result)
+    #     return result
+    #
+    # def replace_active_order_qty(self, order_id, new_qty):
+    #     """
+    #         replace_active_order() can modify/amend your active orders.
+    #         Params:
+    #           - p_r_qty: New order quantity. Do not pass this field if you don't want modify it
+    #      """
+    #     try:
+    #         result = self.session_auth.replace_active_order(
+    #             symbol=self.pair,
+    #             order_id=order_id,
+    #             p_r_qty=new_qty
+    #         )
+    #         return result
+    #     except pybit.exceptions.InvalidRequestError as e:
+    #         # 20001: Order not exists or too late to replace
+    #         # 30076 Order not modified
+    #         # 30032: Can not initiate replace_ao while still having pending item
+    #         if e.status_code not in [20001, 30076, 30032]:
+    #             self._logger.exception(e)
+    #             raise e
+    #         result = {'order_id': order_id, 'new_qty': new_qty, 'ret_code': e.status_code, 'ret_msg': e.message}
+    #         self._logger.error(result)
+    #     return result
 
     def cancel_active_order(self, order_id):
         try:
@@ -770,7 +807,8 @@ class ExchangeBybit:
         if list_records:
             # Convert created_at timestamp to datetime string
             df = pd.DataFrame(list_records)
-            df['created_at'] = [arrow.get(x).to('local').datetime.strftime(constants.DATETIME_FMT) for x in df.created_at]
+            df['created_at'] = [arrow.get(x).to('local').datetime.strftime(constants.DATETIME_FMT) for x in
+                                df.created_at]
             df.sort_values(by=['id'])
             dict_list = df.to_dict('records')
             return dict_list
@@ -801,7 +839,8 @@ class ExchangeBybit:
         if list_records:
             df = pd.DataFrame(list_records)
             df['trade_time_ms'] = \
-                [arrow.get(x).to('local').datetime.strftime(constants.DATETIME_FMT_MS)[:-3] for x in df['trade_time_ms']]
+                [arrow.get(x).to('local').datetime.strftime(constants.DATETIME_FMT_MS)[:-3] for x in
+                 df['trade_time_ms']]
             df.sort_values(by=['trade_time_ms'], ascending=True)
             dict_list = df.to_dict('records')
             return dict_list

@@ -27,7 +27,8 @@ CONFIG_FILE = 'config.json'
 
 # JSON configuration schema to validate the config.json file
 CONFIG_SCHEMA = {
-    '$schema': 'http://json-schema.org/schema#',
+    '$schema': 'https://json-schema.org/draft/2020-12/schema',
+    '$id': 'https://example.com/product.schema.json',
     'title': 'ConfigFileSchema',
     'description': 'json schema to validate config.json file',
     'type': 'object',
@@ -58,7 +59,7 @@ CONFIG_SCHEMA = {
                 'leverage_short': {'type': 'number', 'minimum': 1, 'maximum': 50},
                 'take_profit': {'type': 'number'},
                 'stop_loss': {'type': 'number'},
-                'tradable_balance_ratio': {'type': 'number', 'minimum': 0.01, 'maximum': 1.0},
+                'tradable_balance_ratio': {'type': 'number', 'exclusiveMinimum': 0, 'maximum': 1.0},
                 'trade_entry_mode':  {'type': 'string', 'enum': TRADE_ENTRY_MODES},
                 'constant_take_profit': {'type': 'boolean'},
             },

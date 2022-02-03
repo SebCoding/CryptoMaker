@@ -12,6 +12,7 @@ from database.Database import Database
 from enums.BybitEnums import OrderType, OrderSide, OrderStatus
 from enums.TradeSignals import TradeSignals
 from exchange.ExchangeBybit import ExchangeBybit
+from pybit import InvalidRequestError
 from telegram_.TelegramBot import TelegramBot
 from trade_entry.BaseTradeEntry import BaseTradeEntry
 
@@ -101,7 +102,12 @@ class LimitEntry(BaseTradeEntry):
         # Re-validate that the update is really required
         if (self.signal['Side'] == OrderSide.Buy and new_entry_price > cur_order_price) \
                 or (self.signal['Side'] == OrderSide.Sell and new_entry_price < cur_order_price):
-            result = self._exchange.replace_active_order_pr_sl(order_id, new_entry_price, new_stop_loss)
+            result = self._exchange.replace_active_order(
+                symbol=self.pair,
+                order_id=order_id,
+                p_r_price=new_entry_price,
+                stop_loss=new_stop_loss
+            )
             self._logger.info(f"Updated {self.side_l_s} Limit Order[{order_id[-8:]}: "
                               f"price={new_entry_price:.2f}, sl={new_stop_loss:.2f}]")
 
@@ -252,7 +258,8 @@ class LimitEntry(BaseTradeEntry):
         avg_price = position['entry_price'] if position else 0
         position_value = position['position_value'] if position else 0
         cum_trade_qty = round(cum_trade_qty, 10)
-        msg = f'{LimitEntry.nb_trades} {self.side_l_s} limit trade entry completed. Exec[{utils.seconds_to_human_readable(exec_time)}], ' \
+        msg = f'{self.side_l_s} limit trade entry completed.\nTrade[{LimitEntry.nb_trades}], ' \
+              f'Exec[{utils.seconds_to_human_readable(exec_time)}], ' \
               f'qty[{cum_trade_qty}/{trade_start_qty}], '
         # Position has been closed by sl/tp
         if position_value != 0:
@@ -313,9 +320,10 @@ class LimitEntry(BaseTradeEntry):
                     # Adjust qty only. The current_price did not cross over the take_profit price
                     if (self.signal['Side'] == OrderSide.Buy and current_price < self.sig_take_profit_amount) \
                             or (self.signal['Side'] == OrderSide.Sell and current_price > self.sig_take_profit_amount):
-                        self._exchange.replace_active_order_qty(
-                            tp_order['order_id'],
-                            self.take_profit_cum_qty
+                        result = self._exchange.replace_active_order(
+                            symbol=self.pair,
+                            order_id=tp_order['order_id'],
+                            p_r_qty=self.take_profit_cum_qty
                         )
                     # Adjust qty and price. The take_profit has been crossed, re-adjust take_profit price
                     else:
@@ -325,10 +333,11 @@ class LimitEntry(BaseTradeEntry):
                             else:
                                 new_take_profit = self.adj_price(current_price - self.tick_size)
                             self.sig_take_profit_amount = new_take_profit
-                            self._exchange.replace_active_order_qty_pr(
-                                tp_order['order_id'],
-                                self.take_profit_cum_qty,
-                                new_take_profit
+                            result = self._exchange.replace_active_order(
+                                symbol=self.pair,
+                                order_id=tp_order['order_id'],
+                                p_r_qty=self.take_profit_cum_qty,
+                                take_profit=new_take_profit
                             )
                             tp_order = self._exchange.query_orders_rt_by_id(self.pair, tp_order['order_id'])
                             if tp_order['qty'] != self.take_profit_cum_qty \

@@ -14,7 +14,7 @@ class ScalpEmaRsiAdx(BaseStrategy):
     # Values for interval, takeprofit and stoploss come from the config.json file
 
     # Trend indicator: EMA - Exponential Moving Average
-    EMA_PERIODS = 60
+    EMA_PERIODS = 50
 
     # % over/under the EMA that can be tolerated to determine if the long/short trade can be placed
     # Value should be between 0 and 1
@@ -22,12 +22,12 @@ class ScalpEmaRsiAdx(BaseStrategy):
 
     # Momentum indicator: RSI - Relative Strength Index
     RSI_PERIODS = 2
-    RSI_MIN_SIGNAL_THRESHOLD = 30
-    RSI_MAX_SIGNAL_THRESHOLD = 70
+    RSI_MIN_SIGNAL_THRESHOLD = 20
+    RSI_MAX_SIGNAL_THRESHOLD = 80
 
     # Trade entry RSI thresholds (by default equal to RSI min/max thresholds)
-    RSI_MIN_ENTRY_THRESHOLD = 50
-    RSI_MAX_ENTRY_THRESHOLD = 50
+    RSI_MIN_ENTRY_THRESHOLD = 30
+    RSI_MAX_ENTRY_THRESHOLD = 70
 
     # Volatility indicator: ADX - Average Directional Index
     ADX_PERIODS = 3

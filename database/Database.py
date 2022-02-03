@@ -11,11 +11,15 @@ from enums.BybitEnums import OrderStatus
 from exchange.ExchangeBybit import ExchangeBybit
 from logging_.Logger import Logger
 from sqlalchemy_utils import database_exists
-
+from sqlalchemy.engine.reflection import Inspector
 from Configuration import Configuration
 
 
 class Database:
+    """
+        TODO: Replace all => self.engine.has_table(connection, table_name)
+              by => self.inspector.has_table(table_name, schema='public')
+    """
     URL_TEMPLATE = 'postgresql://<username>:<password>@<address>:<port>/<db_name>'
 
     # Table Names
@@ -35,6 +39,7 @@ class Database:
         self.validate_db()
         self._logger.info(f"Connection to {self.name} database successful.")
         self.engine = sa.create_engine(self.db_url)
+        self.inspector = Inspector.from_engine(self.engine)
         self.metadata = sa.MetaData(self.engine)
         self.init_tables()
 
@@ -75,6 +80,9 @@ class Database:
             if result.rowcount > 0:
                 for row in result:
                     self._logger.info(f'SQL Query Result: {row}')
+
+    def table_name_exists(self, name):
+        return self.inspector.has_table(name, schema='public')
 
     # Create tables if they don't exist
     def init_tables(self):
