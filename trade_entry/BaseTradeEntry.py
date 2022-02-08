@@ -93,7 +93,7 @@ class BaseTradeEntry(ABC):
         return round(price, 10)
 
     def get_stop_loss(self, side, price):
-        stop_loss_pct = self._config['trading']['stop_loss']
+        stop_loss_pct = float(self._config['trading']['stop_loss_pct']) / 100
         stop_loss = price * stop_loss_pct
         if side == OrderSide.Buy:
             stop_loss = price - stop_loss
@@ -102,7 +102,7 @@ class BaseTradeEntry(ABC):
         return self.adj_price(stop_loss)
 
     def get_take_profit(self, side, price):
-        take_profit_pct = self._config['trading']['take_profit']
+        take_profit_pct = float(self._config['trading']['take_profit_pct']) / 100
         take_profit = price * take_profit_pct
         if side == OrderSide.Buy:
             take_profit = price + take_profit

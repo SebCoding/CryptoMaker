@@ -2,7 +2,6 @@ import rapidjson
 import talib
 import datetime as dt
 import constants
-from WalletUSDT import WalletUSDT
 from enums.BybitEnums import OrderSide
 from logging_.Logger import Logger
 from enums import TradeSignals
@@ -11,7 +10,13 @@ from strategies.BaseStrategy import BaseStrategy
 
 
 class ScalpEmaRsiAdx(BaseStrategy):
-    # Values for interval, takeprofit and stoploss come from the config.json file
+    """
+        Implementation of the Scalping Strategy found here:
+        https://www.youtube.com/watch?v=vBM0imYSzxI
+        Using EMA RSI ADX Indicators
+
+        Values for interval, takeprofit and stoploss come from the config.json file
+    """
 
     # Trend indicator: EMA - Exponential Moving Average
     EMA_PERIODS = 50
@@ -40,22 +45,16 @@ class ScalpEmaRsiAdx(BaseStrategy):
         self._logger.info(f'Strategy Settings:\n' + rapidjson.dumps(self._config['strategy'], indent=2))
         self.last_trade_index = self.minimum_candles_to_start
         self.db = database
+        self.data = None
         # self._wallet = WalletUSDT(exchange)
 
     def get_strategy_text_details(self):
-        details = f'EMA({self.EMA_PERIODS}), EMA_TOLERANCE({self.EMA_TOLERANCE}), ' \
-                  f'RSI({self.RSI_PERIODS}), ' \
-                  f'RSI_SIGNAL({self.RSI_MIN_SIGNAL_THRESHOLD}, {self.RSI_MAX_SIGNAL_THRESHOLD}), ' \
-                  f'RSI_ENTRY({self.RSI_MIN_ENTRY_THRESHOLD}, {self.RSI_MAX_ENTRY_THRESHOLD}), ' \
-                  f'ADX({self.ADX_PERIODS}), ADX_THRESHOLD({self.ADX_THRESHOLD})'
+        details = f'EMA({self.EMA_PERIODS}, tolerance={self.EMA_TOLERANCE}), ' \
+                  f'RSI({self.RSI_PERIODS}, ' \
+                  f'signal[{self.RSI_MIN_SIGNAL_THRESHOLD}, {self.RSI_MAX_SIGNAL_THRESHOLD}], ' \
+                  f'entry[{self.RSI_MIN_ENTRY_THRESHOLD}, {self.RSI_MAX_ENTRY_THRESHOLD}]), ' \
+                  f'ADX({self.ADX_PERIODS}, threshold={self.ADX_THRESHOLD})'
         return details
-
-    # def get_projected_profit(self, price):
-    #     balance = self._wallet.free
-    #     take_profit_pct = float(self._config['trading']['take_profit'])
-    #     tradable_balance = balance * float(self._config['trading']['tradable_balance_ratio'])
-    #     profit = tradable_balance * take_profit_pct
-    #     return profit
 
     # Step 1: Calculate indicator values required to determine long/short signals
     def add_indicators_and_signals(self, candles_df):
@@ -108,7 +107,78 @@ class ScalpEmaRsiAdx(BaseStrategy):
     # Return 2 values:
     #   - DataFrame with indicators
     #   - dictionary with results
+    def find_entry2(self, candles_df):
+        """
+            New version. This version assumes that on an entry, the previous row will contain the signal.
+            This only works when RSI_SIGNAL and RSI_ENTRY and the same.
+            Otherwise, there could be a gap between the signal and the entry.
+
+            Return 2 values:
+              - DataFrame with indicators
+              - dictionary with results
+        """
+        # Step 1: Add indicators and signals
+        self.add_indicators_and_signals(candles_df)
+
+        # Step2: Look for entry point
+        # logger.info('Looking trading trade entry.')
+
+        # Get last row of the dataframe
+        row = self.data.iloc[-1]
+
+        long_signal = True if self.data['signal'].iloc[-2] == 1 else False
+        short_signal = True if self.data['signal'].iloc[-2] == -1 else False
+
+        # Long Entry
+        if long_signal \
+                and row.close > row.EMA_Long \
+                and row.RSI > self.RSI_MIN_ENTRY_THRESHOLD \
+                and row.ADX >= self.ADX_THRESHOLD:
+            signal = {
+                'IdTimestamp': row.timestamp,
+                'DateTime': dt.datetime.fromtimestamp(row.timestamp / 1000000).strftime(constants.DATETIME_FMT),
+                'Pair': row.pair,
+                'Interval': self.interval,
+                'Signal': TradeSignals.EnterLong,
+                "Side": OrderSide.Buy,
+                'EntryPrice': row.close,
+                'EMA': round(row.EMA, 2),
+                'RSI': round(row.RSI, 2),
+                'ADX': round(row.ADX, 2),
+                'Notes': self.get_strategy_text_details()
+            }
+            self.db.add_trade_signals_dict(signal)
+            return self.data, signal
+
+        # Short Entry
+        if short_signal \
+                and row.close < row.EMA_Short \
+                and row.RSI < self.RSI_MAX_ENTRY_THRESHOLD \
+                and row.ADX >= self.ADX_THRESHOLD:
+            signal = {
+                'IdTimestamp': row.timestamp,
+                'DateTime': dt.datetime.fromtimestamp(row.timestamp / 1000000).strftime(constants.DATETIME_FMT),
+                'Pair': row.pair,
+                'Interval': self.interval,
+                'Signal': TradeSignals.EnterShort,
+                "Side": OrderSide.Sell,
+                'EntryPrice': row.close,
+                'EMA': round(row.EMA, 2),
+                'RSI': round(row.RSI, 2),
+                'ADX': round(row.ADX, 2),
+                'Notes': self.get_strategy_text_details()
+            }
+            self.db.add_trade_signals_dict(signal)
+            return self.data, signal
+
+        return self.data, {'Signal': TradeSignals.NoTrade}
+
     def find_entry(self, candles_df):
+        """
+            Return 2 values:
+              - DataFrame with indicators
+              - dictionary with results
+        """
         # Step 1: Add indicators and signals
         self.add_indicators_and_signals(candles_df)
 

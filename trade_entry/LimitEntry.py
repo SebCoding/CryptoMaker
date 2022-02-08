@@ -41,7 +41,7 @@ class LimitEntry(BaseTradeEntry):
         self.abort_seconds = self.interval_secs * float(self._config['limit_entry']['abort_time_candle_ratio'])
 
         # The trade entry will abort after slippage becomes greater than this % of the current price
-        self.abort_price_pct = float(self._config['limit_entry']['abort_price_pct'])
+        self.abort_price_pct = float(self._config['limit_entry']['abort_price_pct']) / 100
 
     def get_current_ob_price(self, side):
         if side == OrderSide.Buy:

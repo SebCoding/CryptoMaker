@@ -20,7 +20,9 @@ from enums.BybitEnums import OrderSide
 from enums.EntryMode import EntryMode
 from enums.TradeSignals import TradeSignals
 # from strategies.ScalpEmaRsiAdx import ScalpEmaRsiAdx
+# from strategies.MACD import MACD
 from strategies.ScalpEmaRsiAdx import ScalpEmaRsiAdx
+from strategies.MACD import MACD
 from exchange.ExchangeBybit import ExchangeBybit
 from logging_.Logger import Logger
 from telegram_.TelegramBot import TelegramBot
@@ -46,7 +48,7 @@ class Bot:
         net = '** Testnet **' if self._config['exchange']['testnet'] else 'Mainnet'
         self.interval = self._config['trading']['interval']
         self._logger.info(f"Initializing {self.instance_name} to trade [{self.pair}][{self.interval}] on "
-                          f"{self._config['exchange']['name']} {net}.")
+                          f"{self._config['exchange']['name']} {net}")
         self.status_bar = self.moving_status_bar(self.STATUS_BAR_CHAR, self.STATUS_BAR_LENGTH)
         # self.stake_currency = self._config['exchange']['stake_currency']
         self._last_throttle_start_time = 0.0
