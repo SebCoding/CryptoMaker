@@ -1,3 +1,5 @@
+import sys
+
 import pandas as pd
 import time
 
@@ -24,25 +26,27 @@ class CandleHandler:
         self._config = Configuration.get_config()
         self.pair = self._config['exchange']['pair']
         self.interval = self._config['trading']['interval']
+        self.sub_interval = self._config['trading']['sub_interval']
         self.minutes_in_interval = utils.convert_interval_to_sec(self.interval) / 60
         self.minimum_candles_to_start = int(self._config['strategy']['minimum_candles_to_start'])
         self._exchange = exchange
         self._candle_topic_name = \
             self._exchange.get_candle_topic(self.pair, self._exchange.interval_map[self.interval])
-        self._candle1m_topic_name = self._exchange.get_candle_topic(self.pair, '1')
+        self._candle_sub_topic_name = \
+            self._exchange.get_candle_topic(self.pair, self._exchange.interval_map[self.sub_interval])
         self.ws_public = self._exchange.ws_public
 
     # Fetch 'minimum_candles_to_start' candles preceding 'to_time' (not including to_time)
     def get_historic_candles(self, to_time):
-        self._logger.info(f'Fetching {self.minimum_candles_to_start} historical candles.')
+        self._logger.info(f'\nFetching {self.minimum_candles_to_start} historical candles.')
         from_time = utils.adjust_from_time_timestamp(to_time, self.interval, self.minimum_candles_to_start)
         to_time -= 1  # subtract 1s because get_candle_data() includes candle to 'to_time'
         df = self._exchange.get_candle_data(self.pair, from_time, to_time, self.interval)
         return df
 
     def get_refreshed_candles(self):
-        if self._config['strategy']['signal_mode'] == SignalMode.Minute and self.interval != '1m':
-            return self._get_refreshed_candles_minute()
+        if self._config['strategy']['signal_mode'] == SignalMode.SubInterval:
+            return self._get_refreshed_candles_sub_interval()
         else:
             return self._get_refreshed_candles()
 
@@ -138,7 +142,7 @@ class CandleHandler:
 
         return self._candles_df, data_changed
 
-    def _get_refreshed_candles_minute(self):
+    def _get_refreshed_candles_sub_interval(self):
         """
             Push frequency: 1-60s from Bybit
             Candle format
@@ -158,38 +162,38 @@ class CandleHandler:
             }
             Returns 2 values: candles dataframe and True/False if the data has been modified since last call
 
-            In the "minute" signal_mode, confirmed interval candles get added to the dataframe.
-            Confirmed 1m minute candles are used as the un-confirmed candles in the dataframe
+            In the "sub_interval" signal_mode, confirmed interval candles get added to the dataframe.
+            Confirmed sub_interval minute candles are used as the un-confirmed candles in the dataframe
         """
         data_changed = False
 
         # Read websockets
         candle_list = self.ws_public.fetch(self._candle_topic_name)
-        candle_list_1m = self.ws_public.fetch(self._candle1m_topic_name)
+        candle_list_sub = self.ws_public.fetch(self._candle_sub_topic_name)
 
-        # if candle_list or candle_list_1m:
+        # if candle_list or candle_list_sub:
         #     print('hey')
         #
-        # if candle_list_1m:
-        #     candle = candle_list_1m[0]
+        # if candle_list_sub:
+        #     candle = candle_list_sub[0]
         #     print(rapidjson.dumps(candle, indent=2))
 
         # Remove unconfirmed candles
         if candle_list:
             candle_list = [e for e in candle_list if e['confirm'] is True]
-        if candle_list_1m:
-            candle_list_1m = [e for e in candle_list_1m if e['confirm'] is True]
+        if candle_list_sub:
+            candle_list_sub = [e for e in candle_list_sub if e['confirm'] is True]
 
-        # We did not receive any confirmed "trading interval" candles, but we received confirmed 1m candles.
-        # We add the confirmed 1m candles to the dataframe as unconfirmed "trading interval" candles.
-        if not candle_list and candle_list_1m:
-            candle_list = candle_list_1m
-            # For 1m candles, only keep the latest candle
+        # We did not receive any confirmed "trading interval" candles, but we received confirmed sub_interval candles.
+        # We add the confirmed sub_interval candles to the dataframe as unconfirmed "trading interval" candles.
+        if not candle_list and candle_list_sub:
+            candle_list = candle_list_sub
+            # For sub_interval candles, only keep the latest candle
             candle_list = sorted(candle_list, key=lambda i: i['timestamp'], reverse=False)
             candle_list = [candle_list[-1]]
             candle_list[0]['confirm'] = False  # Mark the candle as unconfirmed
 
-        # We've received confirmed "trading interval" candles (not 1m), we add them to the dataframe
+        # We've received confirmed "trading interval" candles (not sub_interval), we add them to the dataframe
         if candle_list:
             for candle in candle_list:
                 if candle['timestamp'] > self._last_candle_timestamp:
@@ -263,7 +267,7 @@ class CandleHandler:
             For signal_mode in ['interval', 'realtime']:
               Current candle 'start' time must be equal to prior candle 'end' time
 
-            For signal_mode = 'minute':
+            For signal_mode = 'sub_interval':
               if last row is confirmed
                  Current candle 'start' time must be equal to prior candle 'end' time
               else
@@ -274,8 +278,8 @@ class CandleHandler:
         msg = ''
         if self._candles_df is not None and len(self._candles_df) >= 2:
             start_timestamp = arrow.get(int(self._candles_df["start"].iloc[-1]))
-            # signal_mode = 'minute'
-            if self._config['strategy']['signal_mode'] == SignalMode.Minute:
+            # signal_mode = 'sub_interval'
+            if self._config['strategy']['signal_mode'] == SignalMode.SubInterval:
                 prev_end = arrow.get(int(self._candles_df["end"].iloc[-2]))
                 cur_start = arrow.get(int(self._candles_df["start"].iloc[-1]))
                 cur_confirm = self._candles_df["confirm"].iloc[-1]
@@ -296,8 +300,8 @@ class CandleHandler:
 
             if not valid:
 
-                # For 'minute' mode adjust start_timestamp
-                if self._config['strategy']['signal_mode'] == SignalMode.Minute:
+                # For 'sub_interval' mode adjust start_timestamp
+                if self._config['strategy']['signal_mode'] == SignalMode.SubInterval:
                     current_minute = arrow.get(start_timestamp).to('local').minute
                     offset = current_minute % self.minutes_in_interval
                     start_timestamp = start_timestamp - (offset * 60)

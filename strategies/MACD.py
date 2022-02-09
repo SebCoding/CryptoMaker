@@ -12,7 +12,7 @@ from strategies.BaseStrategy import BaseStrategy
 
 class MACD(BaseStrategy):
     # Trend indicator: EMA - Exponential Moving Average
-    EMA_PERIODS = 200
+    EMA_PERIODS = 180
 
     # Trend following momentum indicator:
     # MACD - Moving Average Convergence Divergence
@@ -23,7 +23,7 @@ class MACD(BaseStrategy):
     def __init__(self, database):
         super().__init__()
         self._logger = Logger.get_module_logger(__name__)
-        self._logger.info(f'Initializing strategy [{self.name}] ' + self.get_strategy_text_details())
+        self._logger.info(f'Initializing the {self.name} strategy: ' + self.get_strategy_text_details())
         self._logger.info(f'Strategy Settings:\n' + rapidjson.dumps(self._config['strategy'], indent=2))
         self.last_trade_index = self.minimum_candles_to_start
         self.db = database
@@ -69,7 +69,7 @@ class MACD(BaseStrategy):
             (
                     (df['close'] > df['EMA']) &  # price > ema200
                     (df['MACDSIG'] < 0) &  # macdsignal < 0
-                    (df['cross'] == -1)  # macdsignal crossed and is now under macd
+                    (df['cross'] == -1)  # macdsignal crossed under macd
             ),
             'signal'] = 1
 
@@ -78,13 +78,13 @@ class MACD(BaseStrategy):
             (
                     (df['close'] < df['EMA']) &  # price < ema200
                     (df['MACDSIG'] > 0) &  # macdsignal > 0
-                    (df['cross'] == 1)  # macdsignal crossed and is now over macd
+                    (df['cross'] == 1)  # macdsignal crossed over macd
             ),
             'signal'] = -1
 
         self.data = df
-        # df_print = df.drop(columns=['start', 'end'], axis=1)
-        # print('\n\n'+df_print.tail(10).to_string())
+        df_print = df.drop(columns=['start', 'end'], axis=1)
+        print('\n\n'+df_print.tail(10).to_string())
 
     # Return 2 values:
     #   - DataFrame with indicators
@@ -112,10 +112,8 @@ class MACD(BaseStrategy):
                 'Signal': TradeSignals.EnterLong,
                 "Side": OrderSide.Buy,
                 'EntryPrice': row.close,
-                'EMA': round(row.EMA, 2),
-                'MACD': round(row.MACD, 2),
-                'MACDSIG': round(row.MACDSIG, 2),
-                'Notes': self.get_strategy_text_details()
+                'IndicatorValues': f"EMA={round(row.EMA, 2)}, MACD={round(row.MACD, 2)}, MACSIG={round(row.MACDSIG, 2)}",
+                'Details': f"{self._config['strategy']}: {self.get_strategy_text_details()}"
             }
             self.db.add_trade_signals_dict(signal)
             return self.data, signal
@@ -130,10 +128,8 @@ class MACD(BaseStrategy):
                 'Signal': TradeSignals.EnterShort,
                 "Side": OrderSide.Sell,
                 'EntryPrice': row.close,
-                'EMA': round(row.EMA, 2),
-                'MACD': round(row.MACD, 2),
-                'MACDSIG': round(row.MACDSIG, 2),
-                'Notes': self.get_strategy_text_details()
+                'IndicatorValues': f"EMA={round(row.EMA, 2)}, MACD={round(row.MACD, 2)}, MACSIG={round(row.MACDSIG, 2)}",
+                'Details': f"{self._config['strategy']}: {self.get_strategy_text_details()}"
             }
             self.db.add_trade_signals_dict(signal)
             return self.data, signal

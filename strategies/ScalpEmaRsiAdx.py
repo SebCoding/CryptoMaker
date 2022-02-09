@@ -27,12 +27,12 @@ class ScalpEmaRsiAdx(BaseStrategy):
 
     # Momentum indicator: RSI - Relative Strength Index
     RSI_PERIODS = 2
-    RSI_MIN_SIGNAL_THRESHOLD = 20
-    RSI_MAX_SIGNAL_THRESHOLD = 80
+    RSI_MIN_SIGNAL = 20
+    RSI_MAX_SIGNAL = 80
 
     # Trade entry RSI thresholds (by default equal to RSI min/max thresholds)
-    RSI_MIN_ENTRY_THRESHOLD = 30
-    RSI_MAX_ENTRY_THRESHOLD = 70
+    RSI_MIN_ENTRY = 30
+    RSI_MAX_ENTRY = 70
 
     # Volatility indicator: ADX - Average Directional Index
     ADX_PERIODS = 3
@@ -41,7 +41,7 @@ class ScalpEmaRsiAdx(BaseStrategy):
     def __init__(self, database):
         super().__init__()
         self._logger = Logger.get_module_logger(__name__)
-        self._logger.info(f'Initializing strategy [{self.name}] ' + self.get_strategy_text_details())
+        self._logger.info(f'Initializing the {self.name} strategy: ' + self.get_strategy_text_details())
         self._logger.info(f'Strategy Settings:\n' + rapidjson.dumps(self._config['strategy'], indent=2))
         self.last_trade_index = self.minimum_candles_to_start
         self.db = database
@@ -49,11 +49,11 @@ class ScalpEmaRsiAdx(BaseStrategy):
         # self._wallet = WalletUSDT(exchange)
 
     def get_strategy_text_details(self):
-        details = f'EMA({self.EMA_PERIODS}, tolerance={self.EMA_TOLERANCE}), ' \
-                  f'RSI({self.RSI_PERIODS}, ' \
-                  f'signal[{self.RSI_MIN_SIGNAL_THRESHOLD}, {self.RSI_MAX_SIGNAL_THRESHOLD}], ' \
-                  f'entry[{self.RSI_MIN_ENTRY_THRESHOLD}, {self.RSI_MAX_ENTRY_THRESHOLD}]), ' \
-                  f'ADX({self.ADX_PERIODS}, threshold={self.ADX_THRESHOLD})'
+        details = f'EMA({self.EMA_PERIODS}'
+        if self.EMA_TOLERANCE > 0:
+            details += ', tolerance={self.EMA_TOLERANCE}'
+        details += f'), RSI({self.RSI_PERIODS}, signal[{self.RSI_MIN_SIGNAL}, {self.RSI_MAX_SIGNAL}], ' \
+                   f'entry[{self.RSI_MIN_ENTRY}, {self.RSI_MAX_ENTRY}]), ADX({self.ADX_PERIODS}, {self.ADX_THRESHOLD})'
         return details
 
     # Step 1: Calculate indicator values required to determine long/short signals
@@ -67,13 +67,13 @@ class ScalpEmaRsiAdx(BaseStrategy):
         df['close'] = df['close'].astype(float)
         df['volume'] = df['volume'].astype(float)
 
-        # Trend Indicator. EMA-50
+        # Trend Indicator. EMA
         df['EMA'] = talib.EMA(df['close'], timeperiod=self.EMA_PERIODS)
 
-        # Momentum Indicator. RSI-3
+        # Momentum Indicator. RSI
         df['RSI'] = talib.RSI(df['close'], timeperiod=self.RSI_PERIODS)
 
-        # Volatility Indicator. ADX-5
+        # Volatility Indicator. ADX
         df['ADX'] = talib.ADX(df['high'], df['low'], df['close'], timeperiod=self.ADX_PERIODS)
 
         # EMA Tolerance columns
@@ -86,7 +86,7 @@ class ScalpEmaRsiAdx(BaseStrategy):
         df.loc[
             (
                     (df['close'] > df['EMA_Long']) &  # price > (EMA - Tolerance)
-                    (df['RSI'] < self.RSI_MIN_SIGNAL_THRESHOLD) &  # RSI < RSI_MIN_THRESHOLD
+                    (df['RSI'] < self.RSI_MIN_SIGNAL) &  # RSI < RSI_MIN_THRESHOLD
                     (df['ADX'] > self.ADX_THRESHOLD)  # ADX > ADX_THRESHOLD
             ),
             'signal'] = 1
@@ -95,7 +95,7 @@ class ScalpEmaRsiAdx(BaseStrategy):
         df.loc[
             (
                     (df['close'] < df['EMA_Short']) &  # price < (EMA + Tolerance)
-                    (df['RSI'] > self.RSI_MAX_SIGNAL_THRESHOLD) &  # RSI > RSI_MAX_THRESHOLD
+                    (df['RSI'] > self.RSI_MAX_SIGNAL) &  # RSI > RSI_MAX_THRESHOLD
                     (df['ADX'] > self.ADX_THRESHOLD)  # ADX > ADX_THRESHOLD
             ),
             'signal'] = -1
@@ -132,7 +132,7 @@ class ScalpEmaRsiAdx(BaseStrategy):
         # Long Entry
         if long_signal \
                 and row.close > row.EMA_Long \
-                and row.RSI > self.RSI_MIN_ENTRY_THRESHOLD \
+                and row.RSI > self.RSI_MIN_ENTRY \
                 and row.ADX >= self.ADX_THRESHOLD:
             signal = {
                 'IdTimestamp': row.timestamp,
@@ -142,10 +142,8 @@ class ScalpEmaRsiAdx(BaseStrategy):
                 'Signal': TradeSignals.EnterLong,
                 "Side": OrderSide.Buy,
                 'EntryPrice': row.close,
-                'EMA': round(row.EMA, 2),
-                'RSI': round(row.RSI, 2),
-                'ADX': round(row.ADX, 2),
-                'Notes': self.get_strategy_text_details()
+                'IndicatorValues': f"EMA={round(row.EMA, 2)}, RSI={round(row.RSI, 2)}, ADX={round(row.ADX, 2)}",
+                'Details': f"{self._config['strategy']}: {self.get_strategy_text_details()}"
             }
             self.db.add_trade_signals_dict(signal)
             return self.data, signal
@@ -153,7 +151,7 @@ class ScalpEmaRsiAdx(BaseStrategy):
         # Short Entry
         if short_signal \
                 and row.close < row.EMA_Short \
-                and row.RSI < self.RSI_MAX_ENTRY_THRESHOLD \
+                and row.RSI < self.RSI_MAX_ENTRY \
                 and row.ADX >= self.ADX_THRESHOLD:
             signal = {
                 'IdTimestamp': row.timestamp,
@@ -163,10 +161,8 @@ class ScalpEmaRsiAdx(BaseStrategy):
                 'Signal': TradeSignals.EnterShort,
                 "Side": OrderSide.Sell,
                 'EntryPrice': row.close,
-                'EMA': round(row.EMA, 2),
-                'RSI': round(row.RSI, 2),
-                'ADX': round(row.ADX, 2),
-                'Notes': self.get_strategy_text_details()
+                'IndicatorValues': f"EMA={round(row.EMA, 2)}, RSI={round(row.RSI, 2)}, ADX={round(row.ADX, 2)}",
+                'Details': f"{self._config['strategy']}: {self.get_strategy_text_details()}"
             }
             self.db.add_trade_signals_dict(signal)
             return self.data, signal
@@ -208,49 +204,36 @@ class ScalpEmaRsiAdx(BaseStrategy):
                 return self.data, {'Signal': TradeSignals.NoTrade, 'SignalOffset': signal_index - data_length + 1}
 
             # RSI exiting oversold area. Long Entry
-            if long_signal and row.RSI > self.RSI_MIN_ENTRY_THRESHOLD:
+            if long_signal and row.RSI > self.RSI_MIN_ENTRY:
                 self.last_trade_index = i
                 signal = {
                     'IdTimestamp': row.timestamp,
-                    # 'DateTime': row.datetime.strftime(constants.DATETIME_FORMAT),
                     'DateTime': dt.datetime.fromtimestamp(row.timestamp / 1000000).strftime(constants.DATETIME_FMT),
                     'Pair': row.pair,
                     'Interval': self.interval,
                     'Signal': TradeSignals.EnterLong,
-                    "Side": OrderSide.Buy,
-                    'SignalOffset': signal_index - data_length + 1,
+                    'Side': OrderSide.Buy,
                     'EntryPrice': row.close,
-                    #'ProjectedProfit': round(self.get_projected_profit(row.close), 2),
-                    'EMA': round(row.EMA, 2),
-                    # 'EMA_Long': round(row.EMA_Long, 2),
-                    # 'EMA_Short': round(row.EMA_Short, 2),
-                    'RSI': round(row.RSI, 2),
-                    'ADX': round(row.ADX, 2),
-                    'Notes': self.get_strategy_text_details()
+                    'IndicatorValues': f"EMA={round(row.EMA, 2)}, RSI={round(row.RSI, 2)}, ADX={round(row.ADX, 2)}",
+                    'Details': f"{self._config['strategy']}: {self.get_strategy_text_details()}"
+
                 }
                 self.db.add_trade_signals_dict(signal)
                 return self.data, signal
 
             # RSI exiting overbought area. Short Entry
-            elif short_signal and row.RSI < self.RSI_MAX_ENTRY_THRESHOLD:
+            elif short_signal and row.RSI < self.RSI_MAX_ENTRY:
                 self.last_trade_index = i
                 signal = {
                     'IdTimestamp': row.timestamp,
-                    # 'DateTime': row.datetime.strftime(constants.DATETIME_FORMAT),
                     'DateTime': dt.datetime.fromtimestamp(row.timestamp / 1000000).strftime(constants.DATETIME_FMT),
                     'Pair': row.pair,
                     'Interval': self.interval,
                     'Signal': TradeSignals.EnterShort,
-                    "Side": OrderSide.Sell,
-                    'SignalOffset': signal_index - data_length + 1,
+                    'Side': OrderSide.Sell,
                     'EntryPrice': row.close,
-                    #'ProjectedProfit': round(self.get_projected_profit(row.close), 2),
-                    'EMA': round(row.EMA, 2),
-                    # 'EMA_Long': round(row.EMA_Long, 2),
-                    # 'EMA_Short': round(row.EMA_Short, 2),
-                    'RSI': round(row.RSI, 2),
-                    'ADX': round(row.ADX, 2),
-                    'Notes': self.get_strategy_text_details()
+                    'IndicatorValues': f"EMA={round(row.EMA, 2)}, RSI={round(row.RSI, 2)}, ADX={round(row.ADX, 2)}",
+                    'Details': f"{self._config['strategy']}: {self.get_strategy_text_details()}"
                 }
                 self.db.add_trade_signals_dict(signal)
                 return self.data, signal

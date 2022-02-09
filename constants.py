@@ -11,7 +11,7 @@ DATETIME_FMT_MS = '%Y-%m-%d %H:%M:%S.%f'
 
 TRADE_ENTRY_MODES = ['maker', 'taker']
 VALID_STRATEGIES = ['MACD', 'ScalpEmaRsiAdx']
-SIGNAL_MODES = ['interval', 'minute', 'realtime']
+SIGNAL_MODES = ['interval', 'sub_interval', 'realtime']
 
 # Valid Intervals. Some intervals are not supported by Bybit Websockets
 VALID_INTERVALS = ['1m', '3m', '5m', '15m', '30m', '1h', '2h', '4h', '1d', '1w']
@@ -55,6 +55,7 @@ CONFIG_SCHEMA = {
             'type': 'object',
             'properties': {
                 'interval': {'type': 'string', 'enum': VALID_INTERVALS},
+                'sub_interval': {'type': 'string', 'enum': VALID_INTERVALS},
                 'leverage_long': {'type': 'number', 'minimum': 1, 'maximum': 50},
                 'leverage_short': {'type': 'number', 'minimum': 1, 'maximum': 50},
                 'take_profit_pct': {'type': 'number', 'minimum': 0},
@@ -63,8 +64,8 @@ CONFIG_SCHEMA = {
                 'trade_entry_mode':  {'type': 'string', 'enum': TRADE_ENTRY_MODES},
                 'constant_take_profit': {'type': 'boolean'},
             },
-            'required': ['interval', 'leverage_long', 'leverage_short', 'take_profit_pct', 'stop_loss_pct',
-                         'tradable_balance_ratio', 'trade_entry_mode', 'constant_take_profit']
+            'required': ['interval', 'sub_interval', 'leverage_long', 'leverage_short', 'take_profit_pct',
+                         'stop_loss_pct', 'tradable_balance_ratio', 'trade_entry_mode', 'constant_take_profit']
         },
         'limit_entry': {
             'type': 'object',

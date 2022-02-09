@@ -102,7 +102,7 @@ class Bot:
                     sys.stdout.flush()
         except KeyboardInterrupt as e:
             self._logger.info('\n')
-            self.db.sync_all_tables(self.pair)
+            #self.db.sync_all_tables(self.pair)
             self._logger.info("Application Terminated by User.")
         except (websocket.WebSocketTimeoutException,
                 websocket.WebSocketAddressException,
@@ -115,7 +115,7 @@ class Bot:
         except Exception as e:
             self._logger.exception(e)
             TelegramBot.send_to_group(f'Application crashed. {e}')
-            Bot.beep(1, 500, 5000)
+            Bot.beep(1, 500, 2000)
             raise e
 
     def throttle(self, func: Callable[..., Any], throttle_secs: float, *args, **kwargs) -> Any:
@@ -184,29 +184,5 @@ class Bot:
         time.sleep(nb_seconds)
         os.execv(sys.executable, ['python'] + sys.argv)
 
-    # def print_candles_and_entries(self, f):
-    #     self._candles_df, data_changed = self._candle_handler.get_refreshed_candles()
-    #     if data_changed:
-    #         df, result = self.strategy.find_entry(self._candles_df)
-    #         f.write('')
-    #         print()
-    #         f.write('\n' + df.tail(10).to_string())
-    #         print('\n' + df.tail(10).to_string())
-    #         f.write(f"\nLast valid signal offset: {result['SignalOffset']}\n")
-    #         print(f"Last valid signal offset: {result['SignalOffset']}\n")
-    #         print(self._wallet.to_string())
-    #         print(self._position.get_positions_df().to_string())
-    #         print(self._orders.get_orders_df().to_string())
-    #         exit(1)
-    #
-    #         if result['Signal'] in [TradeSignals.EnterLong, TradeSignals.EnterShort]:
-    #             f.write('')
-    #             print()
-    #             f.write('\n' + df.tail(10).to_string())
-    #             print('\n' + df.tail(10).to_string())
-    #             f.write(f"\nLast valid signal offset: {result['SignalOffset']}\n")
-    #             print(f"Last valid signal offset: {result['SignalOffset']}\n")
-    #             f.write(f"{result['Signal']}: {rapidjson.dumps(result, indent=2)}")
-    #             print(f"{result['Signal']}: {rapidjson.dumps(result, indent=2)}")
 
 

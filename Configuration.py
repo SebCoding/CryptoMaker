@@ -28,7 +28,6 @@ class Configuration:
 
             # Validate will raise exception if given json is not
             # what is described in schema.
-
             validate(instance=data, schema=schema)
         except (
             SchemaError,
@@ -41,6 +40,9 @@ class Configuration:
         # print for debug
         # logging_.debug(rapidjson.dumps(data, indent=2))
         cls._config = data
+
+
+
 
 
 
