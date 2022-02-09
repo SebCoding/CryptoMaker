@@ -143,7 +143,7 @@ class ScalpEmaRsiAdx(BaseStrategy):
                 "Side": OrderSide.Buy,
                 'EntryPrice': row.close,
                 'IndicatorValues': f"EMA={round(row.EMA, 2)}, RSI={round(row.RSI, 2)}, ADX={round(row.ADX, 2)}",
-                'Details': f"{self._config['strategy']}: {self.get_strategy_text_details()}"
+                'Details': f"{self._config['strategy']['name']}: {self.get_strategy_text_details()}"
             }
             self.db.add_trade_signals_dict(signal)
             return self.data, signal
@@ -154,7 +154,7 @@ class ScalpEmaRsiAdx(BaseStrategy):
                 and row.RSI < self.RSI_MAX_ENTRY \
                 and row.ADX >= self.ADX_THRESHOLD:
             signal = {
-                'IdTimestamp': row.timestamp,
+                'IdTimestamp': int(row.timestamp),
                 'DateTime': dt.datetime.fromtimestamp(row.timestamp / 1000000).strftime(constants.DATETIME_FMT),
                 'Pair': row.pair,
                 'Interval': self.interval,
@@ -162,7 +162,7 @@ class ScalpEmaRsiAdx(BaseStrategy):
                 "Side": OrderSide.Sell,
                 'EntryPrice': row.close,
                 'IndicatorValues': f"EMA={round(row.EMA, 2)}, RSI={round(row.RSI, 2)}, ADX={round(row.ADX, 2)}",
-                'Details': f"{self._config['strategy']}: {self.get_strategy_text_details()}"
+                'Details': f"{self._config['strategy']['name']}: {self.get_strategy_text_details()}"
             }
             self.db.add_trade_signals_dict(signal)
             return self.data, signal
@@ -207,7 +207,7 @@ class ScalpEmaRsiAdx(BaseStrategy):
             if long_signal and row.RSI > self.RSI_MIN_ENTRY:
                 self.last_trade_index = i
                 signal = {
-                    'IdTimestamp': row.timestamp,
+                    'IdTimestamp': int(row.timestamp),
                     'DateTime': dt.datetime.fromtimestamp(row.timestamp / 1000000).strftime(constants.DATETIME_FMT),
                     'Pair': row.pair,
                     'Interval': self.interval,
@@ -215,7 +215,7 @@ class ScalpEmaRsiAdx(BaseStrategy):
                     'Side': OrderSide.Buy,
                     'EntryPrice': row.close,
                     'IndicatorValues': f"EMA={round(row.EMA, 2)}, RSI={round(row.RSI, 2)}, ADX={round(row.ADX, 2)}",
-                    'Details': f"{self._config['strategy']}: {self.get_strategy_text_details()}"
+                    'Details': f"{self._config['strategy']['name']}: {self.get_strategy_text_details()}"
 
                 }
                 self.db.add_trade_signals_dict(signal)
@@ -225,7 +225,7 @@ class ScalpEmaRsiAdx(BaseStrategy):
             elif short_signal and row.RSI < self.RSI_MAX_ENTRY:
                 self.last_trade_index = i
                 signal = {
-                    'IdTimestamp': row.timestamp,
+                    'IdTimestamp': int(row.timestamp),
                     'DateTime': dt.datetime.fromtimestamp(row.timestamp / 1000000).strftime(constants.DATETIME_FMT),
                     'Pair': row.pair,
                     'Interval': self.interval,
@@ -233,7 +233,7 @@ class ScalpEmaRsiAdx(BaseStrategy):
                     'Side': OrderSide.Sell,
                     'EntryPrice': row.close,
                     'IndicatorValues': f"EMA={round(row.EMA, 2)}, RSI={round(row.RSI, 2)}, ADX={round(row.ADX, 2)}",
-                    'Details': f"{self._config['strategy']}: {self.get_strategy_text_details()}"
+                    'Details': f"{self._config['strategy']['name']}: {self.get_strategy_text_details()}"
                 }
                 self.db.add_trade_signals_dict(signal)
                 return self.data, signal

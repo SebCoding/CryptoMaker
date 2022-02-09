@@ -12,7 +12,7 @@ from strategies.BaseStrategy import BaseStrategy
 
 class MACD(BaseStrategy):
     # Trend indicator: EMA - Exponential Moving Average
-    EMA_PERIODS = 180
+    EMA_PERIODS = 200
 
     # Trend following momentum indicator:
     # MACD - Moving Average Convergence Divergence
@@ -83,8 +83,8 @@ class MACD(BaseStrategy):
             'signal'] = -1
 
         self.data = df
-        df_print = df.drop(columns=['start', 'end'], axis=1)
-        print('\n\n'+df_print.tail(10).to_string())
+        # df_print = df.drop(columns=['start', 'end'], axis=1)
+        # print('\n\n'+df_print.tail(10).to_string())
 
     # Return 2 values:
     #   - DataFrame with indicators
@@ -105,7 +105,7 @@ class MACD(BaseStrategy):
         # Long Entry
         if long_signal:
             signal = {
-                'IdTimestamp': row.timestamp,
+                'IdTimestamp': int(row.timestamp),
                 'DateTime': dt.datetime.fromtimestamp(row.timestamp / 1000000).strftime(constants.DATETIME_FMT),
                 'Pair': row.pair,
                 'Interval': self.interval,
@@ -113,7 +113,7 @@ class MACD(BaseStrategy):
                 "Side": OrderSide.Buy,
                 'EntryPrice': row.close,
                 'IndicatorValues': f"EMA={round(row.EMA, 2)}, MACD={round(row.MACD, 2)}, MACSIG={round(row.MACDSIG, 2)}",
-                'Details': f"{self._config['strategy']}: {self.get_strategy_text_details()}"
+                'Details': f"{self._config['strategy']['name']}: {self.get_strategy_text_details()}"
             }
             self.db.add_trade_signals_dict(signal)
             return self.data, signal
@@ -121,7 +121,7 @@ class MACD(BaseStrategy):
         # Short Entry
         if short_signal:
             signal = {
-                'IdTimestamp': row.timestamp,
+                'IdTimestamp': int(row.timestamp),
                 'DateTime': dt.datetime.fromtimestamp(row.timestamp / 1000000).strftime(constants.DATETIME_FMT),
                 'Pair': row.pair,
                 'Interval': self.interval,
@@ -129,7 +129,7 @@ class MACD(BaseStrategy):
                 "Side": OrderSide.Sell,
                 'EntryPrice': row.close,
                 'IndicatorValues': f"EMA={round(row.EMA, 2)}, MACD={round(row.MACD, 2)}, MACSIG={round(row.MACDSIG, 2)}",
-                'Details': f"{self._config['strategy']}: {self.get_strategy_text_details()}"
+                'Details': f"{self._config['strategy']['name']}: {self.get_strategy_text_details()}"
             }
             self.db.add_trade_signals_dict(signal)
             return self.data, signal
