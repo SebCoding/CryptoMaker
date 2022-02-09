@@ -1,33 +1,33 @@
  {
    "bot": {
      "instance_name": "Bot1",
-     "throttle_secs": 1,
-     "progress_bar": true
+     "throttle_secs": 2,
+     "progress_bar": false
    },
    "strategy": {
-     "name": "ScalpEmaRsiAdx",
-     "signal_mode": "realtime",
-     "minimum_candles_to_start": 3000
+     "name": "MACD",
+     "signal_mode": "minute",
+     "minimum_candles_to_start": 5000
    },
    "trading": {
-     "interval": "3m",
+     "interval": "30m",
      "leverage_long": 1,
      "leverage_short": 1,
-     "take_profit": 0.003,
-     "stop_loss": 0.002,
-     "tradable_balance_ratio": 0.99,
+     "take_profit_pct": 1.5,
+     "stop_loss_pct": 1,
+     "tradable_balance_ratio": 0.5,
      "trade_entry_mode": "maker",
      "constant_take_profit": true
    },
    "limit_entry": {
-     "abort_price_pct": 0.0029,
-     "abort_time_candle_ratio": 1
+     "abort_price_pct": 1.4,
+     "abort_time_candle_ratio": 0.5
    },
    "exchange": {
      "name": "Bybit",
      "testnet": true,
      "market_type": "perpetual futures",
-     "pair": "ETHUSDT",
+     "pair": "BTCUSDT",
      "stake_currency": "USDT",
      "http": {
           "linear_testnet": "https://api-testnet.bybit.com",
@@ -57,7 +57,7 @@
      "output_file_path": "logs/output_log.txt"
    },
    "telegram": {
-     "enable": false
+     "enable": true
    }
 }
 

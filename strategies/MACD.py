@@ -113,8 +113,8 @@ class MACD(BaseStrategy):
                 "Side": OrderSide.Buy,
                 'EntryPrice': row.close,
                 'EMA': round(row.EMA, 2),
-                'RSI': round(row.RSI, 2),
-                'ADX': round(row.ADX, 2),
+                'MACD': round(row.MACD, 2),
+                'MACDSIG': round(row.MACDSIG, 2),
                 'Notes': self.get_strategy_text_details()
             }
             self.db.add_trade_signals_dict(signal)
@@ -131,8 +131,8 @@ class MACD(BaseStrategy):
                 "Side": OrderSide.Sell,
                 'EntryPrice': row.close,
                 'EMA': round(row.EMA, 2),
-                'RSI': round(row.RSI, 2),
-                'ADX': round(row.ADX, 2),
+                'MACD': round(row.MACD, 2),
+                'MACDSIG': round(row.MACDSIG, 2),
                 'Notes': self.get_strategy_text_details()
             }
             self.db.add_trade_signals_dict(signal)
