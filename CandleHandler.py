@@ -257,7 +257,7 @@ class CandleHandler:
                         self._candles_df = self._candles_df.tail(self.DROP_OLD_ROWS_THRESHOLD).copy()
                         self._candles_df.reset_index(inplace=True)
 
-                    # print('\n'+self._candles_df.tail(10).to_string())
+                    #print('\n'+self._candles_df.tail(10).to_string())
         return self._candles_df, data_changed
 
     def validate_last_entry(self, to_append):
@@ -277,7 +277,7 @@ class CandleHandler:
         valid = True
         msg = ''
         if self._candles_df is not None and len(self._candles_df) >= 2:
-            start_timestamp = arrow.get(int(self._candles_df["start"].iloc[-1]))
+            start_timestamp = int(self._candles_df["start"].iloc[-1])
             # signal_mode = 'sub_interval'
             if self._config['strategy']['signal_mode'] == SignalMode.SubInterval:
                 prev_end = arrow.get(int(self._candles_df["end"].iloc[-2]))
@@ -299,12 +299,11 @@ class CandleHandler:
                       f'prev_end[{self._candles_df["end_time"].iloc[-2]}]  *******\n'
 
             if not valid:
-
                 # For 'sub_interval' mode adjust start_timestamp
                 if self._config['strategy']['signal_mode'] == SignalMode.SubInterval:
                     current_minute = arrow.get(start_timestamp).to('local').minute
                     offset = current_minute % self.minutes_in_interval
-                    start_timestamp = start_timestamp.int_timestamp - (offset * 60)
+                    start_timestamp = start_timestamp - (offset * 60)
 
                 msg += self._candles_df.tail(2).to_string() + '\n'
                 self._logger.error(msg)
