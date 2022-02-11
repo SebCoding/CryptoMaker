@@ -12,11 +12,11 @@ from strategies.BaseStrategy import BaseStrategy
 
 class MACD(BaseStrategy):
     # Trend indicator: EMA - Exponential Moving Average
-    EMA_PERIODS = 200
+    EMA_PERIODS = 150
 
     # Trend following momentum indicator:
     # MACD - Moving Average Convergence Divergence
-    MACD_FAST = 12
+    MACD_FAST = 10
     MACD_SLOW = 26
     MACD_SIGNAL = 9
 
@@ -83,8 +83,8 @@ class MACD(BaseStrategy):
             'signal'] = -1
 
         self.data = df
-        # df_print = df.drop(columns=['start', 'end'], axis=1)
-        # print('\n\n'+df_print.tail(10).to_string())
+        df_print = df.drop(columns=['start', 'end'], axis=1)
+        print('\n\n'+df_print.round(2).tail(10).to_string())
 
     # Return 2 values:
     #   - DataFrame with indicators

@@ -304,7 +304,7 @@ class CandleHandler:
                 if self._config['strategy']['signal_mode'] == SignalMode.SubInterval:
                     current_minute = arrow.get(start_timestamp).to('local').minute
                     offset = current_minute % self.minutes_in_interval
-                    start_timestamp = start_timestamp - (offset * 60)
+                    start_timestamp = start_timestamp.int_timestamp - (offset * 60)
 
                 msg += self._candles_df.tail(2).to_string() + '\n'
                 self._logger.error(msg)
