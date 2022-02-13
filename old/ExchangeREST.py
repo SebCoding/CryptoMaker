@@ -59,7 +59,7 @@ class ExchangeREST:
         self.exchange._logger.setLevel(logging.INFO)
 
         # Market type
-        if self._config['exchange']['market_type'] == 'perpetual futures':
+        if self._config['exchange']['market_type'] == 'linear':
             self.exchange.options['defaultType'] = 'linear'
         else:
             msg = f"Unsupported market type [{self._config['exchange']['market_type']}]."

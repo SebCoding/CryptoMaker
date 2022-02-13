@@ -1837,6 +1837,8 @@ class HTTP:
                     time.sleep(self.retry_delay)
                     continue
                 else:
+                    TelegramBot.send_to_group(
+                        f'FailedRequestError: {method} {path}: {req_params}. Conflict. Could not decode JSON.')
                     raise FailedRequestError(
                         request=f'{method} {path}: {req_params}',
                         message='Conflict. Could not decode JSON.',

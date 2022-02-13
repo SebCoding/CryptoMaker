@@ -1,5 +1,5 @@
 """
-    Wallet for USDT perpetual futures only.
+    Wallet for USDT linear only.
     Hybrid class using REST API to get balances until the first update
     of the websocket that only happens after the balance in the wallet changes.
     Using websockets private topic ['wallet']

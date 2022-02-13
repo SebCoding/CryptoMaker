@@ -1,6 +1,6 @@
 APPLICATION_NAME = 'CryptoMaker'
 SUPPORTED_EXCHANGES = ['Bybit']
-MARKET_TYPES = ['perpetual futures']
+MARKET_TYPES = ['linear']
 LOGGING_LEVELS = ['debug', 'info', 'warning', 'error', 'critical']
 
 DATE_FMT = '%Y-%m-%d'
@@ -10,7 +10,7 @@ DATETIME_FMT_NS = '%Y-%m-%d %H:%M'
 DATETIME_FMT_MS = '%Y-%m-%d %H:%M:%S.%f'
 
 TRADE_ENTRY_MODES = ['maker', 'taker']
-VALID_STRATEGIES = ['MACD', 'ScalpEmaRsiAdx']
+VALID_STRATEGIES = ['MACD', 'ScalpEmaRsiAdx', 'UltimateScalper']
 SIGNAL_MODES = ['interval', 'sub_interval', 'realtime']
 
 # Valid Intervals. Some intervals are not supported by Bybit Websockets
@@ -39,8 +39,9 @@ CONFIG_SCHEMA = {
                 'instance_name': {'type': 'string'},
                 'throttle_secs': {'type': 'integer', 'minimum': 0},
                 'progress_bar': {'type': 'boolean', 'default': True},
+                'display_dataframe': {'type': 'boolean', 'default': False},
             },
-            'required': ['instance_name', 'throttle_secs', 'progress_bar']
+            'required': ['instance_name', 'throttle_secs', 'progress_bar', 'display_dataframe']
         },
         'strategy': {
             'type': 'object',

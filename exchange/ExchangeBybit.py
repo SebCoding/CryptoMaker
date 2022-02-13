@@ -103,11 +103,17 @@ class ExchangeBybit:
         '1d': 'D', '1w': 'W', '1M': 'M'
     }
 
-    def __init__(self):
+    def __init__(self, extra_interval=None):
+        """
+            extra_interval: Can be used a strategy needs data from an additional timeframe (not to be confused with
+                            sub_interval).
+            For example: UltimateScalper works in 3m or 5m, but also requires 1m for MACD histogram
+        """
         self._logger = Logger.get_module_logger(__name__)
         self._config = Configuration.get_config()
         self.interval = self.interval_map[self._config['trading']['interval']]
         self.sub_interval = self.interval_map[self._config['trading']['sub_interval']]
+        self.extra_interval = self.interval_map[extra_interval] if extra_interval else None
         self.name = str(self._config['exchange']['name']).capitalize()
         self.pair = self._config['exchange']['pair']
         self.stake_currency = self._config['exchange']['stake_currency']
@@ -131,8 +137,8 @@ class ExchangeBybit:
             self.api_key = api_keys.BYBIT_API_KEY
             self.api_secret = api_keys.BYBIT_API_SECRET
 
-        # Market type hardcoded for perpetual futures
-        if self._config['exchange']['market_type'] != 'perpetual futures':
+        # Market type hardcoded for linear
+        if self._config['exchange']['market_type'] != 'linear':
             msg = f"Unsupported market type [{self._config['exchange']['market_type']}]."
             self._logger.error(msg)
             raise Exception(msg)
@@ -211,6 +217,8 @@ class ExchangeBybit:
         ]
         if self._config['strategy']['signal_mode'] == SignalMode.SubInterval:
             topic_list.append(self.get_candle_topic(self.pair, self.sub_interval))
+        if self.extra_interval and self.extra_interval not in topic_list:
+            topic_list.append(self.get_candle_topic(self.pair, self.extra_interval))
         return topic_list
 
     def build_private_topics_list(self):

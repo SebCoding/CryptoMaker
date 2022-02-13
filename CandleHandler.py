@@ -21,14 +21,25 @@ class CandleHandler:
     # For example: every each 1000 new rows we delete the 1000 oldest rows
     DROP_OLD_ROWS_THRESHOLD = 1000
 
-    def __init__(self, exchange):
+    def __init__(self, exchange, interval=None, sub_interval=None, signal_mode=None, minimum_candles_to_start=0):
+        """
+            If interval or signal_mode are provided they override the config file.
+        """
         self._logger = Logger.get_module_logger(__name__)
         self._config = Configuration.get_config()
         self.pair = self._config['exchange']['pair']
-        self.interval = self._config['trading']['interval']
+
+        self.interval = interval if interval else self._config['trading']['interval']
+        self.sub_interval = sub_interval if sub_interval else self._config['trading']['sub_interval']
+        self.signal_mode = signal_mode if signal_mode else self._config['strategy']['signal_mode']
+
+        if minimum_candles_to_start > 0:
+            self.minimum_candles_to_start = minimum_candles_to_start
+        else:
+            self.minimum_candles_to_start = int(self._config['strategy']['minimum_candles_to_start'])
+
         self.sub_interval = self._config['trading']['sub_interval']
         self.minutes_in_interval = utils.convert_interval_to_sec(self.interval) / 60
-        self.minimum_candles_to_start = int(self._config['strategy']['minimum_candles_to_start'])
         self._exchange = exchange
         self._candle_topic_name = \
             self._exchange.get_candle_topic(self.pair, self._exchange.interval_map[self.interval])
@@ -38,14 +49,14 @@ class CandleHandler:
 
     # Fetch 'minimum_candles_to_start' candles preceding 'to_time' (not including to_time)
     def get_historic_candles(self, to_time):
-        self._logger.info(f'\nFetching {self.minimum_candles_to_start} historical candles.')
+        self._logger.info(f'\nFetching {int(self.minimum_candles_to_start)} {self.interval} historical candles.')
         from_time = utils.adjust_from_time_timestamp(to_time, self.interval, self.minimum_candles_to_start)
         to_time -= 1  # subtract 1s because get_candle_data() includes candle to 'to_time'
         df = self._exchange.get_candle_data(self.pair, from_time, to_time, self.interval)
         return df
 
     def get_refreshed_candles(self):
-        if self._config['strategy']['signal_mode'] == SignalMode.SubInterval:
+        if self.signal_mode == SignalMode.SubInterval:
             return self._get_refreshed_candles_sub_interval()
         else:
             return self._get_refreshed_candles()
@@ -76,7 +87,7 @@ class CandleHandler:
             for candle in candle_list:
                 if candle['timestamp'] > self._last_candle_timestamp:
                     # If we only trade on closed candles ignore data that is not confirmed
-                    if self._config['strategy']['signal_mode'] == SignalMode.Interval and not candle['confirm']:
+                    if self.signal_mode == SignalMode.Interval and not candle['confirm']:
                         # Assuming confirmed candles are placed before the unconfirmed candles in the list,
                         # we can exit on the 1st unconfirmed candle encountered
                         return self._candles_df, False
@@ -137,6 +148,12 @@ class CandleHandler:
                         self._logger.info(f'Dropping oldest {self.DROP_OLD_ROWS_THRESHOLD} of candles dataframe.')
                         self._candles_df = self._candles_df.tail(self.DROP_OLD_ROWS_THRESHOLD).copy()
                         self._candles_df.reset_index(inplace=True)
+
+                    self._candles_df['open'] = self._candles_df['open'].astype(float)
+                    self._candles_df['high'] = self._candles_df['high'].astype(float)
+                    self._candles_df['low'] = self._candles_df['low'].astype(float)
+                    self._candles_df['close'] = self._candles_df['close'].astype(float)
+                    self._candles_df['volume'] = self._candles_df['volume'].astype(float)
 
                     # print('\n' + self._candles_df.tail(10).to_string())
 
@@ -279,7 +296,7 @@ class CandleHandler:
         if self._candles_df is not None and len(self._candles_df) >= 2:
             start_timestamp = int(self._candles_df["start"].iloc[-1])
             # signal_mode = 'sub_interval'
-            if self._config['strategy']['signal_mode'] == SignalMode.SubInterval:
+            if self.signal_mode == SignalMode.SubInterval:
                 prev_end = arrow.get(int(self._candles_df["end"].iloc[-2]))
                 cur_start = arrow.get(int(self._candles_df["start"].iloc[-1]))
                 cur_confirm = self._candles_df["confirm"].iloc[-1]
@@ -300,7 +317,7 @@ class CandleHandler:
 
             if not valid:
                 # For 'sub_interval' mode adjust start_timestamp
-                if self._config['strategy']['signal_mode'] == SignalMode.SubInterval:
+                if self.signal_mode == SignalMode.SubInterval:
                     current_minute = arrow.get(start_timestamp).to('local').minute
                     offset = current_minute % self.minutes_in_interval
                     start_timestamp = start_timestamp - (offset * 60)

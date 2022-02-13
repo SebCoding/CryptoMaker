@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 
+from CandleHandler import CandleHandler
 from Configuration import Configuration
 
 
@@ -32,22 +33,26 @@ class BaseStrategy(ABC):
     # start trading as soon as the application is started
     minimum_candles_to_start = 0
 
-    def __init__(self):
+    def __init__(self, database, exchange):
         super().__init__()
         self.name = self.__class__.__name__
         self._config = Configuration.get_config()
         self.interval = self._config['trading']['interval']
-        # self.takeprofit = self.config['trading']['takeprofit']
-        # self.stoploss = self.config['trading']['stoploss']
-        # self.tradable_balance_ratio = self.config['trading']['tradable_balance_ratio']
         self.minimum_candles_to_start = self._config['strategy']['minimum_candles_to_start']
+        self.db = database
+        self.exchange = exchange
+        self._candle_handler = CandleHandler(exchange)
+
+    @abstractmethod
+    def get_strategy_text_details(self):
+        pass
 
     @abstractmethod
     def add_indicators_and_signals(self, candles_df):
         pass
 
     @abstractmethod
-    def find_entry(self, candles_df):
+    def find_entry(self):
         pass
 
     def save_enry_to_db(self):

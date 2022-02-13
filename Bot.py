@@ -2,7 +2,7 @@ import os
 import sys
 import time
 from typing import Any, Callable
-
+import traceback
 import rapidjson
 import telegram_
 import websocket
@@ -21,8 +21,10 @@ from enums.EntryMode import EntryMode
 from enums.TradeSignals import TradeSignals
 # from strategies.ScalpEmaRsiAdx import ScalpEmaRsiAdx
 # from strategies.MACD import MACD
+# from strategies.UltimateScalper import UltimateScalper
 from strategies.ScalpEmaRsiAdx import ScalpEmaRsiAdx
 from strategies.MACD import MACD
+from strategies.UltimateScalper import UltimateScalper
 from exchange.ExchangeBybit import ExchangeBybit
 from logging_.Logger import Logger
 from telegram_.TelegramBot import TelegramBot
@@ -54,33 +56,32 @@ class Bot:
         self._last_throttle_start_time = 0.0
         self.throttle_secs = self._config['bot']['throttle_secs']
 
-        self._exchange = ExchangeBybit()
+        if self._config['strategy']['name'] == 'UltimateScalper':
+            self._exchange = ExchangeBybit(extra_interval='1m')
+        else:
+            self._exchange = ExchangeBybit()
+
         self.db = Database(self._exchange)
-        self._candle_handler = CandleHandler(self._exchange)
         self._position = Position(self.db, self._exchange)
         self._wallet = WalletUSDT(self._exchange)
         self._logger.info(f'{self._wallet.to_string()}')
-        self.strategy = globals()[self._config['strategy']['name']](self.db)
+        self.strategy = globals()[self._config['strategy']['name']](self.db, self._exchange)
         self._logger.info(f'Trading Settings:\n' + rapidjson.dumps(self._config['trading'], indent=2))
         self._logger.info(f'Limit Entry Settings:\n' + rapidjson.dumps(self._config['limit_entry'], indent=2))
 
     # Heart of the Bot. Work done at each iteration.
     def run(self):
-        # Step 1: Get fresh candle data
-        self._candles_df, data_changed = self._candle_handler.get_refreshed_candles()
+        # Check for an entry signal
+        df, signal = self.strategy.find_entry()
 
-        # Step 2: Calculate Indicators, Signals and Find Entries
-        if data_changed:
-            df, signal = self.strategy.find_entry(self._candles_df)
-
-            # Step 3: Check if we received an entry signal and we are not in an open position
-            if signal['Signal'] in [TradeSignals.EnterLong, TradeSignals.EnterShort] \
-                    and not self._position.currently_in_position():
-                Bot.beep(5, 2500, 100)
-                df_print = df.drop(columns=['start', 'end', 'timestamp'], axis=1)
-                self._logger.info(f'\n{df_print.tail(10).to_string()} \n')
-                self._logger.info(f"{signal['Signal']}: {rapidjson.dumps(signal, indent=2)}")
-                self.enter_trade(signal)
+        # Check if we received an entry signal and that we are not in an open position
+        if signal['Signal'] in [TradeSignals.EnterLong, TradeSignals.EnterShort] \
+                and not self._position.currently_in_position():
+            Bot.beep(5, 2500, 100)
+            df_print = df.drop(columns=['start', 'end', 'timestamp'], axis=1)
+            self._logger.info(f'\n{df_print.tail(10).to_string()} \n')
+            self._logger.info(f"{signal['Signal']}: {rapidjson.dumps(signal, indent=2)}")
+            self.enter_trade(signal)
 
     def enter_trade(self, signal):
         entry_mode = self._config['trading']['trade_entry_mode']
@@ -109,12 +110,12 @@ class Bot:
                 pybit.exceptions.FailedRequestError) as e:
             self._logger.exception(e)
             self._logger.error(f"Bot Crashed. Restart in {self.RESTART_DELAY} seconds")
-            TelegramBot.send_to_group(f'Application crashed. {e}')
+            TelegramBot.send_to_group(f'Application crashed. {str(e)}\n{traceback.format_exc()}')
             TelegramBot.send_to_group(f"Bot Crashed. Restart in {self.RESTART_DELAY} seconds")
             self.restart(self.RESTART_DELAY)
         except Exception as e:
             self._logger.exception(e)
-            TelegramBot.send_to_group(f'Application crashed. {e}')
+            TelegramBot.send_to_group(f'Application crashed. {str(e)}\n{traceback.format_exc()}')
             Bot.beep(1, 500, 2000)
             raise e
 

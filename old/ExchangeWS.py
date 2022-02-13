@@ -103,8 +103,8 @@ class ExchangeWS:
             self.api_key = api_keys.BYBIT_API_KEY
             self.api_secret = api_keys.BYBIT_API_SECRET
 
-        # Market type hardcoded for perpetual futures
-        if self._config['exchange']['market_type'] != 'perpetual futures':
+        # Market type hardcoded for linear
+        if self._config['exchange']['market_type'] != 'linear':
             msg = f"Unsupported market type [{self._config['exchange']['market_type']}]."
             self._logger.error(msg)
             raise Exception(msg)

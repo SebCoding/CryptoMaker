@@ -38,15 +38,13 @@ class ScalpEmaRsiAdx(BaseStrategy):
     ADX_PERIODS = 3
     ADX_THRESHOLD = 30
 
-    def __init__(self, database):
-        super().__init__()
+    def __init__(self, database, exchange):
+        super().__init__(database, exchange)
         self._logger = Logger.get_module_logger(__name__)
         self._logger.info(f'Initializing the {self.name} strategy: ' + self.get_strategy_text_details())
         self._logger.info(f'Strategy Settings:\n' + rapidjson.dumps(self._config['strategy'], indent=2))
         self.last_trade_index = self.minimum_candles_to_start
-        self.db = database
         self.data = None
-        # self._wallet = WalletUSDT(exchange)
 
     def get_strategy_text_details(self):
         details = f'EMA({self.EMA_PERIODS}'
@@ -101,13 +99,15 @@ class ScalpEmaRsiAdx(BaseStrategy):
             'signal'] = -1
 
         self.data = df
-        # df_print = df.drop(columns=['start', 'end'], axis=1)
-        # print('\n\n'+df_print.tail(10).to_string())
+
+        if self._config['bot']['display_dataframe']:
+            df_print = df.drop(columns=['start', 'end', 'timestamp'], axis=1)
+            print('\n\n'+df_print.round(2).tail(10).to_string())
 
     # Return 2 values:
     #   - DataFrame with indicators
     #   - dictionary with results
-    def find_entry2(self, candles_df):
+    def find_entry2(self):
         """
             New version. This version assumes that on an entry, the previous row will contain the signal.
             This only works when RSI_SIGNAL and RSI_ENTRY and the same.
@@ -117,120 +117,53 @@ class ScalpEmaRsiAdx(BaseStrategy):
               - DataFrame with indicators
               - dictionary with results
         """
-        # Step 1: Add indicators and signals
-        self.add_indicators_and_signals(candles_df)
+        # Step 1: Get fresh candle data
+        candles_df, data_changed = self._candle_handler.get_refreshed_candles()
 
-        # Step2: Look for entry point
-        # logger.info('Looking trading trade entry.')
+        if data_changed:
+            # Step 2: Add indicators and signals
+            self.add_indicators_and_signals(candles_df)
 
-        # Get last row of the dataframe
-        row = self.data.iloc[-1]
+            # Step3: Look for entry point
+            # logger.info('Looking trading trade entry.')
 
-        long_signal = True if self.data['signal'].iloc[-2] == 1 else False
-        short_signal = True if self.data['signal'].iloc[-2] == -1 else False
+            # Get last row of the dataframe
+            row = self.data.iloc[-1]
 
-        # Long Entry
-        if long_signal \
-                and row.close > row.EMA_Long \
-                and row.RSI > self.RSI_MIN_ENTRY \
-                and row.ADX >= self.ADX_THRESHOLD:
-            signal = {
-                'IdTimestamp': row.timestamp,
-                'DateTime': dt.datetime.fromtimestamp(row.timestamp / 1000000).strftime(constants.DATETIME_FMT),
-                'Pair': row.pair,
-                'Interval': self.interval,
-                'Signal': TradeSignals.EnterLong,
-                "Side": OrderSide.Buy,
-                'EntryPrice': row.close,
-                'IndicatorValues': f"EMA={round(row.EMA, 2)}, RSI={round(row.RSI, 2)}, ADX={round(row.ADX, 2)}",
-                'Details': f"{self._config['strategy']['name']}: {self.get_strategy_text_details()}"
-            }
-            self.db.add_trade_signals_dict(signal)
-            return self.data, signal
+            long_signal = True if self.data['signal'].iloc[-2] == 1 else False
+            short_signal = True if self.data['signal'].iloc[-2] == -1 else False
 
-        # Short Entry
-        if short_signal \
-                and row.close < row.EMA_Short \
-                and row.RSI < self.RSI_MAX_ENTRY \
-                and row.ADX >= self.ADX_THRESHOLD:
-            signal = {
-                'IdTimestamp': int(row.timestamp),
-                'DateTime': dt.datetime.fromtimestamp(row.timestamp / 1000000).strftime(constants.DATETIME_FMT),
-                'Pair': row.pair,
-                'Interval': self.interval,
-                'Signal': TradeSignals.EnterShort,
-                "Side": OrderSide.Sell,
-                'EntryPrice': row.close,
-                'IndicatorValues': f"EMA={round(row.EMA, 2)}, RSI={round(row.RSI, 2)}, ADX={round(row.ADX, 2)}",
-                'Details': f"{self._config['strategy']['name']}: {self.get_strategy_text_details()}"
-            }
-            self.db.add_trade_signals_dict(signal)
-            return self.data, signal
-
-        return self.data, {'Signal': TradeSignals.NoTrade}
-
-    def find_entry(self, candles_df):
-        """
-            Return 2 values:
-              - DataFrame with indicators
-              - dictionary with results
-        """
-        # Step 1: Add indicators and signals
-        self.add_indicators_and_signals(candles_df)
-
-        # Step2: Look for entry point
-        # logger.info('Looking trading trade entry.')
-        signal_list = self.data.query('signal in [-1, 1]').index
-        signal_index = max(signal_list)
-        data_length = len(self.data)
-        # print(f'last signal index: {signal_index}')
-
-        # We ignore all signals for candles prior to when the application
-        # was started or when the last trade entry that we signaled
-        if signal_index <= self.last_trade_index:
-            return self.data, {'Signal': TradeSignals.NoTrade, 'SignalOffset': 0}
-
-        long_signal = True if self.data['signal'].iloc[signal_index] == 1 else False
-        short_signal = True if self.data['signal'].iloc[signal_index] == -1 else False
-
-        start_scan = signal_index + 1
-        for i, row in self.data.iloc[start_scan:].iterrows():
-            # If after receiving a long signal the EMA or ADX are no longer satisfied, cancel signal
-            if long_signal and (row.close < row.EMA_Long or row.ADX < self.ADX_THRESHOLD):
-                return self.data, {'Signal': TradeSignals.NoTrade, 'SignalOffset': signal_index - data_length + 1}
-
-            # If after receiving a short signal the EMA or ADX are no longer satisfied, cancel signal
-            if short_signal and (row.close > row.EMA_Short or row.ADX < self.ADX_THRESHOLD):
-                return self.data, {'Signal': TradeSignals.NoTrade, 'SignalOffset': signal_index - data_length + 1}
-
-            # RSI exiting oversold area. Long Entry
-            if long_signal and row.RSI > self.RSI_MIN_ENTRY:
-                self.last_trade_index = i
+            # Long Entry
+            if long_signal \
+                    and row.close > row.EMA_Long \
+                    and row.RSI > self.RSI_MIN_ENTRY \
+                    and row.ADX >= self.ADX_THRESHOLD:
                 signal = {
-                    'IdTimestamp': int(row.timestamp),
+                    'IdTimestamp': row.timestamp,
                     'DateTime': dt.datetime.fromtimestamp(row.timestamp / 1000000).strftime(constants.DATETIME_FMT),
                     'Pair': row.pair,
                     'Interval': self.interval,
                     'Signal': TradeSignals.EnterLong,
-                    'Side': OrderSide.Buy,
+                    "Side": OrderSide.Buy,
                     'EntryPrice': row.close,
                     'IndicatorValues': f"EMA={round(row.EMA, 2)}, RSI={round(row.RSI, 2)}, ADX={round(row.ADX, 2)}",
                     'Details': f"{self._config['strategy']['name']}: {self.get_strategy_text_details()}"
-
                 }
                 self.db.add_trade_signals_dict(signal)
                 return self.data, signal
 
-            # RSI exiting overbought area. Short Entry
-            elif short_signal and row.RSI < self.RSI_MAX_ENTRY:
-                self.last_trade_index = i
+            # Short Entry
+            if short_signal \
+                    and row.close < row.EMA_Short \
+                    and row.RSI < self.RSI_MAX_ENTRY \
+                    and row.ADX >= self.ADX_THRESHOLD:
                 signal = {
                     'IdTimestamp': int(row.timestamp),
                     'DateTime': dt.datetime.fromtimestamp(row.timestamp / 1000000).strftime(constants.DATETIME_FMT),
                     'Pair': row.pair,
                     'Interval': self.interval,
                     'Signal': TradeSignals.EnterShort,
-                    'Side': OrderSide.Sell,
+                    "Side": OrderSide.Sell,
                     'EntryPrice': row.close,
                     'IndicatorValues': f"EMA={round(row.EMA, 2)}, RSI={round(row.RSI, 2)}, ADX={round(row.ADX, 2)}",
                     'Details': f"{self._config['strategy']['name']}: {self.get_strategy_text_details()}"
@@ -238,4 +171,79 @@ class ScalpEmaRsiAdx(BaseStrategy):
                 self.db.add_trade_signals_dict(signal)
                 return self.data, signal
 
-        return self.data, {'Signal': TradeSignals.NoTrade, 'SignalOffset': signal_index - data_length + 1}
+        return self.data, {'Signal': TradeSignals.NoTrade}
+
+    def find_entry(self):
+        """
+            Return 2 values:
+              - DataFrame with indicators
+              - dictionary with results
+        """
+        # Step 1: Get fresh candle data
+        candles_df, data_changed = self._candle_handler.get_refreshed_candles()
+
+        if data_changed:
+            # Step 2: Add indicators and signals
+            self.add_indicators_and_signals(candles_df)
+
+            # Step3: Look for entry point
+            # logger.info('Looking trading trade entry.')
+            signal_list = self.data.query('signal in [-1, 1]').index
+            signal_index = max(signal_list)
+            data_length = len(self.data)
+            # print(f'last signal index: {signal_index}')
+
+            # We ignore all signals for candles prior to when the application
+            # was started or when the last trade entry that we signaled
+            if signal_index <= self.last_trade_index:
+                return self.data, {'Signal': TradeSignals.NoTrade, 'SignalOffset': 0}
+
+            long_signal = True if self.data['signal'].iloc[signal_index] == 1 else False
+            short_signal = True if self.data['signal'].iloc[signal_index] == -1 else False
+
+            start_scan = signal_index + 1
+            for i, row in self.data.iloc[start_scan:].iterrows():
+                # If after receiving a long signal the EMA or ADX are no longer satisfied, cancel signal
+                if long_signal and (row.close < row.EMA_Long or row.ADX < self.ADX_THRESHOLD):
+                    return self.data, {'Signal': TradeSignals.NoTrade, 'SignalOffset': signal_index - data_length + 1}
+
+                # If after receiving a short signal the EMA or ADX are no longer satisfied, cancel signal
+                if short_signal and (row.close > row.EMA_Short or row.ADX < self.ADX_THRESHOLD):
+                    return self.data, {'Signal': TradeSignals.NoTrade, 'SignalOffset': signal_index - data_length + 1}
+
+                # RSI exiting oversold area. Long Entry
+                if long_signal and row.RSI > self.RSI_MIN_ENTRY:
+                    self.last_trade_index = i
+                    signal = {
+                        'IdTimestamp': int(row.timestamp),
+                        'DateTime': dt.datetime.fromtimestamp(row.timestamp / 1000000).strftime(constants.DATETIME_FMT),
+                        'Pair': row.pair,
+                        'Interval': self.interval,
+                        'Signal': TradeSignals.EnterLong,
+                        'Side': OrderSide.Buy,
+                        'EntryPrice': row.close,
+                        'IndicatorValues': f"EMA={round(row.EMA, 2)}, RSI={round(row.RSI, 2)}, ADX={round(row.ADX, 2)}",
+                        'Details': f"{self._config['strategy']['name']}: {self.get_strategy_text_details()}"
+
+                    }
+                    self.db.add_trade_signals_dict(signal)
+                    return self.data, signal
+
+                # RSI exiting overbought area. Short Entry
+                elif short_signal and row.RSI < self.RSI_MAX_ENTRY:
+                    self.last_trade_index = i
+                    signal = {
+                        'IdTimestamp': int(row.timestamp),
+                        'DateTime': dt.datetime.fromtimestamp(row.timestamp / 1000000).strftime(constants.DATETIME_FMT),
+                        'Pair': row.pair,
+                        'Interval': self.interval,
+                        'Signal': TradeSignals.EnterShort,
+                        'Side': OrderSide.Sell,
+                        'EntryPrice': row.close,
+                        'IndicatorValues': f"EMA={round(row.EMA, 2)}, RSI={round(row.RSI, 2)}, ADX={round(row.ADX, 2)}",
+                        'Details': f"{self._config['strategy']['name']}: {self.get_strategy_text_details()}"
+                    }
+                    self.db.add_trade_signals_dict(signal)
+                    return self.data, signal
+
+        return self.data, {'Signal': TradeSignals.NoTrade}

@@ -27,7 +27,7 @@
    "exchange": {
      "name": "Bybit",
      "testnet": true,
-     "market_type": "perpetual futures",
+     "market_type": "linear",
      "pair": "BTCUSDT",
      "stake_currency": "USDT",
      "http": {

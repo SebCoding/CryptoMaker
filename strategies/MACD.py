@@ -20,14 +20,11 @@ class MACD(BaseStrategy):
     MACD_SLOW = 26
     MACD_SIGNAL = 9
 
-    def __init__(self, database):
-        super().__init__()
+    def __init__(self, database, exchange):
+        super().__init__(database, exchange)
         self._logger = Logger.get_module_logger(__name__)
         self._logger.info(f'Initializing the {self.name} strategy: ' + self.get_strategy_text_details())
         self._logger.info(f'Strategy Settings:\n' + rapidjson.dumps(self._config['strategy'], indent=2))
-        self.last_trade_index = self.minimum_candles_to_start
-        self.db = database
-        # self._wallet = WalletUSDT(exchange)
 
     def get_strategy_text_details(self):
         details = f'EMA({self.EMA_PERIODS}), ' \
@@ -83,55 +80,64 @@ class MACD(BaseStrategy):
             'signal'] = -1
 
         self.data = df
-        df_print = df.drop(columns=['start', 'end'], axis=1)
-        print('\n\n'+df_print.round(2).tail(10).to_string())
 
-    # Return 2 values:
-    #   - DataFrame with indicators
-    #   - dictionary with results
-    def find_entry(self, candles_df):
-        # Step 1: Add indicators and signals
-        self.add_indicators_and_signals(candles_df)
+        if self._config['bot']['display_dataframe']:
+            df_print = df.drop(columns=['start', 'end', 'timestamp'], axis=1)
+            print('\n\n'+df_print.round(2).tail(10).to_string())
 
-        # Step2: Look for entry point
-        # logger.info('Looking trading trade entry.')
+    def find_entry(self):
+        """
+            Return 2 values:
+              - DataFrame with indicators
+              - dictionary with results
+        """
+        # Step 1: Get fresh candle data
+        candles_df, data_changed = self._candle_handler.get_refreshed_candles()
 
-        # Get last row of the dataframe
-        row = self.data.iloc[-1]
+        if data_changed:
+            # Step 2: Add indicators and signals
+            self.add_indicators_and_signals(candles_df)
 
-        long_signal = True if self.data['signal'].iloc[-1] == 1 else False
-        short_signal = True if self.data['signal'].iloc[-1] == -1 else False
+            # Step3: Look for entry point
+            # logger.info('Looking trading trade entry.')
 
-        # Long Entry
-        if long_signal:
-            signal = {
-                'IdTimestamp': int(row.timestamp),
-                'DateTime': dt.datetime.fromtimestamp(row.timestamp / 1000000).strftime(constants.DATETIME_FMT),
-                'Pair': row.pair,
-                'Interval': self.interval,
-                'Signal': TradeSignals.EnterLong,
-                "Side": OrderSide.Buy,
-                'EntryPrice': row.close,
-                'IndicatorValues': f"EMA={round(row.EMA, 2)}, MACD={round(row.MACD, 2)}, MACSIG={round(row.MACDSIG, 2)}",
-                'Details': f"{self._config['strategy']['name']}: {self.get_strategy_text_details()}"
-            }
-            self.db.add_trade_signals_dict(signal)
-            return self.data, signal
+            # Get last row of the dataframe
+            row = self.data.iloc[-1]
 
-        # Short Entry
-        if short_signal:
-            signal = {
-                'IdTimestamp': int(row.timestamp),
-                'DateTime': dt.datetime.fromtimestamp(row.timestamp / 1000000).strftime(constants.DATETIME_FMT),
-                'Pair': row.pair,
-                'Interval': self.interval,
-                'Signal': TradeSignals.EnterShort,
-                "Side": OrderSide.Sell,
-                'EntryPrice': row.close,
-                'IndicatorValues': f"EMA={round(row.EMA, 2)}, MACD={round(row.MACD, 2)}, MACSIG={round(row.MACDSIG, 2)}",
-                'Details': f"{self._config['strategy']['name']}: {self.get_strategy_text_details()}"
-            }
-            self.db.add_trade_signals_dict(signal)
-            return self.data, signal
+            long_signal = True if self.data['signal'].iloc[-1] == 1 else False
+            short_signal = True if self.data['signal'].iloc[-1] == -1 else False
+
+            # Long Entry
+            if long_signal:
+                signal = {
+                    'IdTimestamp': int(row.timestamp),
+                    'DateTime': dt.datetime.fromtimestamp(row.timestamp / 1000000).strftime(constants.DATETIME_FMT),
+                    'Pair': row.pair,
+                    'Interval': self.interval,
+                    'Signal': TradeSignals.EnterLong,
+                    "Side": OrderSide.Buy,
+                    'EntryPrice': row.close,
+                    'IndicatorValues': f"EMA={round(row.EMA, 2)}, MACD={round(row.MACD, 2)}, MACSIG={round(row.MACDSIG, 2)}",
+                    'Details': f"{self._config['strategy']['name']}: {self.get_strategy_text_details()}"
+                }
+                self.db.add_trade_signals_dict(signal)
+                return self.data, signal
+
+            # Short Entry
+            if short_signal:
+                signal = {
+                    'IdTimestamp': int(row.timestamp),
+                    'DateTime': dt.datetime.fromtimestamp(row.timestamp / 1000000).strftime(constants.DATETIME_FMT),
+                    'Pair': row.pair,
+                    'Interval': self.interval,
+                    'Signal': TradeSignals.EnterShort,
+                    "Side": OrderSide.Sell,
+                    'EntryPrice': row.close,
+                    'IndicatorValues': f"EMA={round(row.EMA, 2)}, MACD={round(row.MACD, 2)}, MACSIG={round(row.MACDSIG, 2)}",
+                    'Details': f"{self._config['strategy']['name']}: {self.get_strategy_text_details()}"
+                }
+                self.db.add_trade_signals_dict(signal)
+                return self.data, signal
 
         return self.data, {'Signal': TradeSignals.NoTrade}
+
