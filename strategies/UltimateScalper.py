@@ -193,6 +193,10 @@ class UltimateScalper(BaseStrategy):
 
             # Long Entry
             if long_signal:
+                ind_values = f"EMA=({row.EMA_Fast}, {row.EMA_Slow}, {row.EMA_Trend}), " \
+                             f"RSI({row.RSI}, {row.RSI_Low}, {row.RSI_High}), " \
+                             f"ADX({row.ADX}, {row.ADX_Threshold}), " \
+                             f"MACDHist({row.MACDHist}), BB_Lower({row.BB_Lower})"
                 signal = {
                     'IdTimestamp': int(row.timestamp),
                     'DateTime': dt.datetime.fromtimestamp(row.timestamp / 1000000).strftime(constants.DATETIME_FMT),
@@ -201,7 +205,7 @@ class UltimateScalper(BaseStrategy):
                     'Signal': TradeSignals.EnterLong,
                     "Side": OrderSide.Buy,
                     'EntryPrice': row.close,
-                    'IndicatorValues': f"EMA={round(row.EMA, 2)}, MACD={round(row.MACD, 2)}, MACSIG={round(row.MACDSIG, 2)}",
+                    'IndicatorValues': ind_values,
                     'Details': f"{self._config['strategy']['name']}: {self.get_strategy_text_details()}"
                 }
                 self.db.add_trade_signals_dict(signal)
@@ -209,6 +213,10 @@ class UltimateScalper(BaseStrategy):
 
             # Short Entry
             if short_signal:
+                ind_values = f"EMA=({row.EMA_Fast}, {row.EMA_Slow}, {row.EMA_Trend}), " \
+                             f"RSI({row.RSI}, {row.RSI_Low}, {row.RSI_High}), " \
+                             f"ADX({row.ADX}, {row.ADX_Threshold}), " \
+                             f"MACDHist({row.MACDHist}), BB_Upper({row.BB_Upper})"
                 signal = {
                     'IdTimestamp': int(row.timestamp),
                     'DateTime': dt.datetime.fromtimestamp(row.timestamp / 1000000).strftime(constants.DATETIME_FMT),
@@ -217,7 +225,7 @@ class UltimateScalper(BaseStrategy):
                     'Signal': TradeSignals.EnterShort,
                     "Side": OrderSide.Sell,
                     'EntryPrice': row.close,
-                    'IndicatorValues': f"EMA={round(row.EMA, 2)}, MACD={round(row.MACD, 2)}, MACSIG={round(row.MACDSIG, 2)}",
+                    'IndicatorValues': ind_values,
                     'Details': f"{self._config['strategy']['name']}: {self.get_strategy_text_details()}"
                 }
                 self.db.add_trade_signals_dict(signal)
