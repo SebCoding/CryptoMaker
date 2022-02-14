@@ -193,10 +193,9 @@ class UltimateScalper(BaseStrategy):
 
             # Long Entry
             if long_signal:
-                ind_values = f"EMA=({row.EMA_Fast}, {row.EMA_Slow}, {row.EMA_Trend}), " \
-                             f"RSI({row.RSI}, {row.RSI_Low}, {row.RSI_High}), " \
-                             f"ADX({row.ADX}, {row.ADX_Threshold}), " \
-                             f"MACDHist({row.MACDHist}), BB_Lower({row.BB_Lower})"
+                ind_values = f"EMA=({row.EMA_Fast:.2f}, {row.EMA_Slow:.2f}, {row.EMA_Trend:.2f}), " \
+                             f"RSI({row.RSI:.2f}), ADX({row.ADX:.2f}), " \
+                             f"MACDHist({row.MACDHist:.2f}), BB_Upper({row.BB_Upper:.2f})"
                 signal = {
                     'IdTimestamp': int(row.timestamp),
                     'DateTime': dt.datetime.fromtimestamp(row.timestamp / 1000000).strftime(constants.DATETIME_FMT),
@@ -213,10 +212,9 @@ class UltimateScalper(BaseStrategy):
 
             # Short Entry
             if short_signal:
-                ind_values = f"EMA=({row.EMA_Fast}, {row.EMA_Slow}, {row.EMA_Trend}), " \
-                             f"RSI({row.RSI}, {row.RSI_Low}, {row.RSI_High}), " \
-                             f"ADX({row.ADX}, {row.ADX_Threshold}), " \
-                             f"MACDHist({row.MACDHist}), BB_Upper({row.BB_Upper})"
+                ind_values = f"EMA=({row.EMA_Fast:.2f}, {row.EMA_Slow:.2f}, {row.EMA_Trend:.2f}), " \
+                             f"RSI({row.RSI:.2f}), ADX({row.ADX:.2f}), " \
+                             f"MACDHist({row.MACDHist:.2f}), BB_Upper({row.BB_Upper:.2f})"
                 signal = {
                     'IdTimestamp': int(row.timestamp),
                     'DateTime': dt.datetime.fromtimestamp(row.timestamp / 1000000).strftime(constants.DATETIME_FMT),
