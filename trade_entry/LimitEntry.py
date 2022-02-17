@@ -75,6 +75,7 @@ class LimitEntry(BaseTradeEntry):
         tradable_balance = self.get_tradable_balance()
 
         price = self.get_entry_price(self.signal['Side'])
+        stop_loss = self.get_stop_loss(self.signal['Side'], price)
 
         # Calculate trade size (qty) based on leverage
         qty = tradable_balance / price
@@ -90,7 +91,7 @@ class LimitEntry(BaseTradeEntry):
             order_type=OrderType.Limit,
             qty=qty,
             price=price,
-            stop_loss=self.sig_stop_loss_amount
+            stop_loss=stop_loss
         )
         order.order_id = self._orders.place_order(order, 'TradeEntry')['order_id']
         time.sleep(self.PAUSE_TIME)
