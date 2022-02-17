@@ -103,20 +103,20 @@ class Bot:
                     sys.stdout.flush()
         except KeyboardInterrupt as e:
             self._logger.info('\n')
-            #self.db.sync_all_tables(self.pair)
+            self.db.sync_all_tables([self.pair])
             self._logger.info("Application Terminated by User.")
         except (websocket.WebSocketTimeoutException,
                 websocket.WebSocketAddressException,
                 pybit.exceptions.FailedRequestError) as e:
             self._logger.exception(e)
             self._logger.error(f"Bot Crashed. Restart in {self.RESTART_DELAY} seconds")
-            TelegramBot.send_to_group(f'Application crashed. {str(e)}\n{traceback.format_exc()}')
+            TelegramBot.send_to_group(f"Application crashed. {str(e)}\n{traceback.format_exc()}")
             TelegramBot.send_to_group(f"Bot Crashed. Restart in {self.RESTART_DELAY} seconds")
             self.restart(self.RESTART_DELAY)
         except Exception as e:
             self._logger.exception(e)
-            TelegramBot.send_to_group(f'Application crashed. {str(e)}\n{traceback.format_exc()}')
-            Bot.beep(1, 500, 2000)
+            # TelegramBot.send_to_group(f'Application crashed. {str(e)}\n{traceback.format_exc()}')
+            # Bot.beep(1, 500, 2000)
             raise e
 
     def throttle(self, func: Callable[..., Any], throttle_secs: float, *args, **kwargs) -> Any:

@@ -280,7 +280,8 @@ class LimitEntry(BaseTradeEntry):
 
         if order and order['cum_exec_qty'] > self.take_profit_cum_qty:
             self.take_profit_cum_qty = float(order['cum_exec_qty'])
-            tp_order = self._exchange.query_orders_rt_by_id(self.pair, self.take_profit_order_id)
+            if self.take_profit_order_id:
+                tp_order = self._exchange.query_orders_rt_by_id(self.pair, self.take_profit_order_id)
 
             # No pre-existing take_profit order or if it exists it has been filled or cancelled
             # Create a new take_profit order
@@ -303,13 +304,15 @@ class LimitEntry(BaseTradeEntry):
                                                           new_take_profit)
 
                     tp_order = self._exchange.query_orders_rt_by_id(self.pair, tp_order_id)
-                    if (not tp_order or tp_order['order_status'] \
-                            in [OrderStatus.Cancelled, OrderStatus.PendingCancel, OrderStatus.Rejected]) \
+                    if (not tp_order or tp_order['order_status']
+                        in [OrderStatus.Cancelled, OrderStatus.PendingCancel, OrderStatus.Rejected]) \
                             and self._position.currently_in_position(self.signal['Side']):
                         continue
                     else:
                         break
-                self.take_profit_order_id = tp_order['order_id']
+                # It is possible that the position has been closed by stop_loss before we had time to create a TP order
+                if tp_order:
+                    self.take_profit_order_id = tp_order['order_id']
                 op_type = 'create'
             # We update the existing take_profit order
             else:

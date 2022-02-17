@@ -8,14 +8,16 @@ from exchange.ExchangeBybit import ExchangeBybit
     to the main folder of CryptoMaker in your Run Configuration at the top right of the window.
 """
 
-PAIR = 'ETHUSDT'
+#PAIR = 'ETHUSDT'
+
+pairs = ['BTCUSDT', 'ETHUSDT']
 
 
 def main():
     exchange = ExchangeBybit()
     db = Database(exchange)
-    pair = PAIR if len(sys.argv) <= 1 else sys.argv[1]
-    db.sync_all_tables(pair)
+    #pair = PAIR if len(sys.argv) <= 1 else sys.argv[1]
+    db.sync_all_tables(pairs)
 
 
 if __name__ == '__main__':

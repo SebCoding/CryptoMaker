@@ -92,11 +92,12 @@ class Database:
         self.init_user_trades_table()
         self.init_conditional_orders_table()
 
-    def sync_all_tables(self, pair):
-        self.sync_all_order_records(pair)
-        self.sync_all_closed_pnl_records(pair)
-        self.sync_all_user_trade_records(pair)
-        self.sync_all_conditional_order_records(pair)
+    def sync_all_tables(self, pairs):
+        for pair in pairs:
+            self.sync_all_order_records(pair)
+            self.sync_all_closed_pnl_records(pair)
+            self.sync_all_user_trade_records(pair)
+            self.sync_all_conditional_order_records(pair)
 
     """
         -----------------------------------------------------------------------------
