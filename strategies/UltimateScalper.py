@@ -1,6 +1,7 @@
 import sys
 import time
 
+import pandas as pd
 import rapidjson
 import talib
 import datetime as dt
@@ -8,6 +9,7 @@ import constants
 import utils
 from CandleHandler import CandleHandler
 from enums.BybitEnums import OrderSide
+from enums.SignalMode import SignalMode
 from logging_.Logger import Logger
 from enums import TradeSignals
 from enums.TradeSignals import TradeSignals
@@ -52,9 +54,14 @@ class UltimateScalper(BaseStrategy):
     def __init__(self, database, exchange):
         super().__init__(database, exchange)
         self._logger = Logger.get_module_logger(__name__)
+        self.signal_mode = self._config['strategy']['signal_mode']
+        # if self._config['strategy']['signal_mode'] in ['realtime', 'sub_interval']:
+        #     msg = f"The UltimateScalper strategy does not support {self._config['strategy']['signal_mode']} signal mode."
+        #     self._logger.error(msg)
+        #     sys.exit(1)
 
-        if self._config['strategy']['signal_mode'] in ['realtime', 'sub_interval']:
-            msg = f"The UltimateScalper strategy does not support {self._config['strategy']['signal_mode']} signal mode."
+        if self._config['trading']['interval'] == '1m':
+            msg = f"The UltimateScalper strategy does not support the 1m interval."
             self._logger.error(msg)
             sys.exit(1)
 
@@ -67,9 +74,10 @@ class UltimateScalper(BaseStrategy):
         min_in_interval = utils.convert_interval_to_sec(self.interval) / 60
         min_candles_1m = int(self._config['strategy']['minimum_candles_to_start']) * min_in_interval
 
-        if self._config['strategy']['signal_mode'] in ['interval', 'sub_interval']:
+        if self._config['strategy']['signal_mode'] in ['interval']:
             signal_mode_1m = 'interval'
         else:
+            # sub_interval and realtime
             signal_mode_1m = 'realtime'
         self._candle_handler_1m = CandleHandler(
             exchange,
@@ -125,8 +133,21 @@ class UltimateScalper(BaseStrategy):
 
         # We use inner join here to trim rows at the beginning and the end where data is missing.
         # Candle data does not end at the same point for all intervals
-        df = df.reset_index().merge(self.data_1m[['end_time', 'MACDHist', 'BB_Upper', 'BB_Lower']],
-                                    on="end_time", how='inner').set_index('index')
+        if self.signal_mode == SignalMode.Interval:
+            df = df.reset_index().merge(self.data_1m[['end_time', 'MACDHist', 'BB_Upper', 'BB_Lower']],
+                                        on="end_time", how='inner').set_index('index')
+        else:
+            # For: sub_interval and realtime modes
+            # Manually adjust the last row if it could not join on end_time because the 1m end_time does not align
+            # with the one of the main interval since the interval is not yet closed and confirmed
+            df = df.reset_index().merge(self.data_1m[['end_time', 'MACDHist', 'BB_Upper', 'BB_Lower']],
+                                        on="end_time", how='left').set_index('index')
+            if pd.isnull(df.iloc[-1]['MACDHist']):
+                # Use following syntax to avoid: A value is trying to be set on a copy of a slice from a DataFrame
+                df.iat[-1, df.columns.get_loc('MACDHist')] = self.data_1m.iloc[-1]['MACDHist']
+                df.iat[-1, df.columns.get_loc('BB_Upper')] = self.data_1m.iloc[-1]['BB_Upper']
+                df.iat[-1, df.columns.get_loc('BB_Lower')] = self.data_1m.iloc[-1]['BB_Lower']
+
         df.loc[:, 'signal'] = 0
         # Enter long trade
         df.loc[
@@ -160,6 +181,7 @@ class UltimateScalper(BaseStrategy):
             msg = '\n' + df_print.round(2).tail(10).to_string() + '\n'
             self._logger.info(msg)
 
+
     # Return 2 values:
     #   - DataFrame with indicators
     #   - dictionary with results
@@ -170,8 +192,13 @@ class UltimateScalper(BaseStrategy):
             # print(candles_df.tail(10).to_string() + '\n')
             while True:
                 candles_df_1m, data_changed_1m = self._candle_handler_1m.get_refreshed_candles()
-                if candles_df_1m is not None and candles_df_1m.iloc[-1]['end'] >= candles_df.iloc[-1]['end']:
+                if candles_df_1m is not None \
+                        and self.signal_mode == SignalMode.Interval \
+                        and candles_df_1m.iloc[-1]['end'] >= candles_df.iloc[-1]['end']:
                     # print(candles_df_1m.tail(10).to_string() + '\n')
+                    self.data_1m = candles_df_1m.copy()
+                    break
+                elif candles_df_1m is not None and candles_df_1m.iloc[-1]['start'] >= candles_df.iloc[-1]['start']:
                     self.data_1m = candles_df_1m.copy()
                     break
                 else:

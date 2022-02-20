@@ -105,19 +105,16 @@ class ExchangeBybit:
 
     def __init__(self, extra_interval=None):
         """
-            extra_interval: Can be used a strategy needs data from an additional timeframe (not to be confused with
-                            sub_interval).
+            extra_interval: Can be used a strategy needs data from an additional timeframe.
             For example: UltimateScalper works in 3m or 5m, but also requires 1m for MACD histogram
         """
         self._logger = Logger.get_module_logger(__name__)
         self._config = Configuration.get_config()
         self.interval = self.interval_map[self._config['trading']['interval']]
-        self.sub_interval = self.interval_map[self._config['trading']['sub_interval']]
         self.extra_interval = self.interval_map[extra_interval] if extra_interval else None
         self.name = str(self._config['exchange']['name']).capitalize()
         self.pair = self._config['exchange']['pair']
         self.stake_currency = self._config['exchange']['stake_currency']
-        self.validate_interval()
         self.validate_pair()
 
         # Testnet/Mainnet
@@ -160,26 +157,6 @@ class ExchangeBybit:
             self._logger.error(msg)
             raise Exception(msg)
 
-    def validate_interval(self):
-        interval = self._config['trading']['interval']
-        sub_interval = self._config['trading']['sub_interval']
-        if self._config['strategy']['signal_mode'] == 'sub_interval':
-            if interval == '1m':
-                raise ValueError(f"signal_mode = 'sub_interval' cannot be used with interval = '1m'")
-
-            # SubInterval must always be smaller than Interval
-            interval_secs = utils.convert_interval_to_sec(interval)
-            sub_interval_secs = utils.convert_interval_to_sec(sub_interval)
-            if sub_interval_secs >= interval_secs:
-                raise ValueError(f"sub_interval = {self._config['trading']['sub_interval']} must always be less "
-                                 f"than interval = {self._config['trading']['interval']}")
-
-            # SubInterval signal mode not implemented for interval > 1h
-            if interval_secs > 3600:
-                msg = f"Cannot use sub_intervals with intervals > 1h. " \
-                      f"interval = {self._config['trading']['interval']}"
-                raise ValueError(msg)
-
     """
         ----------------------------------------------------------------------------
            Websockets Related Methods
@@ -215,8 +192,6 @@ class ExchangeBybit:
             self.get_candle_topic(self.pair, self.interval),
             self.get_orderbook25_topic(self.pair)
         ]
-        if self._config['strategy']['signal_mode'] == SignalMode.SubInterval:
-            topic_list.append(self.get_candle_topic(self.pair, self.sub_interval))
         if self.extra_interval and self.extra_interval not in topic_list:
             topic_list.append(self.get_candle_topic(self.pair, self.extra_interval))
         return topic_list

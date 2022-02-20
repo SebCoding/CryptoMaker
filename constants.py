@@ -48,15 +48,15 @@ CONFIG_SCHEMA = {
             'properties': {
                 'name': {'type': 'string', 'enum': VALID_STRATEGIES},
                 'signal_mode': {'type': 'string', 'enum': SIGNAL_MODES},
+                'sub_interval_secs': {'type': 'number', 'minimum': 0},
                 'minimum_candles_to_start': {'type': 'integer', 'minimum': 0}
             },
-            'required': ['name', 'signal_mode', 'minimum_candles_to_start']
+            'required': ['name', 'signal_mode', 'sub_interval_secs', 'minimum_candles_to_start']
         },
         'trading': {
             'type': 'object',
             'properties': {
                 'interval': {'type': 'string', 'enum': VALID_INTERVALS},
-                'sub_interval': {'type': 'string', 'enum': VALID_INTERVALS},
                 'leverage_long': {'type': 'number', 'minimum': 1, 'maximum': 50},
                 'leverage_short': {'type': 'number', 'minimum': 1, 'maximum': 50},
                 'take_profit_pct': {'type': 'number', 'minimum': 0},
@@ -65,7 +65,7 @@ CONFIG_SCHEMA = {
                 'trade_entry_mode':  {'type': 'string', 'enum': TRADE_ENTRY_MODES},
                 'constant_take_profit': {'type': 'boolean'},
             },
-            'required': ['interval', 'sub_interval', 'leverage_long', 'leverage_short', 'take_profit_pct',
+            'required': ['interval', 'leverage_long', 'leverage_short', 'take_profit_pct',
                          'stop_loss_pct', 'tradable_balance_ratio', 'trade_entry_mode', 'constant_take_profit']
         },
         'limit_entry': {

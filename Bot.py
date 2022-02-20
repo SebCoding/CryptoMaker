@@ -98,7 +98,7 @@ class Bot:
                     sys.stdout.flush()
         except KeyboardInterrupt as e:
             self._logger.info('\n')
-            self.db.sync_all_tables([self.pair])
+            #self.db.sync_all_tables([self.pair])
             self._logger.info("Application Terminated by User.")
         except (websocket.WebSocketTimeoutException,
                 websocket.WebSocketAddressException,
