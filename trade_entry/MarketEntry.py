@@ -76,7 +76,7 @@ class MarketEntry(BaseTradeEntry):
 
     def place_market_order(self, side, qty, price, stop_loss):
         order = Order(side=side, symbol=self.pair, order_type=OrderType.Market, qty=qty,
-                      price=price, stop_loss=stop_loss)
+                      price=price, stop_loss=stop_loss, order_link_id=self.signal['OrderLinkId'])
         order_id = self._orders.place_order(order, 'TradeEntry')['order_id']
         return order_id
 

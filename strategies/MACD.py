@@ -104,19 +104,23 @@ class MACD(BaseStrategy):
 
             # Get last row of the dataframe
             row = self.data.iloc[-1]
+            date_time = dt.datetime.fromtimestamp(row.timestamp / 1000000).strftime(constants.DATETIME_FMT)
+            strategy = f"{self._config['strategy']['name']}: {self.get_strategy_text_details()}"
+            ind_values = f"EMA({round(row.EMA, 2)}), MACD({round(row.MACD, 2)}), MACSIG({round(row.MACDSIG, 2)})"
 
             # Long Entry
             if row.signal == 1:
                 signal = {
-                    'IdTimestamp': int(row.timestamp),
-                    'DateTime': dt.datetime.fromtimestamp(row.timestamp / 1000000).strftime(constants.DATETIME_FMT),
+                    'OrderLinkId': f'L{str(int(row.timestamp))}',
+                    'DateTime': date_time,
                     'Pair': row.pair,
                     'Interval': self.interval,
                     'Signal': TradeSignals.EnterLong,
                     "Side": OrderSide.Buy,
                     'EntryPrice': row.close,
-                    'IndicatorValues': f"EMA={round(row.EMA, 2)}, MACD={round(row.MACD, 2)}, MACSIG={round(row.MACDSIG, 2)}",
-                    'Details': f"{self._config['strategy']['name']}: {self.get_strategy_text_details()}"
+                    'Strategy': strategy,
+                    'IndicatorValues': ind_values,
+                    'Timestamp': int(row.timestamp)
                 }
                 self.db.add_trade_signals_dict(signal)
                 return self.data, signal
@@ -124,15 +128,16 @@ class MACD(BaseStrategy):
             # Short Entry
             if row.signal == -1:
                 signal = {
-                    'IdTimestamp': int(row.timestamp),
-                    'DateTime': dt.datetime.fromtimestamp(row.timestamp / 1000000).strftime(constants.DATETIME_FMT),
+                    'OrderLinkId': f'S{str(int(row.timestamp))}',
+                    'DateTime': date_time,
                     'Pair': row.pair,
                     'Interval': self.interval,
                     'Signal': TradeSignals.EnterShort,
                     "Side": OrderSide.Sell,
                     'EntryPrice': row.close,
-                    'IndicatorValues': f"EMA={round(row.EMA, 2)}, MACD={round(row.MACD, 2)}, MACSIG={round(row.MACDSIG, 2)}",
-                    'Details': f"{self._config['strategy']['name']}: {self.get_strategy_text_details()}"
+                    'Strategy': strategy,
+                    'IndicatorValues': ind_values,
+                    'Timestamp': int(row.timestamp)
                 }
                 self.db.add_trade_signals_dict(signal)
                 return self.data, signal

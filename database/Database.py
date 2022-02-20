@@ -110,15 +110,16 @@ class Database:
             if not self.engine.has_table(connection, self.TRADE_SIGNALS_TBL_NAME):
                 # Create a table with the appropriate Columns
                 table = Table(self.TRADE_SIGNALS_TBL_NAME, self.metadata,
-                              Column('IdTimestamp', BigInteger, index=True, nullable=False),
-                              Column('DateTime', DateTime, index=True, nullable=False),
+                              Column('OrderLinkId', String, nullable=False, index=True),
+                              Column('DateTime', DateTime, nullable=False, index=True),
                               Column('Pair', String, nullable=False),
                               Column('Interval', String, nullable=False),
                               Column('Signal', String, nullable=False),
                               Column('Side', String, nullable=False),
                               Column('EntryPrice', Float, nullable=False),
-                              Column('IndicatorValues', String),
-                              Column('Details', String)
+                              Column('Strategy', String, nullable=False),
+                              Column('IndicatorValues', String, nullable=False),
+                              Column('Timestamp', BigInteger, nullable=False)
                               )
                 self.metadata.create_all()
 
@@ -177,7 +178,7 @@ class Database:
             connection.execute(update_statement)
 
     def sync_all_order_records(self, pair):
-        self._logger.info(f'Syncing all Order records.')
+        self._logger.info(f'Syncing all {pair} Order records.')
         table = self.get_table(self.ORDERS_TBL_NAME)
         dict_list = self._exchange.get_all_order_records(pair)
         if dict_list:
@@ -242,7 +243,7 @@ class Database:
     # Insert Closed P&L contained in a list of dictionaries
     # Assuming the table exists, inserting only none existing entries
     def sync_all_closed_pnl_records(self, pair):
-        self._logger.info(f'Syncing all Closed P&L records.')
+        self._logger.info(f'Syncing all {pair} Closed P&L records.')
         table = self.get_table(self.CLOSED_PNL_TBL_NAME)
         dict_list = self._exchange.get_all_closed_pnl_records(pair)
         if dict_list:
@@ -275,7 +276,7 @@ class Database:
                 table = Table(self.USER_TRADES_TBL_NAME, self.metadata,
                               Column('exec_id', String, nullable=False, index=True),
                               Column('order_id', String, index=True, nullable=False),
-                              # Column('order_link_id', String),
+                              Column('order_link_id', String),
                               Column('side', String, nullable=False),
                               Column('symbol', String, nullable=False),
                               # Column('price', Float),  # Abandoned!!
@@ -299,7 +300,7 @@ class Database:
                 self.metadata.create_all()
 
     def sync_all_user_trade_records(self, pair):
-        self._logger.info(f'Syncing all User Trade records.')
+        self._logger.info(f'Syncing all {pair} User Trade records.')
         table = self.get_table(self.USER_TRADES_TBL_NAME)
         dict_list = self._exchange.get_user_trades_records(pair)
         if dict_list:
@@ -355,7 +356,7 @@ class Database:
                 self.metadata.create_all()
 
     def sync_all_conditional_order_records(self, pair):
-        self._logger.info(f'Syncing all Conditional Order records.')
+        self._logger.info(f'Syncing all {pair} Conditional Order records.')
         table = self.get_table(self.COND_ORDERS_TBL_NAME)
         dict_list = self._exchange.get_all_conditional_order_records(pair)
         if dict_list:

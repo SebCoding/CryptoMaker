@@ -185,44 +185,45 @@ class UltimateScalper(BaseStrategy):
 
             # Get last row of the dataframe
             row = self.data.iloc[-1]
-
-            long_signal = True if self.data['signal'].iloc[-1] == 1 else False
-            short_signal = True if self.data['signal'].iloc[-1] == -1 else False
+            date_time = dt.datetime.fromtimestamp(row.timestamp / 1000000).strftime(constants.DATETIME_FMT)
+            strategy = f"{self._config['strategy']['name']}: {self.get_strategy_text_details()}"
 
             # Long Entry
-            if long_signal:
+            if row.signal == 1:
                 ind_values = f"EMA=({row.EMA_Fast:.2f}, {row.EMA_Slow:.2f}, {row.EMA_Trend:.2f}), " \
                              f"RSI({row.RSI:.2f}), ADX({row.ADX:.2f}), " \
                              f"MACDHist({row.MACDHist:.2f}), BB_Lower({row.BB_Lower:.2f})"
                 signal = {
-                    'IdTimestamp': int(row.timestamp),
-                    'DateTime': dt.datetime.fromtimestamp(row.timestamp / 1000000).strftime(constants.DATETIME_FMT),
+                    'OrderLinkId': f'L{str(int(row.timestamp))}',
+                    'DateTime': date_time,
                     'Pair': row.pair,
                     'Interval': self.interval,
                     'Signal': TradeSignals.EnterLong,
                     "Side": OrderSide.Buy,
                     'EntryPrice': row.close,
+                    'Strategy': strategy,
                     'IndicatorValues': ind_values,
-                    'Details': f"{self._config['strategy']['name']}: {self.get_strategy_text_details()}"
+                    'Timestamp': int(row.timestamp)
                 }
                 self.db.add_trade_signals_dict(signal)
                 return self.data, signal
 
             # Short Entry
-            if short_signal:
+            if row.signal == -1:
                 ind_values = f"EMA=({row.EMA_Fast:.2f}, {row.EMA_Slow:.2f}, {row.EMA_Trend:.2f}), " \
                              f"RSI({row.RSI:.2f}), ADX({row.ADX:.2f}), " \
                              f"MACDHist({row.MACDHist:.2f}), BB_Upper({row.BB_Upper:.2f})"
                 signal = {
-                    'IdTimestamp': int(row.timestamp),
-                    'DateTime': dt.datetime.fromtimestamp(row.timestamp / 1000000).strftime(constants.DATETIME_FMT),
+                    'OrderLinkId': f'S{str(int(row.timestamp))}',
+                    'DateTime': date_time,
                     'Pair': row.pair,
                     'Interval': self.interval,
                     'Signal': TradeSignals.EnterShort,
                     "Side": OrderSide.Sell,
                     'EntryPrice': row.close,
+                    'Strategy': strategy,
                     'IndicatorValues': ind_values,
-                    'Details': f"{self._config['strategy']['name']}: {self.get_strategy_text_details()}"
+                    'Timestamp': int(row.timestamp)
                 }
                 self.db.add_trade_signals_dict(signal)
                 return self.data, signal

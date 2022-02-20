@@ -130,44 +130,46 @@ class ScalpEmaRsiAdx(BaseStrategy):
 
             # Get last row of the dataframe
             row = self.data.iloc[-1]
-
-            long_signal = True if self.data['signal'].iloc[-2] == 1 else False
-            short_signal = True if self.data['signal'].iloc[-2] == -1 else False
+            date_time = dt.datetime.fromtimestamp(row.timestamp / 1000000).strftime(constants.DATETIME_FMT)
+            strategy = f"{self._config['strategy']['name']}: {self.get_strategy_text_details()}"
+            ind_values = f"EMA({round(row.EMA, 2)}), RSI({round(row.RSI, 2)}), ADX({round(row.ADX, 2)})"
 
             # Long Entry
-            if long_signal \
+            if row.signal == 1 \
                     and row.close > row.EMA_Long \
                     and row.RSI > self.RSI_MIN_ENTRY \
                     and row.ADX >= self.ADX_THRESHOLD:
                 signal = {
-                    'IdTimestamp': row.timestamp,
-                    'DateTime': dt.datetime.fromtimestamp(row.timestamp / 1000000).strftime(constants.DATETIME_FMT),
+                    'OrderLinkId': f'L{str(int(row.timestamp))}',
+                    'DateTime': date_time,
                     'Pair': row.pair,
                     'Interval': self.interval,
                     'Signal': TradeSignals.EnterLong,
                     "Side": OrderSide.Buy,
                     'EntryPrice': row.close,
-                    'IndicatorValues': f"EMA={round(row.EMA, 2)}, RSI={round(row.RSI, 2)}, ADX={round(row.ADX, 2)}",
-                    'Details': f"{self._config['strategy']['name']}: {self.get_strategy_text_details()}"
+                    'Strategy': strategy,
+                    'IndicatorValues': ind_values,
+                    'Timestamp': row.timestamp
                 }
                 self.db.add_trade_signals_dict(signal)
                 return self.data, signal
 
             # Short Entry
-            if short_signal \
+            if row.signal == -1 \
                     and row.close < row.EMA_Short \
                     and row.RSI < self.RSI_MAX_ENTRY \
                     and row.ADX >= self.ADX_THRESHOLD:
                 signal = {
-                    'IdTimestamp': int(row.timestamp),
-                    'DateTime': dt.datetime.fromtimestamp(row.timestamp / 1000000).strftime(constants.DATETIME_FMT),
+                    'OrderLinkId': f'S{str(int(row.timestamp))}',
+                    'DateTime': date_time,
                     'Pair': row.pair,
                     'Interval': self.interval,
                     'Signal': TradeSignals.EnterShort,
                     "Side": OrderSide.Sell,
                     'EntryPrice': row.close,
-                    'IndicatorValues': f"EMA={round(row.EMA, 2)}, RSI={round(row.RSI, 2)}, ADX={round(row.ADX, 2)}",
-                    'Details': f"{self._config['strategy']['name']}: {self.get_strategy_text_details()}"
+                    'Strategy': strategy,
+                    'IndicatorValues': ind_values,
+                    'Timestamp': row.timestamp
                 }
                 self.db.add_trade_signals_dict(signal)
                 return self.data, signal
@@ -212,20 +214,24 @@ class ScalpEmaRsiAdx(BaseStrategy):
                 if short_signal and (row.close > row.EMA_Short or row.ADX < self.ADX_THRESHOLD):
                     return self.data, {'Signal': TradeSignals.NoTrade, 'SignalOffset': signal_index - data_length + 1}
 
+                date_time = dt.datetime.fromtimestamp(row.timestamp / 1000000).strftime(constants.DATETIME_FMT)
+                strategy = f"{self._config['strategy']['name']}: {self.get_strategy_text_details()}"
+                ind_values = f"EMA({round(row.EMA, 2)}), RSI({round(row.RSI, 2)}), ADX({round(row.ADX, 2)})"
+
                 # RSI exiting oversold area. Long Entry
                 if long_signal and row.RSI > self.RSI_MIN_ENTRY:
                     self.last_trade_index = i
                     signal = {
-                        'IdTimestamp': int(row.timestamp),
-                        'DateTime': dt.datetime.fromtimestamp(row.timestamp / 1000000).strftime(constants.DATETIME_FMT),
+                        'OrderLinkId': f'L{str(int(row.timestamp))}',
+                        'DateTime': date_time,
                         'Pair': row.pair,
                         'Interval': self.interval,
                         'Signal': TradeSignals.EnterLong,
                         'Side': OrderSide.Buy,
                         'EntryPrice': row.close,
-                        'IndicatorValues': f"EMA={round(row.EMA, 2)}, RSI={round(row.RSI, 2)}, ADX={round(row.ADX, 2)}",
-                        'Details': f"{self._config['strategy']['name']}: {self.get_strategy_text_details()}"
-
+                        'Strategy': strategy,
+                        'IndicatorValues': ind_values,
+                        'Timestamp': int(row.timestamp)
                     }
                     self.db.add_trade_signals_dict(signal)
                     return self.data, signal
@@ -234,15 +240,16 @@ class ScalpEmaRsiAdx(BaseStrategy):
                 elif short_signal and row.RSI < self.RSI_MAX_ENTRY:
                     self.last_trade_index = i
                     signal = {
-                        'IdTimestamp': int(row.timestamp),
-                        'DateTime': dt.datetime.fromtimestamp(row.timestamp / 1000000).strftime(constants.DATETIME_FMT),
+                        'OrderLinkId': f'S{str(int(row.timestamp))}',
+                        'DateTime': date_time,
                         'Pair': row.pair,
                         'Interval': self.interval,
                         'Signal': TradeSignals.EnterShort,
                         'Side': OrderSide.Sell,
                         'EntryPrice': row.close,
-                        'IndicatorValues': f"EMA={round(row.EMA, 2)}, RSI={round(row.RSI, 2)}, ADX={round(row.ADX, 2)}",
-                        'Details': f"{self._config['strategy']['name']}: {self.get_strategy_text_details()}"
+                        'Strategy': strategy,
+                        'IndicatorValues': ind_values,
+                        'Timestamp': int(row.timestamp)
                     }
                     self.db.add_trade_signals_dict(signal)
                     return self.data, signal

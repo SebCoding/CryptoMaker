@@ -8,8 +8,9 @@ from enums.BybitEnums import TimeInForce, OrderType, OrderSide
 
 
 class Order:
-    def __init__(self, side, symbol, order_type, qty, price=0, take_profit=0, stop_loss=0, reduce_only=False):
+    def __init__(self, order_link_id, side, symbol, order_type, qty, price=0, take_profit=0, stop_loss=0, reduce_only=False):
         self.order_id = None
+        self.order_link_id = order_link_id
         self.side = side
         self.symbol = symbol
         self.order_type = order_type

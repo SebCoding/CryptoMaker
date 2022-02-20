@@ -154,7 +154,7 @@ class BaseTradeEntry(ABC):
         # take_profit order side is opposite has trade entry
         tp_side = OrderSide.Buy if trade_side == OrderSide.Sell else OrderSide.Sell
         tp_order = Order(side=tp_side, symbol=self.pair, order_type=OrderType.Limit, qty=qty,
-                         price=tp_price, reduce_only=True)
+                         price=tp_price, reduce_only=True, order_link_id=(self.signal['OrderLinkId']+'TP'))
         result = self._orders.place_order(tp_order, 'TakeProfit')
         return result['order_id'] if result else None
 

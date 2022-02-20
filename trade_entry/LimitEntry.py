@@ -82,7 +82,8 @@ class LimitEntry(BaseTradeEntry):
             order_type=OrderType.Limit,
             qty=qty,
             price=price,
-            stop_loss=stop_loss
+            stop_loss=stop_loss,
+            order_link_id=self.signal['OrderLinkId']
         )
         order.order_id = self._orders.place_order(order, 'TradeEntry')['order_id']
         time.sleep(self.PAUSE_TIME)

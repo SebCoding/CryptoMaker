@@ -557,7 +557,7 @@ class ExchangeBybit:
                 *time_in_force: PostOnly, GoodTillCancel, ImmediateOrCancel, FillOrKill
                 *close_on_trigger: true, false
                 *reduce_only: true, false
-                order_link_id: (Unique user-set order ID. Maximum length of 36 characters)
+                *order_link_id: (Unique user-set order ID. Maximum length of 36 characters)
                 take_profit: (Take profit price, only take effect upon opening the position)
                 stop_loss: (Stop loss price, only take effect upon opening the position)
                 tp_trigger_by: LastPrice, IndexPrice, MarkPrice
@@ -576,7 +576,8 @@ class ExchangeBybit:
                     stop_loss=o.stop_loss,
                     time_in_force=o.time_in_force,
                     close_on_trigger=False,
-                    reduce_only=o.reduce_only
+                    reduce_only=o.reduce_only,
+                    order_link_id=o.order_link_id
                 )
             elif o.order_type == OrderType.Limit:
                 data = self.session_auth.place_active_order(
@@ -589,7 +590,8 @@ class ExchangeBybit:
                     stop_loss=o.stop_loss,
                     time_in_force=o.time_in_force,
                     close_on_trigger=False,
-                    reduce_only=o.reduce_only
+                    reduce_only=o.reduce_only,
+                    order_link_id=o.order_link_id
                 )
         except pybit.exceptions.InvalidRequestError as e:
             # 130125: Current position is zero, cannot fix reduce-only order qty
