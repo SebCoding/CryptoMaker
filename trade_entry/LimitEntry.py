@@ -34,6 +34,8 @@ class LimitEntry(BaseTradeEntry):
         # The trade entry will abort after slippage becomes greater than this % of the current price
         self.abort_price_pct = float(self._config['limit_entry']['abort_price_pct']) / 100
 
+        self.nb_orders = 0
+
     def get_current_ob_price(self, side):
         if side == OrderSide.Buy:
             ob, spread = self._orderbook.get_top1()
@@ -63,6 +65,11 @@ class LimitEntry(BaseTradeEntry):
             to calculate a stop_loss equal to the first original order. All orders placed
             within a trade entry should have the same stop loss.
         """
+        if self.nb_orders <= 1:
+            order_link_id = self.signal['OrderLinkId']
+        else:
+            order_link_id = f"{self.signal['OrderLinkId']}-{self.nb_orders}"
+
         tradable_balance = self.get_tradable_balance()
 
         price = self.get_entry_price(self.signal['Side'])
@@ -83,7 +90,7 @@ class LimitEntry(BaseTradeEntry):
             qty=qty,
             price=price,
             stop_loss=stop_loss,
-            order_link_id=self.signal['OrderLinkId']
+            order_link_id=order_link_id
         )
         order.order_id = self._orders.place_order(order, 'TradeEntry')['order_id']
         time.sleep(self.PAUSE_TIME)
@@ -132,6 +139,7 @@ class LimitEntry(BaseTradeEntry):
 
         start_time = time.time()
         order_obj = self.place_limit_order()
+        self.nb_orders = 1
         trade_start_qty = order_obj.qty
         trade_start_price = order_obj.price
         abort_price_diff = round(self.abort_price_pct * trade_start_price, 2)
@@ -235,6 +243,7 @@ class LimitEntry(BaseTradeEntry):
                         f"{order_status} {self.side_l_s} Order[{order_id[-8:]}: qty={cum_exec_qty}/{order_qty}, "
                         f"orderbook={ob_price:.2f} = order_price={order_price:.2f}]. Retrying ...")
                     order_obj = self.place_limit_order()
+                    self.nb_orders += 1
                     self.take_profit_order_id = None
                     self.take_profit_cum_qty = 0
                     self.adjust_tp_order(order_obj.order_id)
