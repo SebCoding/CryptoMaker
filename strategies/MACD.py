@@ -12,11 +12,11 @@ from strategies.BaseStrategy import BaseStrategy
 
 class MACD(BaseStrategy):
     # Trend indicator: EMA - Exponential Moving Average
-    EMA_PERIODS = 150
+    EMA_PERIODS = 200
 
     # Trend following momentum indicator:
     # MACD - Moving Average Convergence Divergence
-    MACD_FAST = 10
+    MACD_FAST = 12
     MACD_SLOW = 26
     MACD_SIGNAL = 9
 
@@ -83,7 +83,8 @@ class MACD(BaseStrategy):
 
         if self._config['bot']['display_dataframe']:
             df_print = df.drop(columns=['start', 'end', 'timestamp'], axis=1)
-            print('\n\n'+df_print.round(2).tail(10).to_string())
+            msg = '\n' + df_print.round(2).tail(10).to_string() + '\n'
+            self._logger.info(msg)
 
     def find_entry(self):
         """
@@ -99,16 +100,13 @@ class MACD(BaseStrategy):
             self.add_indicators_and_signals(candles_df)
 
             # Step3: Look for entry point
-            # logger.info('Looking trading trade entry.')
+            # logger.info('Looking for trading trade entry.')
 
             # Get last row of the dataframe
             row = self.data.iloc[-1]
 
-            long_signal = True if self.data['signal'].iloc[-1] == 1 else False
-            short_signal = True if self.data['signal'].iloc[-1] == -1 else False
-
             # Long Entry
-            if long_signal:
+            if row.signal == 1:
                 signal = {
                     'IdTimestamp': int(row.timestamp),
                     'DateTime': dt.datetime.fromtimestamp(row.timestamp / 1000000).strftime(constants.DATETIME_FMT),
@@ -124,7 +122,7 @@ class MACD(BaseStrategy):
                 return self.data, signal
 
             # Short Entry
-            if short_signal:
+            if row.signal == -1:
                 signal = {
                     'IdTimestamp': int(row.timestamp),
                     'DateTime': dt.datetime.fromtimestamp(row.timestamp / 1000000).strftime(constants.DATETIME_FMT),

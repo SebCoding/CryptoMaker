@@ -102,7 +102,8 @@ class ScalpEmaRsiAdx(BaseStrategy):
 
         if self._config['bot']['display_dataframe']:
             df_print = df.drop(columns=['start', 'end', 'timestamp'], axis=1)
-            print('\n\n'+df_print.round(2).tail(10).to_string())
+            msg = '\n' + df_print.round(2).tail(10).to_string() + '\n'
+            self._logger.info(msg)
 
     # Return 2 values:
     #   - DataFrame with indicators

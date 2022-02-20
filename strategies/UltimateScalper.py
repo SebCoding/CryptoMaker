@@ -1,7 +1,6 @@
 import sys
 import time
 
-import numpy as np
 import rapidjson
 import talib
 import datetime as dt
@@ -9,12 +8,10 @@ import constants
 import utils
 from CandleHandler import CandleHandler
 from enums.BybitEnums import OrderSide
-from enums.SignalMode import SignalMode
 from logging_.Logger import Logger
 from enums import TradeSignals
 from enums.TradeSignals import TradeSignals
 from strategies.BaseStrategy import BaseStrategy
-from datetime import timedelta
 
 
 class UltimateScalper(BaseStrategy):
@@ -27,7 +24,7 @@ class UltimateScalper(BaseStrategy):
          - 83% WIN RATE 5 Minute ULTiMATE Scalping Trading Strategy!
            https://www.youtube.com/watch?v=XHhpCyIpJ50
 
-        Use 3 EMA, RSI, ADX and MACD histogram in the lower 1m timeframe to determine trade entries.
+        Uses 3 EMA, RSI, ADX and MACD histogram in the lower 1m timeframe to determine trade entries.
     """
     settings = {
         # Trend indicator: EMA - Exponential Moving Average
@@ -160,7 +157,8 @@ class UltimateScalper(BaseStrategy):
             # print('\n\n' + self.data_1m.round(2).head(10).to_string())
             # print('\n\n' + self.data_1m.round(2).tail(10).to_string())
             # print('\n\n' + df_print.round(2).head(10).to_string())
-            print('\n\n' + df_print.round(2).tail(10).to_string())
+            msg = '\n' + df_print.round(2).tail(10).to_string() + '\n'
+            self._logger.info(msg)
 
     # Return 2 values:
     #   - DataFrame with indicators

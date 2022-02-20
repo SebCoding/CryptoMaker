@@ -1,18 +1,9 @@
-import sys
 import time
 
-import rapidjson
-
 import utils
-from CandleHandler import CandleHandler
 from Orderbook import Orderbook
 from Orders import Order
-from Position import Position
-from database.Database import Database
 from enums.BybitEnums import OrderType, OrderSide, OrderStatus
-from enums.TradeSignals import TradeSignals
-from exchange.ExchangeBybit import ExchangeBybit
-from pybit import InvalidRequestError
 from telegram_.TelegramBot import TelegramBot
 from trade_entry.BaseTradeEntry import BaseTradeEntry
 
@@ -171,10 +162,10 @@ class LimitEntry(BaseTradeEntry):
                     cum_trade_qty += cum_exec_qty
 
                     # assert (cum_exec_qty == self.take_profit_cum_qty)
-                    if cum_exec_qty != self.take_profit_cum_qty:
-                        self._logger.error(f'Assert failed. cum_exec_qty={cum_exec_qty} != '
-                                           f'take_profit_cum_qty={self.take_profit_cum_qty}')
-                        raise AssertionError
+                    # if cum_exec_qty != self.take_profit_cum_qty:
+                    #     self._logger.error(f'Assert failed. cum_exec_qty={cum_exec_qty} != '
+                    #                        f'take_profit_cum_qty={self.take_profit_cum_qty}')
+                    #     raise AssertionError
 
                     self._logger.info(f'{self.side_l_s} Limit Entry Aborting. '
                                       f'elapsed_time={round(elapsed_time, 1)}s > abort_threshold={self.abort_seconds}s')
@@ -188,10 +179,10 @@ class LimitEntry(BaseTradeEntry):
                     cum_trade_qty += cum_exec_qty
 
                     # assert (cum_exec_qty == self.take_profit_cum_qty)
-                    if cum_exec_qty != self.take_profit_cum_qty:
-                        self._logger.error(f'Assert failed. cum_exec_qty={cum_exec_qty} != '
-                                           f'take_profit_cum_qty={self.take_profit_cum_qty}')
-                        raise AssertionError
+                    # if cum_exec_qty != self.take_profit_cum_qty:
+                    #     self._logger.error(f'Assert failed. cum_exec_qty={cum_exec_qty} != '
+                    #                        f'take_profit_cum_qty={self.take_profit_cum_qty}')
+                    #     raise AssertionError
 
                     if self.signal['Side'] == OrderSide.Buy:
                         abort_price = trade_start_price + abort_price_diff
@@ -221,10 +212,10 @@ class LimitEntry(BaseTradeEntry):
                     cum_trade_qty += cum_exec_qty
 
                     # assert (cum_exec_qty == self.take_profit_cum_qty)
-                    if cum_exec_qty != self.take_profit_cum_qty:
-                        self._logger.error(f'Assert failed. cum_exec_qty={cum_exec_qty} != '
-                                           f'take_profit_cum_qty={self.take_profit_cum_qty}')
-                        raise AssertionError
+                    # if cum_exec_qty != self.take_profit_cum_qty:
+                    #     self._logger.error(f'Assert failed. cum_exec_qty={cum_exec_qty} != '
+                    #                        f'take_profit_cum_qty={self.take_profit_cum_qty}')
+                    #     raise AssertionError
 
                     break
                 # Rejected, PendingCancel, Cancelled
@@ -233,10 +224,10 @@ class LimitEntry(BaseTradeEntry):
                     cum_trade_qty += cum_exec_qty
 
                     # assert (cum_exec_qty == self.take_profit_cum_qty)
-                    if cum_exec_qty != self.take_profit_cum_qty:
-                        self._logger.error(f'Assert failed. cum_exec_qty={cum_exec_qty} != '
-                                           f'take_profit_cum_qty={self.take_profit_cum_qty}')
-                        raise AssertionError
+                    # if cum_exec_qty != self.take_profit_cum_qty:
+                    #     self._logger.error(f'Assert failed. cum_exec_qty={cum_exec_qty} != '
+                    #                        f'take_profit_cum_qty={self.take_profit_cum_qty}')
+                    #     raise AssertionError
 
                     ob_price = self.get_current_ob_price(self.signal['Side'])
                     self._logger.info(

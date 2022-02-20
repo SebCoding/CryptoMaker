@@ -18,7 +18,7 @@ class CandleHandler:
     _last_candle_timestamp = 1
 
     # Everytime we reach this value of additional rows to the original count, we delete this amount of the oldest rows.
-    # For example: every each 1000 new rows we delete the 1000 oldest rows
+    # For example: after each 1000 new rows we delete the 1000 oldest rows
     DROP_OLD_ROWS_THRESHOLD = 1000
 
     def __init__(self, exchange, interval=None, sub_interval=None, signal_mode=None, minimum_candles_to_start=0):
@@ -187,13 +187,6 @@ class CandleHandler:
         # Read websockets
         candle_list = self.ws_public.fetch(self._candle_topic_name)
         candle_list_sub = self.ws_public.fetch(self._candle_sub_topic_name)
-
-        # if candle_list or candle_list_sub:
-        #     print('hey')
-        #
-        # if candle_list_sub:
-        #     candle = candle_list_sub[0]
-        #     print(rapidjson.dumps(candle, indent=2))
 
         # Remove unconfirmed candles
         if candle_list:

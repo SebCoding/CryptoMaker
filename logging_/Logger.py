@@ -4,7 +4,6 @@ import sys
 import arrow
 
 import constants
-import utils
 from Configuration import Configuration
 
 
