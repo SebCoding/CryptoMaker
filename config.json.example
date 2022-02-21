@@ -1,28 +1,28 @@
  {
    "bot": {
-     "instance_name": "Bot1",
+     "instance_name": "B1",
      "throttle_secs": 1,
      "progress_bar": false,
      "display_dataframe": true
    },
    "strategy": {
      "name": "UltimateScalper",
-     "signal_mode": "interval",
+     "signal_mode": "sub_interval",
+     "sub_interval_secs": 60,
      "minimum_candles_to_start": 5000
    },
    "trading": {
      "interval": "3m",
-     "sub_interval": "1m",
      "leverage_long": 1,
      "leverage_short": 1,
-     "take_profit_pct": 1.0,
+     "take_profit_pct": 0.9,
      "stop_loss_pct": 0.8,
      "tradable_balance_ratio": 0.95,
      "trade_entry_mode": "maker",
      "constant_take_profit": true
    },
    "limit_entry": {
-     "abort_price_pct": 0.9,
+     "abort_price_pct": 0.75,
      "abort_time_candle_ratio": 1
    },
    "exchange": {

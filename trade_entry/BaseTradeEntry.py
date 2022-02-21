@@ -52,6 +52,10 @@ class BaseTradeEntry(ABC):
         self.sig_stop_loss_amount = self.get_stop_loss(signal['Side'], signal['EntryPrice'])
         self.sig_take_profit_amount = self.get_take_profit(signal['Side'], signal['EntryPrice'])
 
+        # Nb of orders composing this entry
+        self.nb_orders = 0
+        self.nb_tp_orders = 0
+
     @abstractmethod
     def enter_trade(self):
         pass
@@ -152,9 +156,11 @@ class BaseTradeEntry(ABC):
 
     def place_tp_order(self, trade_side, qty, tp_price):
         # take_profit order side is opposite has trade entry
+        self.nb_tp_orders += 1
+        order_link_id = f"{self.signal['OrderLinkId']}TP.{self.nb_tp_orders}"
         tp_side = OrderSide.Buy if trade_side == OrderSide.Sell else OrderSide.Sell
         tp_order = Order(side=tp_side, symbol=self.pair, order_type=OrderType.Limit, qty=qty,
-                         price=tp_price, reduce_only=True, order_link_id=(self.signal['OrderLinkId']+'TP'))
+                         price=tp_price, reduce_only=True, order_link_id=order_link_id)
         result = self._orders.place_order(tp_order, 'TakeProfit')
         return result['order_id'] if result else None
 
