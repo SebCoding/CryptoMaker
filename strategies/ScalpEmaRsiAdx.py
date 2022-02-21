@@ -140,7 +140,7 @@ class ScalpEmaRsiAdx(BaseStrategy):
                     and row.RSI > self.RSI_MIN_ENTRY \
                     and row.ADX >= self.ADX_THRESHOLD:
                 signal = {
-                    'OrderLinkId': f'L{str(int(row.timestamp))}',
+                    'OrderLinkId': f'L{str(int(row.timestamp)/1000)}',
                     'DateTime': date_time,
                     'Pair': row.pair,
                     'Interval': self.interval,
@@ -160,7 +160,7 @@ class ScalpEmaRsiAdx(BaseStrategy):
                     and row.RSI < self.RSI_MAX_ENTRY \
                     and row.ADX >= self.ADX_THRESHOLD:
                 signal = {
-                    'OrderLinkId': f'S{str(int(row.timestamp))}',
+                    'OrderLinkId': f'S{str(int(row.timestamp)/1000)}',
                     'DateTime': date_time,
                     'Pair': row.pair,
                     'Interval': self.interval,
@@ -222,7 +222,7 @@ class ScalpEmaRsiAdx(BaseStrategy):
                 if long_signal and row.RSI > self.RSI_MIN_ENTRY:
                     self.last_trade_index = i
                     signal = {
-                        'OrderLinkId': f'L{str(int(row.timestamp))}',
+                        'OrderLinkId': f'L{str(int(row.timestamp)/1000)}',
                         'DateTime': date_time,
                         'Pair': row.pair,
                         'Interval': self.interval,
@@ -240,7 +240,7 @@ class ScalpEmaRsiAdx(BaseStrategy):
                 elif short_signal and row.RSI < self.RSI_MAX_ENTRY:
                     self.last_trade_index = i
                     signal = {
-                        'OrderLinkId': f'S{str(int(row.timestamp))}',
+                        'OrderLinkId': f'S{str(int(row.timestamp)/1000)}',
                         'DateTime': date_time,
                         'Pair': row.pair,
                         'Interval': self.interval,

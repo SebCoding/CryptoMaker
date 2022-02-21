@@ -221,7 +221,7 @@ class UltimateScalper(BaseStrategy):
                              f"RSI({row.RSI:.2f}), ADX({row.ADX:.2f}), " \
                              f"MACDHist({row.MACDHist:.2f}), BB_Lower({row.BB_Lower:.2f})"
                 signal = {
-                    'OrderLinkId': f'L{str(int(row.timestamp))}',
+                    'OrderLinkId': f'L{str(int(row.timestamp)/1000)}',
                     'DateTime': date_time,
                     'Pair': row.pair,
                     'Interval': self.interval,
@@ -241,7 +241,7 @@ class UltimateScalper(BaseStrategy):
                              f"RSI({row.RSI:.2f}), ADX({row.ADX:.2f}), " \
                              f"MACDHist({row.MACDHist:.2f}), BB_Upper({row.BB_Upper:.2f})"
                 signal = {
-                    'OrderLinkId': f'S{str(int(row.timestamp))}',
+                    'OrderLinkId': f'S{str(int(row.timestamp)/1000)}',
                     'DateTime': date_time,
                     'Pair': row.pair,
                     'Interval': self.interval,

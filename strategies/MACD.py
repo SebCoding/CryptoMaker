@@ -111,7 +111,7 @@ class MACD(BaseStrategy):
             # Long Entry
             if row.signal == 1:
                 signal = {
-                    'OrderLinkId': f'L{str(int(row.timestamp))}',
+                    'OrderLinkId': f'L{str(int(row.timestamp)/1000)}',
                     'DateTime': date_time,
                     'Pair': row.pair,
                     'Interval': self.interval,
@@ -128,7 +128,7 @@ class MACD(BaseStrategy):
             # Short Entry
             if row.signal == -1:
                 signal = {
-                    'OrderLinkId': f'S{str(int(row.timestamp))}',
+                    'OrderLinkId': f'S{str(int(row.timestamp)/1000)}',
                     'DateTime': date_time,
                     'Pair': row.pair,
                     'Interval': self.interval,
