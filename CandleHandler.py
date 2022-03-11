@@ -193,10 +193,10 @@ class CandleHandler:
                 self._logger.error(msg)
                 # The dataframe is corrupted. Rebuild the dataframe from scratch
                 self._logger.error(
-                    'Recovering from missing candle data. rebuilding the dataframe from scratch.')
+                    'Retying to recover from missing candle data. Rebuilding the dataframe from scratch.')
                 self._candles_df = self.get_historic_candles(start_timestamp)
                 self._candles_df = self._candles_df.append(to_append, ignore_index=True)
-                self._logger.error('Candles dataframe has been rebuilt successfully.')
+                self._logger.error(self.interval + ' candle dataframe has been rebuilt successfully.')
 
     def get_latest_price(self):
         self.get_refreshed_candles()

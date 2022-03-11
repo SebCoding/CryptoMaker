@@ -37,7 +37,7 @@ except ImportError:
     from json.decoder import JSONDecodeError
 
 # Versioning.
-VERSION = '1.3.5'
+VERSION = '1.3.6'
 
 
 class HTTP:
@@ -1252,6 +1252,21 @@ class HTTP:
         return self._submit_request(
             method='GET',
             path=self.endpoint + suffix,
+            query=kwargs,
+            auth=True
+        )
+
+    def query_trading_fee_rate(self, **kwargs):
+        """
+        Query trading fee rate.
+
+        :param kwargs: See
+            https://bybit-exchange.github.io/docs/inverse/#t-queryfeerate.
+        :returns: Request results as dictionary.
+        """
+        return self._submit_request(
+            method='GET',
+            path=self.endpoint + '/v2/private/position/fee-rate',
             query=kwargs,
             auth=True
         )

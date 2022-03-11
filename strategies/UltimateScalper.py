@@ -39,8 +39,8 @@ class UltimateScalper(BaseStrategy):
         'RSI_High': 81,
         # ADX: Average Directional Index
         # Not initially in this strategy, but added as an optional parameter
-        'ADX': 17,
-        'ADX_Threshold': 24,  # set to 0 to disable ADX
+        'ADX': 14,
+        'ADX_Threshold': 25,  # set to 0 to disable ADX
         # Trend following momentum indicator:
         # MACD - Moving Average Convergence Divergence
         'MACD_Fast': 12,
